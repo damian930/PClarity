@@ -1,0 +1,9 @@
+Angry Birds:
+[] - Just start having a ping and a bird and have it be positioned on the screen and be able to more it also
+[] - Have a button to have the bird launch for a bit and then die when you want it to and just fly to the right or some like that
+
+Misc:
+[] - Stop having flags as in the box_make just have them via the same thing in the builder
+     and then just have a simple call to the box maker thingy
+[] -  Border has to be a part of the algo, it is bad when it isnt, lots of not great looking bugs then
+[] -  Lets try to index the whole disk on the pc

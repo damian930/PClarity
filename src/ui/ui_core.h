@@ -1,0 +1,480 @@
+#ifndef __UI_H
+#define __UI_H
+
+#include "core/core_include.h"
+#include "font_provider/font_provider.h"
+
+/* TODOs:
+  [ ] - Need to have a default font, right now 0 is used for it
+*/
+
+enum UI_Size_kind {
+  UI_Size_kind__px,
+  UI_Size_kind__fit,
+  UI_Size_kind__text,
+  UI_Size_kind__percent_of_parent, 
+};
+
+struct UI_Size {
+  UI_Size_kind kind;
+  F32 value;
+  F32 strictness;
+};
+
+enum UI_Box_flag : U32 {
+  UI_Box_flag__NONE                = (0 << 0),
+
+  UI_Box_flag__has_background      = (1 << 1),
+  UI_Box_flag__has_rounded_corners = (1 << 2),
+  UI_Box_flag__has_borders         = (1 << 3),
+  UI_Box_flag__has_text_contents   = (1 << 4),
+
+  // Floating doesnt add to the size of its parent and is not a part of the normal layout flow
+  UI_Box_flag__floating_x = (1 << 5), 
+  UI_Box_flag__floating_y = (1 << 6), 
+
+  // Clips the box contents on axis. Clipping is not the same as just not drawing. 
+  // Clipping changes the interactive zone of boxes. 
+  // Not drawing would just not draw a part of the box, but the box would still
+  // act as if it is full sized, so all inputs would still go thought, even thought
+  // a part of the box is not drawn. Clip doesnt allow that. If a box is 
+  // a child of a clip box and if outisde of its parent's on screen bounding box
+  // the inputs to it dont go thought, since they are clipped out, both for the user
+  // on the screen and for the ui logic. 
+  UI_Box_flag__clip_x = (1 << 7), 
+  UI_Box_flag__clip_y = (1 << 8), 
+
+  UI_Box_flag__floating           = UI_Box_flag__floating_x|UI_Box_flag__floating_y, 
+  UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
+};
+typedef U32 UI_Box_flags;
+
+// - Stacks for default settings
+struct UI_Box_flags_node  { UI_Box_flags v; UI_Box_flags_node* next; };
+struct UI_Box_flags_stack { UI_Box_flags_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Layout_axis_node  { Axis2 v; UI_Layout_axis_node* next; };
+struct UI_Layout_axis_stack { UI_Layout_axis_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Semantic_size_node  { UI_Size v; UI_Semantic_size_node* next; };
+struct UI_Semantic_size_stack { UI_Semantic_size_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Border_width_node  { F32 v; UI_Border_width_node* next; };
+struct UI_Border_width_stack { UI_Border_width_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Border_color_node  { V4F32 v; UI_Border_color_node* next; };
+struct UI_Border_color_stack { UI_Border_color_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Padding_node  { F32 v; UI_Padding_node* next; };
+struct UI_Padding_stack { UI_Padding_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Child_gap_node  { F32 v; UI_Child_gap_node* next; };
+struct UI_Child_gap_stack { UI_Child_gap_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Vertex_color_node  { V4F32 v; UI_Vertex_color_node* next; };
+struct UI_Vertex_color_stack { UI_Vertex_color_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Corner_radius_node  { V4F32 v; UI_Corner_radius_node* next; };
+struct UI_Corner_radius_stack { UI_Corner_radius_node* first; U64 count; B32 pop_after_first_use; };
+//
+struct UI_Softness_node  { F32 v; UI_Softness_node* next; };
+struct UI_Softness_stack { UI_Softness_node* first; U64 count; B32 pop_after_first_use; };
+
+// - Stacks for styles related to text
+struct UI_Text_font_node  { FP_Font v; UI_Text_font_node* next; };
+struct UI_Text_font_stack { UI_Text_font_node* first; U64 count; B32 pop_after_first_use; }; 
+
+struct UI_Box;
+
+struct UI_Actions {
+  // Lower level actions
+  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
+  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
+  //
+  // Composed for quick use
+  B32 is_clicked; // These are composed, so we need cross frame state and id
+  B32 went_down;  // These are composed, so we need cross frame state and id
+  B32 went_up;    // These are composed, so we need cross frame state and id
+
+  // Higher level actions
+  B32 is_active; 
+  // B32 is_navigated;
+
+  V2F32 mouse_pos_at_first_down;
+};
+
+typedef void (*UI_Box_custom_draw_func_type) (UI_Box* box);
+
+struct UI_Box {
+  // Standard box settings
+  UI_Box_flags flags;
+  Axis2        layout_axis;
+  UI_Size      semantic_size[Axis2__COUNT];
+  F32          border_width; // TODO: This is new, IMPLEMENT
+  V4F32        border_color;
+  V4F32        vertex_colors[UV__COUNT];
+  V4F32        corner_radii; 
+  F32          softness;
+
+  // Text stuff (Bit less common setting for a box)
+  Str8 text;
+  FP_Font font;
+
+  // Custom draw 
+  UI_Box_custom_draw_func_type custom_draw_func;
+  void* custom_draw_data;
+
+  // Clip data 
+  // TODO: Document this. Go see the TODO for final_on_screen_bbox to see what you need here
+  V2F32 clip_offset; 
+  RangeV2F32 clip_bbox; // This shoud be documented
+
+  // Per build  
+  Str8 id; 
+  B32 has_been_updated_this_build;
+  UI_Actions actions;
+  //
+  // Intermediate data for ui building 
+  // Dont recommend using this outiside the sizing and positioning logic routines
+  V2F32 final_on_screen_size; 
+  V2F32 final_parent_offset;  
+  //
+  // Final ui build data. 
+  V2F32 inner_content_dims;        // Inner contents of a box. Might be larger than a box. Mostly used for clip boxes to figure out scrolling offset and such.
+  RangeV2F32 final_on_screen_bbox; // BB that the user sees on the screen after the ui is drawn
+  // TODO: This doesnt mean that this says it means when we have clipped going on
+  //       Go document this relative to clipped and also document the clipped box stored per each box.
+  //
+  // Per build box tree
+  UI_Box* first_child;
+  UI_Box* last_child;
+  UI_Box* next_sibling;
+  UI_Box* prev_sibling;
+  UI_Box* parent;
+  U64 children_count;
+
+  // TODO: This is a test thing
+  B32 center_children_on_non_layout_axis;
+};
+
+struct UI_Box_data {
+  B32 is_found;
+  RangeV2F32 on_screen_bbox;
+  V2F32 inner_content_dims;
+  V2F32 clip_offset; 
+};
+
+struct UI_Context {
+  // Persistent
+  Arena* context_arena;
+  Arena* build_arenas[2];
+  U64 build_generation;
+
+  // Per build
+  //
+  UI_Box* root_box;
+  UI_Box* current_parent_box;
+  UI_Box* prev_frame_root_box; 
+  //
+  F32 mouse_x;
+  F32 mouse_y;
+  //
+  Str8 interacted_with_box_id;
+  B32 interacted_with_box_id__is_mouse_down;
+  B32 interacted_with_box_id__did_mouse_leave_box_while_was_down;
+  //
+  Str8 navigated_box_id;
+  //
+  Str8 active_box_id;
+  //
+  OS_Cursor final_cursor;
+  //
+  Arena* style_stacks_arena; 
+  //
+  // Default style stacks
+  UI_Box_flags_stack     flags_stack;
+  UI_Layout_axis_stack   layout_axis_stack;
+  UI_Semantic_size_stack semantic_size_x_stack;
+  UI_Semantic_size_stack semantic_size_y_stack;
+  UI_Border_width_stack  border_width_stack;
+  UI_Border_color_stack  border_color_stack;
+  UI_Padding_stack       padding_stack;
+  UI_Child_gap_stack     child_gap_stack;
+  UI_Vertex_color_stack  vertex_color_stacks[UV__COUNT];
+  UI_Corner_radius_stack corner_radius_stack;
+  UI_Softness_stack      softness_stack;
+  //
+  // Text style stacks
+  UI_Text_font_stack text_font_stack;
+
+  // Some style defaults
+  struct {
+    UI_Box_flags flags;
+    Axis2        layout_axis;
+    UI_Size      size_x;
+    UI_Size      size_y;
+    F32          border_width;
+    V4F32        border_color;
+    F32          padding;
+    F32          child_gap;
+    V4F32        vertex_colors[UV__COUNT];
+    V4F32        corner_radii;
+    F32          softness;
+
+    FP_Font font;
+  } defaults;
+};
+
+// - Context variables
+extern UI_Context* __ui_g_context;
+extern UI_Box __ui_g_zero_box;
+
+// - Size makers
+// UI_Size ui_size_make(UI_Size_kind kind, F32 value, F32 strictness);
+// UI_Size ui_px(F32 value);                     
+// UI_Size ui_fit();                    
+// UI_Size ui_text_size();                      
+
+// - Context 
+UI_Context* ui_get_context();
+void ui_set_context(UI_Context* context);
+
+// - Simple getters
+Arena* ui_get_build_arena();
+F32 ui_get_mouse_x();
+F32 ui_get_mouse_y();
+V2F32 ui_get_mouse_pos();
+
+// - Context 
+void ui_init();
+void ui_release();
+
+// - IDs
+Str8 ui_get_text_part_from_str8(Str8 id_and_text);
+
+// - Box stuff
+B32 ui_box_is_zero(UI_Box* box);
+UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
+UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
+void ui_box_set_custom_draw(UI_Box* box, void (*draw_func) (UI_Box*), void* data);
+void ui_push_parent(UI_Box* box);
+void ui_pop_parent();
+UI_Box* ui_get_parent();
+#define UI_Parent(box) DeferLoop(ui_push_parent(box), ui_pop_parent())
+
+// - Build
+void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);
+void ui_end_build();
+
+// - UI agothirm
+void __ui_do_sizing_for_fixed_sized_box(UI_Box* root, Axis2 axis);
+// void ui_do_sizing_for_parent_dependant_box(UI_Box* root, Axis2 axis);
+// void ui_do_sizing_for_child_dependant_box(UI_Box* root, Axis2 axis);
+// void ui_do_layout_fixing(UI_Box* root, Axis2 axis);
+void __ui_do_relative_parent_offsets_for_box(UI_Box* root, Axis2 axis);
+void __ui_do_final_rect_for_box(UI_Box* root, Axis2 axis);
+void __ui_layout_box(UI_Box* root, Axis2 axis);
+
+// - Other box data
+UI_Box* ui_get_box_from_tree(UI_Box* root, Str8 id);
+UI_Box* ui_get_box_prev_frame(Str8 id);
+UI_Box_data ui_box_data_from_box_prev_frame(UI_Box* box);
+UI_Box_data ui_box_data_from_box_id_prev_frame(Str8 id);
+
+// - Actions
+UI_Actions ui_actions_from_box(UI_Box* this_frames_box);
+UI_Actions ui_actions_from_id(Str8 id);
+
+// - Some new stuff that is yet unstructured
+void ui_reset_active();
+
+// - Default box settings stacks
+void         ui_push_flags(UI_Box_flags v);       
+void         ui_pop_flags(); 
+void         ui_set_next_flags(UI_Box_flags v);       
+void         ui_pop_single_usage_flags();
+UI_Box_flags ui_get_flags();
+//
+void  ui_push_layout_axis(Axis2 v);       
+void  ui_pop_layout_axis(); 
+void  ui_set_next_layout_axis(Axis2 v);       
+void  ui_pop_single_usage_layout_axis();
+Axis2 ui_get_layout_axis();
+//
+void    ui_push_size_x(UI_Size v);          
+void    ui_pop_size_x();      
+void    ui_set_next_size_x(UI_Size v);          
+void    ui_pop_single_usage_size_x();
+UI_Size ui_get_size_x();
+//
+void    ui_push_size_y(UI_Size v);          
+void    ui_pop_size_y();      
+void    ui_set_next_size_y(UI_Size v);          
+void    ui_pop_single_usage_size_y();
+UI_Size ui_get_size_y();
+//
+void ui_push_border_width(F32 v);          
+void ui_pop_border_width();      
+void ui_set_next_border_width(F32 v);          
+void ui_pop_single_usage_border_width();
+F32  ui_get_border_width();
+//
+void  ui_push_border_color(V4F32 v);          
+void  ui_pop_border_color();      
+void  ui_set_next_border_color(V4F32 v);          
+void  ui_pop_single_usage_border_color();
+V4F32 ui_get_border_color();
+//
+void ui_push_padding(F32 v);          
+void ui_pop_padding();      
+void ui_set_next_padding(F32 v);          
+void ui_pop_single_usage_padding();
+F32  ui_get_padding();
+//
+void ui_push_child_gap(F32 v);          
+void ui_pop_child_gap();      
+void ui_set_next_child_gap(F32 v);          
+void ui_pop_single_usage_child_gap();
+F32  ui_get_child_gap();
+
+#define UI_LayoutAxis(axis2)  DeferLoop(ui_push_layout_axis(axis2),       ui_pop_layout_axis())
+#define UI_SizeX(ui_size)     DeferLoop(ui_push_semantic_size_x(ui_size), ui_pop_semantic_size_x())
+#define UI_SizeY(ui_size)     DeferLoop(ui_push_semantic_size_y(ui_size), ui_pop_semantic_size_y())
+// #define UI_Padding(padding)   DeferLoop(ui_push_padding(padding),         ui_pop_padding())
+
+// - Style box settings stacks
+void  ui_push_b_color_uv(UV uv, V4F32 v);     
+void  ui_pop_b_color_uv(UV uv);               
+void  ui_set_next_b_color_uv(UV uv, V4F32 v); 
+void  ui_pop_single_usage_b_color_uv(UV uv);
+V4F32 ui_get_b_color_uv(UV uv);               
+
+void ui_push_b_color(V4F32 v);
+void ui_pop_b_color();
+void ui_set_next_b_color(V4F32 v);
+void ui_pop_single_usage_b_color();
+
+void  ui_push_corner_r(V4F32 v);
+void  ui_pop_corner_r();
+void  ui_set_next_corner_r(V4F32 v);
+void  ui_pop_single_usage_corner_r();
+V4F32 ui_get_corner_r();
+
+void ui_push_softness(F32 softness);
+void ui_pop_softness();
+void ui_set_next_softness(F32 softness);
+void ui_pop_single_usage_softness();
+F32  ui_get_softness();
+
+#define UI_BColor(v)            DeferLoop(ui_push_b_color(v),           ui_pop_b_color())
+#define UI_Border(width, color) DeferLoop(ui_push_border(width, color), ui_pop_border())
+#define UI_CornerR(v)           DeferLoop(ui_push_corner_r(v), ui_pop_corner_r())
+#define UI_Softness(v)          DeferLoop(ui_push_softness(v), ui_pop_softness())
+
+// - Style stack operations for text
+// void ui_push_text_color(V4F32 v);
+// void ui_pop_text_color();
+// void ui_set_next_text_color(V4F32 v);
+// V4F32 ui_get_text_color();
+
+void    ui_push_font(FP_Font v);
+void    ui_pop_font();
+void    ui_set_next_font(FP_Font v);
+void    ui_pop_single_usage_font();
+FP_Font ui_get_font();
+
+// #define UI_TextColor(color) DeferLoop(ui_push_text_color(color), ui_pop_text_color())
+// #define UI_Font(font)       DeferLoop(ui_push_font(font),        ui_pop_font())
+
+// ====================
+// ====================
+// ====================
+// ====================
+// ====================
+/* List of things i think i have to be able to do with this ui for it to be ok --> 
+    UI SYSTEM — COMPLEXITY LADDER
+    ==============================
+
+    TIER 1 — STATIC PRIMITIVES
+    ---------------------------
+    01. [x] - Text / Typography      Font scale, weight, color tokens. Headings, body, captions, code spans.
+    02. [x] - Color Swatch           A box that is purely a color. The atom of your theme system.
+    03. [x] - Divider                Horizontal/vertical rule. May carry a label.
+    04. [x] - Spacer                 Invisible box that enforces spacing units.
+    05. [x] - Icon                   SVG  glyph at a fixed size. Inherits color.
+    06. [x] - Avatar                 Image or initials in a circle/square. Fixed sizes.
+    07. [x] - Badge / Tag            Small pill with text and optional color variant.
+    08. [x] - Spinner / Loader       Animated indicator of indeterminate progress.
+    09. [ ] - Skeleton               Placeholder shape while content loads.
+    10. [ ] - Image / Media Box      Constrained image with aspect ratio and object-fit.
+
+
+    TIER 2 — INTERACTIVE ATOMS
+    ---------------------------
+    11. [x] - Button                 Primary, secondary, ghost, destructive. Disabled state. Icon slot.
+    12. [ ] - Icon Button            Square button with only an icon. Needs tooltip.
+    13. [ ] - Link                   Inline or standalone. Underline, hover, visited states.
+    14. [x] - Checkbox               Checked, unchecked, indeterminate. Label slot.
+    15. [x] - Radio                  Single selection from a group. Label slot.
+    16. [ ] - Toggle / Switch        Binary on/off. Animated thumb.
+    17. [ ] - Text Input             Single-line. Placeholder, label, helper, error states.
+    18. [ ] - Textarea               Multi-line input. Auto-resize variant.
+    19. [ ] - Select / Dropdown      Native or custom. Option list, placeholder, disabled.
+    20. [x] - Slider                 Range input. Single handle, optional value tooltip.
+
+
+    TIER 3 — STATEFUL COMPONENTS
+    -----------------------------
+    21. Tooltip                Appears on hover/focus. Positioned relative to trigger.
+    22. Popover                Floating panel anchored to a trigger. Dismissable.
+    23. Accordion              Expand/collapse a section. Animated height.
+    24. Tabs                   Switch between panels. Active indicator. Keyboard nav.
+    25. Progress Bar           Determinate fill. Value, label, color variants.
+    26. Alert / Banner         Info, success, warning, error. Dismissable.
+    27. Toast / Snackbar       Timed notification. Stacking, dismiss, action.
+    28. Modal / Dialog         Overlay with focus trap. Header, body, footer.
+    29. Drawer / Sheet         Slides in from edge. Top, right, bottom, left.
+    30. Chip / Tag Input       Add and remove tags inline within an input.
+    31. File Upload            Drop zone + file list. Progress per file.
+    32. Color Picker           Hue/saturation canvas + hex input.
+
+
+    TIER 4 — COMPOSITE PATTERNS
+    ----------------------------
+    33. Card                   Surface with header, body, footer, media slot and actions.
+    34. List / List Item       Virtualisable list. Icon, text, meta, action per row.
+    35. Menu / Context Menu    Triggered list of actions. Groups, separators, icons.
+    36. Command Palette        Search-driven action launcher. Keyboard-first.
+    37. Combobox / Autocomplete  Input + filterable dropdown. Multi-select variant.
+    38. Date Picker            Calendar grid + input. Range selection variant.
+    39. Breadcrumb             Hierarchical path nav. Collapse on overflow.
+    40. Pagination             Page controls with prev/next and jump-to.
+    41. Table                  Sort, filter, row selection, sticky columns/header.
+    42. Tree View              Nested hierarchy. Expand/collapse, selection.
+    43. Stepper / Wizard       Multi-step flow. Linear or branching progress.
+    44. Notification Center    List of past notifications. Read/unread state.
+
+
+    TIER 5 — FULL SURFACES
+    -----------------------
+    45. Navigation Bar         Top or side. Logo, links, actions, mobile hamburger.
+    46. Sidebar / Nav Rail     Collapsible. Active state, nested groups, icons + labels.
+    47. Data Grid              Editable cells, column resize, row grouping, virtual scroll.
+    48. Kanban Board           Drag-and-drop columns and cards. Add/edit inline.
+    49. Rich Text Editor       Toolbar + editable area. Formatting, links, embeds.
+    50. Form Builder           Dynamic form with validation, field groups, submit.
+    51. Dashboard Layout       Grid of resizable, draggable widget tiles.
+    52. Chat / Message Feed    Bubbles, timestamps, reactions, scroll-to-bottom.
+    53. Calendar View          Month/week/day grid. Event placement, drag to reschedule.
+    54. Settings Page          Sectioned form. Sidebar nav, save state, confirmation.
+*/
+
+#endif
+
+
+
+
+
+
