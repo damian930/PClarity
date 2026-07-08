@@ -55,7 +55,7 @@ Compiler;
 #endif
 
 // todo: test cpp11 verson +, there it is a part of the standard
-#define StaticAssert(expr, ...) static_assert(expr, __VA_ARGS__)
+#define StaticAssert(expr, ...) static_assert(expr, ##__VA_ARGS__)
 
 #if (!DEBUG_MODE && !RELEASE_MODE)
 	StaticAssert(false, "None of the possible build modes are set. Possible build modes are: Debug, Release.")
@@ -194,129 +194,129 @@ typedef double F64;
 // Dll is a list with "first" and "last" node pointers.
 // Nodes store the "next" and "prev" node pointers.
 #define StackPush_Name(list, new_node, name_for_first_in_list, name_for_next_in_node) \
-            if ((list)->name_for_first_in_list == 0) {     \
-                (list)->name_for_first_in_list = new_node; \
-            } else {                                     \
-                (new_node)->name_for_next_in_node = (list)->name_for_first_in_list; \
-                (list)->name_for_first_in_list = new_node;                        \
-            }
+	if ((list)->name_for_first_in_list == 0) {     \
+			(list)->name_for_first_in_list = new_node; \
+	} else {                                     \
+			(new_node)->name_for_next_in_node = (list)->name_for_first_in_list; \
+			(list)->name_for_first_in_list = new_node;                        \
+	}
 #define StackPop_Name(list, name_for_the_first_in_list, name_for_next_in_node) \
-						if ((list)->name_for_the_first_in_list) { \
-							(list)->name_for_the_first_in_list = (list)->name_for_the_first_in_list->name_for_next_in_node; \
-						}
+	if ((list)->name_for_the_first_in_list) { \
+		(list)->name_for_the_first_in_list = (list)->name_for_the_first_in_list->name_for_next_in_node; \
+	}
 
 #define QueuePushFront_Name(queue, new_node, name_for_first_in_queue, name_for_last_in_queue, name_for_next_in_node) \
-            if (queue->name_for_first_in_queue == 0) {     \
-                queue->name_for_first_in_queue = new_node; \
-                queue->name_for_last_in_queue = new_node;  \
-            } else {                                       \
-                new_node->name_for_next_in_node = queue->name_for_first_in_queue; \
-                queue->name_for_first_in_queue = new_node;                       \
-            }
+	if (queue->name_for_first_in_queue == 0) {     \
+			queue->name_for_first_in_queue = new_node; \
+			queue->name_for_last_in_queue = new_node;  \
+	} else {                                       \
+			new_node->name_for_next_in_node = queue->name_for_first_in_queue; \
+			queue->name_for_first_in_queue = new_node;                       \
+	}
 #define QueuePushBack_Name(queue, new_node, name_for_first_in_queue, name_for_last_in_queue, name_for_next_in_node) \
-            if ((queue)->name_for_first_in_queue == 0) {     \
-                (queue)->name_for_first_in_queue = new_node; \
-                (queue)->name_for_last_in_queue = new_node;  \
-            } else {                                       \
-               (queue)->name_for_last_in_queue->name_for_next_in_node = new_node; \
-               (queue)->name_for_last_in_queue = new_node;                        \
-            }
+	if ((queue)->name_for_first_in_queue == 0) {     \
+			(queue)->name_for_first_in_queue = new_node; \
+			(queue)->name_for_last_in_queue = new_node;  \
+	} else {                                       \
+			(queue)->name_for_last_in_queue->name_for_next_in_node = new_node; \
+			(queue)->name_for_last_in_queue = new_node;                        \
+	}
 
 #define QueuePopFront_Name(queue, name_for_the_first_in_queue, name_for_the_last_in_queue, name_for_the_next_in_node) \
-						if (queue->name_for_the_first_in_queue == queue->name_for_the_last_in_queue) { \
-							queue->name_for_the_first_in_queue = 0; \
-							queue->name_for_the_last_in_queue = 0; \
-						} else if (queue->name_for_the_first_in_queue != 0) { \
-								queue->name_for_the_first_in_queue = queue->name_for_the_first_in_queue->name_for_the_next_in_node; \
-						}
+	if (queue->name_for_the_first_in_queue == queue->name_for_the_last_in_queue) { \
+		queue->name_for_the_first_in_queue = 0; \
+		queue->name_for_the_last_in_queue = 0; \
+	} else if (queue->name_for_the_first_in_queue != 0) { \
+			queue->name_for_the_first_in_queue = queue->name_for_the_first_in_queue->name_for_the_next_in_node; \
+	}
 
 #define DllPushBack_Name(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node) \
-						if (   (dll_p)->name_for_first_in_dll == Null                             \
-								&& (dll_p)->name_for_last_in_dll == Null                              \
-						) { 									 												                          \
-							(dll_p)->name_for_first_in_dll = new_node_p;                            \
-							(dll_p)->name_for_last_in_dll = new_node_p; 													  \
-						} 																							 											  \
-						else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
-							(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
-							(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
-							(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
-						} 											 												 												\
-						else { 									 												 												\
-							(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
-							(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
- 							(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
-						} 
+	if (   (dll_p)->name_for_first_in_dll == Null                             \
+			&& (dll_p)->name_for_last_in_dll == Null                              \
+	) { 									 												                          \
+		(dll_p)->name_for_first_in_dll = new_node_p;                            \
+		(dll_p)->name_for_last_in_dll = new_node_p; 													  \
+	} 																							 											  \
+	else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
+		(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
+		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
+		(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
+	} 											 												 												\
+	else { 									 												 												\
+		(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
+		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
+		(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
+	} 
 #define DllPushFront_Name(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node) \
-						if (   dll_p->name_for_first_in_dll == Null                             \
-								&& dll_p->name_for_last_in_dll  == Null                             \
-						) {                                                                     \
-								dll_p->name_for_first_in_dll = new_node_p;                          \
-								dll_p->name_for_last_in_dll  = new_node_p;                          \
-						}                                                                       \
-						else if (dll_p->name_for_first_in_dll == dll_p->name_for_last_in_dll) { \
-								new_node_p->name_for_next_in_node = dll_p->name_for_last_in_dll;    \
-								dll_p->name_for_last_in_dll->name_for_prev_in_node = new_node_p;    \
-								dll_p->name_for_first_in_dll = new_node_p;                          \
-						}                                                                       \
-						else {                                                                  \
-								new_node_p->name_for_next_in_node = dll_p->name_for_first_in_dll;   \
-								dll_p->name_for_first_in_dll->name_for_prev_in_node = new_node_p;   \
-								dll_p->name_for_first_in_dll = new_node_p;                          \
-						}
+	if (   dll_p->name_for_first_in_dll == Null                             \
+			&& dll_p->name_for_last_in_dll  == Null                             \
+	) {                                                                     \
+			dll_p->name_for_first_in_dll = new_node_p;                          \
+			dll_p->name_for_last_in_dll  = new_node_p;                          \
+	}                                                                       \
+	else if (dll_p->name_for_first_in_dll == dll_p->name_for_last_in_dll) { \
+			new_node_p->name_for_next_in_node = dll_p->name_for_last_in_dll;    \
+			dll_p->name_for_last_in_dll->name_for_prev_in_node = new_node_p;    \
+			dll_p->name_for_first_in_dll = new_node_p;                          \
+	}                                                                       \
+	else {                                                                  \
+			new_node_p->name_for_next_in_node = dll_p->name_for_first_in_dll;   \
+			dll_p->name_for_first_in_dll->name_for_prev_in_node = new_node_p;   \
+			dll_p->name_for_first_in_dll = new_node_p;                          \
+	}
 #define DllPopFront_Name(list, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-						if (list->name_for_first_in_list == list->name_for_last_in_list) { \
-							list->name_for_first_in_list = 0; \
-							list->name_for_last_in_list = 0; \
-						} else { \
-							list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
-							list->name_for_first_in_list->name_for_prev_in_node = 0; \
-						}
+	if (list->name_for_first_in_list == list->name_for_last_in_list) { \
+		list->name_for_first_in_list = 0; \
+		list->name_for_last_in_list = 0; \
+	} else { \
+		list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
+		list->name_for_first_in_list->name_for_prev_in_node = 0; \
+	}
 #define DllPopBack_Name(list, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-						if (list->name_for_first_in_list == list->name_for_last_in_list) { \
-							list->name_for_first_in_list = 0; \
-							list->name_for_last_in_list = 0; \
-						} else { \
-							list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
-							list->name_for_last_in_list->name_for_next_in_node = 0; \
-						}						
+	if (list->name_for_first_in_list == list->name_for_last_in_list) { \
+		list->name_for_first_in_list = 0; \
+		list->name_for_last_in_list = 0; \
+	} else { \
+		list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
+		list->name_for_last_in_list->name_for_next_in_node = 0; \
+	}						
 #define DllPop_Name(list, node_to_pop, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-						if (node_to_pop) { \
-							if (list->name_for_first_in_list == 0 && list->name_for_last_in_list == 0) { \
-								InvalidCodePath("This should not happened. Node is given but list is not valid for it."); \
-							} else if (list->name_for_first_in_list == node_to_pop && list->name_for_last_in_list == node_to_pop) { \
-								list->name_for_first_in_list = list->name_for_last_in_list = 0; \
-							} else if (list->name_for_first_in_list == node_to_pop) { \
-								list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
-								list->name_for_first_in_list->name_for_prev_in_node = 0; \
-							} else if (list->name_for_last_in_list == node_to_pop) { \
-								list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
-								list->name_for_last_in_list->name_for_next_in_node = 0; \
-							} \
-							else { \
-								node_to_pop->name_for_prev_in_node->name_for_next_in_node = node_to_pop->name_for_next_in_node; \
-								node_to_pop->name_for_next_in_node->name_for_prev_in_node = node_to_pop->name_for_prev_in_node; \
-							} \
-						}
+	if (node_to_pop) { \
+		if (list->name_for_first_in_list == 0 && list->name_for_last_in_list == 0) { \
+			InvalidCodePath("This should not happened. Node is given but list is not valid for it."); \
+		} else if (list->name_for_first_in_list == node_to_pop && list->name_for_last_in_list == node_to_pop) { \
+			list->name_for_first_in_list = list->name_for_last_in_list = 0; \
+		} else if (list->name_for_first_in_list == node_to_pop) { \
+			list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
+			list->name_for_first_in_list->name_for_prev_in_node = 0; \
+		} else if (list->name_for_last_in_list == node_to_pop) { \
+			list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
+			list->name_for_last_in_list->name_for_next_in_node = 0; \
+		} \
+		else { \
+			node_to_pop->name_for_prev_in_node->name_for_next_in_node = node_to_pop->name_for_next_in_node; \
+			node_to_pop->name_for_next_in_node->name_for_prev_in_node = node_to_pop->name_for_prev_in_node; \
+		} \
+	}
 
 // TODO: This is new code, not yet part of the official code kind of thing
 #define DllPushBack_Name_NullFunc(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node, is_node_null_func) \
-						if (   is_node_null_func((dll_p)->name_for_first_in_dll)                             \
-								&& is_node_null_func((dll_p)->name_for_last_in_dll)                              \
-						) { 									 												                          \
-							(dll_p)->name_for_first_in_dll = new_node_p;                            \
-							(dll_p)->name_for_last_in_dll = new_node_p; 													  \
-						} 																							 											  \
-						else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
-							(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
-							(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
-							(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
-						} 											 												 												\
-						else { 									 												 												\
-							(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
-							(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
- 							(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
-						} 
+	if (   is_node_null_func((dll_p)->name_for_first_in_dll)                             \
+			&& is_node_null_func((dll_p)->name_for_last_in_dll)                              \
+	) { 									 												                          \
+		(dll_p)->name_for_first_in_dll = new_node_p;                            \
+		(dll_p)->name_for_last_in_dll = new_node_p; 													  \
+	} 																							 											  \
+	else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
+		(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
+		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
+		(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
+	} 											 												 												\
+	else { 									 												 												\
+		(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
+		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
+		(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
+	} 
 
 #define StackPush(list, new_node) StackPush_Name((list), (new_node), first, next)
 #define StackPop(list)            StackPop_Name((list), first, next)
@@ -673,8 +673,7 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 	} while(0)
 
 // Thanks to AIG for this awesome text generation ))
-/*
-global const U64 bit_0  = (1ULL << 0); // TODO: Should you start with 0 or 1
+global const U64 bit_0  = (1ULL << 0); 
 global const U64 bit_1  = (1ULL << 1);
 global const U64 bit_2  = (1ULL << 2);
 global const U64 bit_3  = (1ULL << 3);
@@ -738,7 +737,6 @@ global const U64 bit_60 = (1ULL << 60);
 global const U64 bit_61 = (1ULL << 61);
 global const U64 bit_62 = (1ULL << 62);
 global const U64 bit_63 = (1ULL << 63);
-*/
 
 // - Misc
 // TODO: Structure these in the file better

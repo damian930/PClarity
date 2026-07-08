@@ -4,7 +4,7 @@
 #include "core/core_arena.h"
 #include "os/win32.cpp" 
 
-#define ArenaMinAllocSize 1024 * 4 
+#define ArenaMinAllocSize (1024 * 4) 
 StaticAssert(ArenaMinAllocSize > sizeof(Arena)); // This is for meta data just in case
 
 ///////////////////////////////////////////////////////////
