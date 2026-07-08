@@ -10,8 +10,6 @@
 /* todo:
   [ ] - improve the section for str8_list, right now only 1 can exist.
         api asserts if another one gets created.
-  [ ] - use #define CLAY__STRING_LENGTH(s) ((sizeof(s) / sizeof((s)[0])) - sizeof((s)[0])) 
-        instead of strlen
   [ ] - search for other todos in the code ))
 */
 
@@ -58,7 +56,7 @@ tu_specific Data_buffer data_buffer_make(Arena* arena, U64 count);
 // - str8 makers
 #define MakeSureClit(clit) "" clit "" 
 #define Str8FromC(clit) Str8 { (U8*)MakeSureClit(clit), ArrayCount(clit) - 1 }
-#define String(clit) Str8FromC(clit) // note: Testing a faster macro
+#define String8(clit) Str8FromC(clit) 
 tu_specific Str8 str8_manual_alloc(Arena* arena, U8* str, U64 count);
 tu_specific Str8 str8_manual_view(U8* buffer, U64 count);
 //
@@ -119,6 +117,7 @@ tu_specific void str8_list_append_view(Arena* arena, Str8_list* list, Str8 str);
 tu_specific void str8_list_append_copy(Arena* arena, Str8_list* list, Str8 str); 
 tu_specific Str8_list str8_split_ex(Arena* arena, Str8 str, Str8 spliter, Str8_match_flags flags, B32 include_empty_once_after_split);
 tu_specific Str8_list str8_split(Arena* arena, Str8 str, Str8 spliter, Str8_match_flags flags);
+// NOTE: These are not done and are kind of old
 tu_specific void str8_list_begin_temp_section(Str8_list* list); // todo: Fix these up, only 1 section is possible at a time
 tu_specific void str8_list_end_temp_section(Str8_list* list);
 #define Str8ListSection(list_p) DeferLoop(str8_list_begin_temp_section((list_p)), str8_list_end_temp_section((list_p)))

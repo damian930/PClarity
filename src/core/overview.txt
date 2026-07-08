@@ -1,0 +1,5 @@
+Time of this writing: July 8th 2026
+
+Core is a list of the most used things in the codebase.
+Usually those things are not dependant on other things, hence "core".
+Example of such things include math, strings, basic allocators like Arena ...

@@ -8,7 +8,8 @@
 #include "string.h" // For memset
 #include "math.h"   // For math
 #include "float.h"  // For FLT_MAX and such
-
+#include "limits.h" // For MAX and MIN values 
+ 
 /* todo: Maybe use this somewhere if it makes sense, this is a nice way to have this.
 				 This is taken from RadDBG base/core.h file.
 typedef enum Compiler
@@ -184,9 +185,6 @@ typedef double F64;
 #define EachIndex(it, count)                          (U64 it = 0; it < count; it += 1)
 #define EachEnumRange(it, Type, min_value, max_value) (Type it = min_value; it < max_value; it = (Type)((U64)it + 1))	
 
-// TODO: I dont like that
-#define EachEnum1ToCount(Type, it) EachEnumRange(it, Type, (Type)1, Type##__COUNT)
-
 // Stack is a list that only has the "first" node pointer. Nodes only have the "next" pointer.
 // When pushed onto the stack list, the first element is the new node, and the old first is now next for the new node.
 //
@@ -346,18 +344,13 @@ enum Comparison : U32 {
   Comparison__greater,
 };
 
-// todo: Change this to be 
-// UV__x0y0
-// UV__x1y0
-// UV__x0y1
-// UV__x1y1
-// TODO: The indexing here is off, use different names here
+// note: I am not sure about the names that i like more, so yeah
 enum UV : U32 {
-	UV__00,    // Top left
-	UV__10,    // Top right
-	UV__01,    // Bottom left
-	UV__11,    // Bottom right
-	UV__COUNT,
+	UV__x0y0 = 0, UV__top_left     = 0,
+	UV__x1y0 = 1, UV__top_right    = 1,
+	UV__x0y1 = 2, UV__bottom_left  = 2,
+	UV__x1y1 = 3, UV__bottom_right = 3,
+	UV__COUNT = 4,
 };
 
 enum Axis2 : U32 {
@@ -477,7 +470,6 @@ union V4U8 {
 };
 tu_specific V4U8 v4u8(U8 x, U8 y, U8 z, U8 w);
 
-// TODO: Need better names here like Range1F32 and range2f32 for v2f32 to have the func names look great with no _ or case change
 struct RangeF32 {
 	F32 min; 
 	F32 max;
@@ -586,8 +578,8 @@ tu_specific V4F32 lerp_v4f32(V4F32 v0, V4F32 v1, F32 t);
 
 tu_specific F32 reverse_lerp_f32(F32 min, F32 max, F32 value);
 
-#pragma warning(push)
-#pragma warning(disable: 4309)
+// #pragma warning(push)
+// #pragma warning(disable: 4309)
 
 // - F32 constatns
 global const U32 f32_sign        = 0x80000000;
@@ -599,56 +591,55 @@ tu_specific F32 f32_neg_inf();
 tu_specific F32 f32_nan();
 tu_specific B32 f32_is_nan(F32 f); // Comparisons with nan result in false, even if its nan with nan. So we cant just do the ==, we have to do the byte comparison, for that we need a func.
 
-// TODO: Fuck that, use std lib values here
-global const S64 s64_min = 0x8000000000000000;
-global const S64 s64_max = 0x7fffffffffffffff;
+global const S64 s64_min = INT64_MIN;
+global const S64 s64_max = INT64_MAX;
 StaticAssert((S64)~s64_min == s64_max, "s64_max and s64_min are not right.");
 
-global const U64 u64_min = 0x0000000000000000;
-global const U64 u64_max = 0xffffffffffffffff;
+global const U64 u64_min = 0;
+global const U64 u64_max = UINT64_MAX;
 StaticAssert((U64)~u64_min == u64_max, "u64_max and u64_min are not right.");
 
-global const S32 s32_min = 0x80000000;
-global const S32 s32_max = 0x7fffffff;
+global const S32 s32_min = INT32_MIN;
+global const S32 s32_max = INT32_MAX;
 StaticAssert((S32)~s32_min == s32_max, "s32_max and s32_min are not right.");
 
-global const U32 u32_min = 0x00000000;
-global const U32 u32_max = 0xffffffff;
+global const U32 u32_min = 0;
+global const U32 u32_max = UINT32_MAX;
 StaticAssert((U32)~u32_min == u32_max, "u32_max and u32_min are not right.");
 
-global const S16 s16_min = 0x8000;
-global const S16 s16_max = 0x7fff;
+global const S16 s16_min = INT16_MIN;
+global const S16 s16_max = INT16_MAX;
 StaticAssert((S16)~s16_min == s16_max, "s16_max and s16_min are not right.");
 
-global const U16 u16_min = 0x0000;
-global const U16 u16_max = 0xffff;
+global const U16 u16_min = 0;
+global const U16 u16_max = UINT16_MAX;
 StaticAssert((U16)~u16_min == u16_max, "u16_max and u16_min are not right.");
 
-global const S8 s8_min = 0x80;
-global const S8 s8_max = 0x7f;
+global const S8 s8_min = INT8_MIN;
+global const S8 s8_max = INT8_MAX;
 StaticAssert((S8)~s8_min == s8_max, "s8_max and s8_min are not right.");
 
-global const U8 u8_min = 0x00;
-global const U8 u8_max = 0xff;
+global const U8 u8_min = 0;
+global const U8 u8_max = UINT8_MAX;
 StaticAssert((U8)~u8_min == u8_max, "u8_max and u8_min are not right.");
 
-#pragma warning(pop)
+// #pragma warning(pop)
 
 // - Colors 
-tu_specific const V4F32 transparent_ = v4f32(0,   0,   0,   0);        
-tu_specific const V4F32 black_       = v4f32(0,   0,   0,   255);      
-tu_specific const V4F32 white_       = v4f32(255, 255, 255, 255);
-tu_specific const V4F32 red_         = v4f32(255, 0,   0,   255);    
-tu_specific const V4F32 green_       = v4f32(0,   255, 0,   255);    
-tu_specific const V4F32 blue_        = v4f32(0,   0,   255, 255);    
-tu_specific const V4F32 yellow_      = v4f32(255, 255, 0,   255);  
-tu_specific const V4F32 pink_        = v4f32(255, 0,   255, 255);  
-tu_specific const V4F32 teal_        = v4f32(0,   128, 128, 255);  
-tu_specific const V4F32 orange_      = v4f32(252, 102, 0,   255);  
-tu_specific const V4F32 taupe_       = v4f32(146, 124, 102, 255);
-tu_specific const V4F32 magenta_     = v4f32(253, 61,  181, 255); 
-tu_specific const V4F32 nice_green_  = v4f32(120, 171, 128, 255);
-tu_specific const V4F32 nice_blue_   = v4f32(97,  175, 239, 255 );
+tu_specific V4F32 transparent() { return v4f32(0,   0,   0,   0);    } 
+tu_specific V4F32 black()       { return v4f32(0,   0,   0,   255);  } 
+tu_specific V4F32 white()       { return v4f32(255, 255, 255, 255);  } 
+tu_specific V4F32 red()         { return v4f32(255, 0,   0,   255);  } 
+tu_specific V4F32 green()       { return v4f32(0,   255, 0,   255);  } 
+tu_specific V4F32 blue()        { return v4f32(0,   0,   255, 255);  } 
+tu_specific V4F32 yellow()      { return v4f32(255, 255, 0,   255);  } 
+tu_specific V4F32 pink()        { return v4f32(255, 0,   255, 255);  } 
+tu_specific V4F32 teal()        { return v4f32(0,   128, 128, 255);  } 
+tu_specific V4F32 orange()      { return v4f32(252, 102, 0,   255);  } 
+tu_specific V4F32 taupe()       { return v4f32(146, 124, 102, 255);  } 
+tu_specific V4F32 magenta()     { return v4f32(253, 61,  181, 255);  } 
+tu_specific V4F32 nice_green()  { return v4f32(120, 171, 128, 255);  } 
+tu_specific V4F32 nice_blue()   { return v4f32(97,  175, 239, 255 ); } 
 
 tu_specific V4F32 color_change_alpha(V4F32 color, F32 new_a);
 tu_specific V4F32 color_light_up(V4F32 color, F32 how_much_lighter);
@@ -682,6 +673,7 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 	} while(0)
 
 // Thanks to AIG for this awesome text generation ))
+/*
 global const U64 bit_0  = (1ULL << 0); // TODO: Should you start with 0 or 1
 global const U64 bit_1  = (1ULL << 1);
 global const U64 bit_2  = (1ULL << 2);
@@ -746,6 +738,7 @@ global const U64 bit_60 = (1ULL << 60);
 global const U64 bit_61 = (1ULL << 61);
 global const U64 bit_62 = (1ULL << 62);
 global const U64 bit_63 = (1ULL << 63);
+*/
 
 // - Misc
 // TODO: Structure these in the file better

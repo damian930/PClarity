@@ -21,9 +21,6 @@ tu_specific void set_thread_context(Thread_context* other);
 tu_specific void allocate_thread_context();
 tu_specific void release_thread_context();
 
-// Str8 get_thread_name();
-// void set_thread_name(Str8 new_id);
-
 tu_specific U64 get_thread_id();
 
 tu_specific Scratch get_scratch(Arena** conflic_arenas, U64 n_conflict_arenas);

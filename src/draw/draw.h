@@ -114,7 +114,6 @@ void                  d_add_command_to_batch(D_Command_batch* batch, D_Command c
 // - Low level draw commands that require the caller to know how the shader works
 void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, F32 softness, V4F32 border_color);
 void d_add_texture_command(R_Target texture, Rect dest_rect, Rect src_rect, V4F32 tint);
-void d_add_line_command(V4F32 color);
 
 // - Higher level draw commands that dont require the caller to know how the shader works
 void d_fill_with_color(V4F32 color);

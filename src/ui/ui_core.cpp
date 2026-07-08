@@ -97,7 +97,7 @@ void ui_init()
   __ui_g_context->defaults.border_color = transparent_;
   __ui_g_context->defaults.padding      = 0.0f;
   __ui_g_context->defaults.child_gap    = 0.0f;
-  for EachEnumRange(i, UV, UV__00, UV__COUNT) {
+  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) {
     __ui_g_context->defaults.vertex_colors[i]  = transparent_;
     __ui_g_context->defaults.corner_radii.v[i] = 0.0f;
   }
@@ -157,7 +157,7 @@ UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags)
   }
 
   {
-    for EachEnumRange(i, UV, UV__00, UV__COUNT) {
+    for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) {
       V4F32 vertex_color = ui_get_b_color_uv(i);
       if (!(flags & UI_Box_flag__has_background)) {
         vertex_color = ctx->defaults.vertex_colors[i];
@@ -306,7 +306,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
   __ui_g_context->border_color_stack   = {};
   __ui_g_context->padding_stack        = {};
   __ui_g_context->child_gap_stack      = {};
-  for EachEnumRange(i, UV, UV__00, UV__COUNT) { __ui_g_context->vertex_color_stacks[i] = {}; }
+  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { __ui_g_context->vertex_color_stacks[i] = {}; }
   __ui_g_context->corner_radius_stack  = {};
   __ui_g_context->softness_stack       = {};
   __ui_g_context->text_font_stack      = {};
@@ -353,10 +353,10 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
   ui_push_child_gap(ctx->defaults.child_gap);
   ui_push_border_width(ctx->defaults.border_width);
   ui_push_border_color(ctx->defaults.border_color);
-  ui_push_b_color_uv(UV__00, ctx->defaults.vertex_colors[UV__00]);
-  ui_push_b_color_uv(UV__01, ctx->defaults.vertex_colors[UV__01]);
-  ui_push_b_color_uv(UV__10, ctx->defaults.vertex_colors[UV__10]);
-  ui_push_b_color_uv(UV__11, ctx->defaults.vertex_colors[UV__11]);
+  ui_push_b_color_uv(UV__x0y0, ctx->defaults.vertex_colors[UV__x0y0]);
+  ui_push_b_color_uv(UV__x0y1, ctx->defaults.vertex_colors[UV__x0y1]);
+  ui_push_b_color_uv(UV__x1y0, ctx->defaults.vertex_colors[UV__x1y0]);
+  ui_push_b_color_uv(UV__x1y1, ctx->defaults.vertex_colors[UV__x1y1]);
   ui_push_corner_r(ctx->defaults.corner_radii);
   ui_push_softness(ctx->defaults.softness);
   // TODO: There is no way to push font here since we dont have a default one yet
@@ -926,10 +926,10 @@ B32 ui_has_active()
 void ui_set_b_color(UI_Box* box, V4F32 color)
 {
   if (ui_box_is_zero(box)) { return; }
-  box->vertex_colors[UV__00] = color;
-  box->vertex_colors[UV__01] = color;
-  box->vertex_colors[UV__10] = color;
-  box->vertex_colors[UV__11] = color;
+  box->vertex_colors[UV__x0y0] = color;
+  box->vertex_colors[UV__x0y1] = color;
+  box->vertex_colors[UV__x1y0] = color;
+  box->vertex_colors[UV__x1y1] = color;
 }
 
 void ui_set_cursor(OS_Cursor cursor) 
@@ -1035,10 +1035,10 @@ void ui_set_next_b_color_uv(UV uv, V4F32 v) { UI_Context* ctx = ui_get_context()
 void ui_pop_single_usage_b_color_uv(UV uv)  { UI_Context* ctx = ui_get_context(); _U_StyleStackPopSigngleUsage_Imp(ctx, vertex_color_stacks[uv], UI_Vertex_color_node                 ) }
 V4F32 ui_get_b_color_uv(UV uv)              { UI_Context* ctx = ui_get_context(); _UI_StyleStackGet_Impl        (ctx, vertex_color_stacks[uv], UI_Vertex_color_node, vertex_colors[uv]) }
 
-void ui_push_b_color(V4F32 v)      { for EachEnumRange(uv, UV, UV__00, UV__COUNT) { ui_push_b_color_uv(uv, v);     } }
-void ui_pop_b_color()              { for EachEnumRange(uv, UV, UV__00, UV__COUNT) { ui_pop_b_color_uv(uv);         } }
-void ui_set_next_b_color(V4F32 v)  { for EachEnumRange(uv, UV, UV__00, UV__COUNT) { ui_set_next_b_color_uv(uv, v); } }
-void ui_pop_single_usage_b_color() { for EachEnumRange(uv, UV, UV__00, UV__COUNT) { ui_pop_single_usage_b_color_uv(uv); } }
+void ui_push_b_color(V4F32 v)      { for EachEnumRange(uv, UV, UV__x0y0, UV__COUNT) { ui_push_b_color_uv(uv, v);     } }
+void ui_pop_b_color()              { for EachEnumRange(uv, UV, UV__x0y0, UV__COUNT) { ui_pop_b_color_uv(uv);         } }
+void ui_set_next_b_color(V4F32 v)  { for EachEnumRange(uv, UV, UV__x0y0, UV__COUNT) { ui_set_next_b_color_uv(uv, v); } }
+void ui_pop_single_usage_b_color() { for EachEnumRange(uv, UV, UV__x0y0, UV__COUNT) { ui_pop_single_usage_b_color_uv(uv); } }
 
 void ui_push_corner_r(V4F32 v)      { UI_Context* ctx = ui_get_context(); _UI_StyleStackPush_Impl(ctx, corner_radius_stack, UI_Corner_radius_node, v) }
 void ui_pop_corner_r()              { UI_Context* ctx = ui_get_context(); _UI_StyleStackPop_Impl(ctx, corner_radius_stack, UI_Corner_radius_node) }
@@ -1143,7 +1143,7 @@ void ui_draw_box(UI_Box* root, RangeV2F32 parent_scissor_bbox)
     RangeV2F32 bbox = root->final_on_screen_bbox;
 
     if (root->flags & UI_Box_flag__has_background) {
-      d_draw_rect_pro(rect, root->vertex_colors[UV__00], root->vertex_colors[UV__01], root->vertex_colors[UV__10], root->vertex_colors[UV__11], root->corner_radii, root->softness); 
+      d_draw_rect_pro(rect, root->vertex_colors[UV__x0y0], root->vertex_colors[UV__x0y1], root->vertex_colors[UV__x1y0], root->vertex_colors[UV__x1y1], root->corner_radii, root->softness); 
     }
 
     if (root->flags & UI_Box_flag__has_text_contents) {

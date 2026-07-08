@@ -151,8 +151,8 @@ void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_
   command.u.rect_c.border_color     = border_color;
   command.u.rect_c.border_thickness = border_thickness;
   command.u.rect_c.softness         = softness;
-  for EachEnumRange(i, UV, UV__00, UV__COUNT) { command.u.rect_c.vertex_color[i]  = corner_colors[i]; }
-  for EachEnumRange(i, UV, UV__00, UV__COUNT) { command.u.rect_c.corner_radius[i] = corner_radiuses.v[i]; }
+  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.vertex_color[i]  = corner_colors[i]; }
+  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.corner_radius[i] = corner_radiuses.v[i]; }
   d_add_command_to_batch(batch, command);
 }
 
