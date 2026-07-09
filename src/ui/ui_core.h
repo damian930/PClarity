@@ -139,6 +139,7 @@ global UI_Box null_box = {
 // Stack structs
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 
+// TODO: Move data fiels in state for better structural meaning
 struct UI_State {
   // TODO: Add a counter for boxes made last build
   // TODO: Add a build counter just for debug purposes if we need to
@@ -149,8 +150,11 @@ struct UI_State {
   Arena* build_arena;
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
 
+  U64 build_generation;
+
   UI_Box* root_box;
   V2F32 mouse_pos_for_this_build;
+  V2F32 window_dims_for_this_build;
 
   // Locking them under a struct so ui_state is easier to view in the debugger
   struct {
@@ -189,6 +193,7 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_B
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);
 void ui_end_build();
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
+#define UI_Build(window_dims, mouse_pos) DeferLoop(ui_begin_build(window_dims, mouse_pos), ui_end_build())
 
 // - UI drawing
 void ui_draw();

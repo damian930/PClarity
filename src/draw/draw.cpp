@@ -53,6 +53,13 @@ void d_begin_batching(R_Target target)
   draw_state->default_settings.offset_x      = 0.0f;
   draw_state->default_settings.offset_y      = 0.0f;
 
+  draw_state->current_blend_kind_count    = 0;
+  draw_state->current_render_target_count = 0;
+  draw_state->current_scissor_rect_count  = 0;
+  draw_state->current_fill_mode_count     = 0;
+  draw_state->current_offset_for_x_count  = 0;
+  draw_state->current_offset_for_y_count  = 0;
+
   // If the assert below is hit, then you have added something to the state.
   // Make sure that things is not a setting stack for batching.
   // If it is, then you have to add a default value and set its value here

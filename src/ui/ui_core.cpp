@@ -72,6 +72,8 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
 {   
   UI_State* state = ui_get_state();
 
+  state->build_generation += 1;
+
   // Resetting all the stacks
   #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
     state->stacks.var_name_inside_state = {};
@@ -85,7 +87,8 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
   ui_next_height(ui_px(window_dims.y));
   state->root_box = ui_box_make(Str8{}, UI_Box_flag__NONE);
 
-  state->mouse_pos_for_this_build = mouse_pos;
+  state->mouse_pos_for_this_build   = mouse_pos;
+  state->window_dims_for_this_build = window_dims;
 
   ui_push_parent(state->root_box);
 }
@@ -210,8 +213,15 @@ void ui_draw()
   UI_State* state = ui_get_state();
   Clay_RenderCommandArray render_commands = state->render_commands_as_result_of_ui_build;
 
+  d_push_scissor_rect(rect_make(0.0f, 0.0f, state->window_dims_for_this_build.x, state->window_dims_for_this_build.y));
+
   for EachIndex(commands_index, render_commands.length)
   {
+    if (d_get_state()->current_scissor_rect_count > render_commands.length)
+    {
+      BP;
+    }
+
     Clay_RenderCommand command     = render_commands.internalArray[commands_index];
     Clay_BoundingBox clay_box_rect = command.boundingBox;
     switch (command.commandType)
@@ -276,22 +286,28 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
       {
+        // Damian: Not sure if we need this yet
         NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_IMAGE:
       {
+        // Damian: Not sure if we need this yet
         NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
       {
-        NotImplemented();
+        B32 is_axis_clipped[Axis2__COUNT] = { command.renderData.clip.horizontal, command.renderData.clip.vertical };
+        Rect clip_rect = {};
+        MemCopySafe(clip_rect, clay_box_rect); 
+        d_push_scissor_rect(clip_rect);
+        // TODO: This doesnt accound for only x scissor or only y scissor
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
       {
-        NotImplemented();
+        // d_pop_scissor_rect();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:

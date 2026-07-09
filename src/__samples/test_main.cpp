@@ -87,43 +87,27 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    // CLAY({
-    //   .layout = { 
-    //     .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) }, 
-    //     .padding = CLAY_PADDING_ALL(25),
-    //     .childGap = 25, 
-    //     .layoutDirection = { CLAY_TOP_TO_BOTTOM }, 
-    //   },
-    //   .backgroundColor = {120, 171, 128, 255},
-    // }) {
-      
-    // }
-
-    ui_begin_build(os_get_window_dims(), os_get_mouse_pos());
+    UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
-      ui_next_width(ui_px(50));
-      ui_next_height(ui_px(50));
+      ui_next_width(ui_px(100));
+      ui_next_height(ui_px(100));
       ui_next_b_color(blue());
-      ui_next_border_width(2);
-      ui_next_border_color(red());
-      ui_next_child_gap(5);
-      ui_next_padding(3);
-      UI_Box* box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap|UI_Box_flag__has_padding);
+      UI_Box* box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_x);
       UI_Parent(box)
       {
-        ui_next_width(ui_px(10));
-        ui_next_height(ui_px(10));
-        ui_next_b_color(green());
-        ui_box_make({}, UI_Box_flag__has_background);
-      
-        ui_next_width(ui_px(10));
-        ui_next_height(ui_px(10));
-        ui_next_b_color(green());
-        ui_box_make({}, UI_Box_flag__has_background);
+        ui_next_width(ui_px(500));
+        ui_next_height(ui_px(300));
+        ui_next_b_color(red());
+        UI_Box* inner_box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_x);
+        UI_Parent(inner_box)
+        {
+          ui_next_width(ui_px(50));
+          ui_next_height(ui_px(50));
+          ui_next_b_color(green());
+          UI_Box* inner_inner_box = ui_box_make({}, UI_Box_flag__has_background);
+        }
       }
     }
-
-    ui_end_build();
 
     ui_draw();
 
