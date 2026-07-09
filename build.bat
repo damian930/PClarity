@@ -78,6 +78,7 @@ if not exist build mkdir build
 pushd build
 
 if "%test_main%"=="1" set build_succ=1 && %compile% ../src/__samples/test_main.cpp %linker% /OUT:"test_main.exe"
+if "%test2%"=="1"	  set build_succ=1 && %compile% ../src/__samples/test2.cpp %linker% /OUT:"test2.exe"	&& :: Added this for testing my side of app - S
 if "%main%"=="1"      set build_succ=1 && %compile% ../src/main.cpp %linker% /OUT:"main.exe"
 
 popd
