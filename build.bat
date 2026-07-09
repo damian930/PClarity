@@ -1,22 +1,14 @@
-:: =====================================================================================================
-:: NOTES ABOUT THE CMD SYNTAX (just in case)
-:: * To calculate the number of lines in the codebase:
-::       1) Download cloc.exe from this link "https://github.com/aldanial/cloc"
-::       2) Run the following commands (cloc here is assumed to be accessible globally, otherwise you will get an error - if so, use the direct path to it)
-::       cloc src
-::       - to have the line count per file add the following after the command                        : --by-file)
-::       - to not count lines of code of the external dependencies add the following after the command: --exclude-dir=__third_party,__retired_code)
-:: * In bat files, when creating variables using the 'set' command, the variables are just text, kind of.
-::       Then when comparing var to a value later we use '==' operator. 
-::       It compares 2 strings, unless the values inside are numerical. 
-::       This means that we have to get the number of '"' around the values right, to not have this: ""value""=="value"
-::       That is why when we set values using 'set' command, we set it without '"'.
-::       But then when comparing via '==' we aply '"'. Like this: if "%var_name%"=="value".
-::       This way we have the value from the var_name and the value be inside a single pair of '"'.
-::       This sort of standart removes a lot of bugs when it comes to setting up a build file.
-::       Sure, it would be better if Microsoft had made a better script lang, but this technique
-::       definately makes the script file more coherent for both reading and writing. 
-:: =====================================================================================================
+:: === Usage Notes (July 9th 2026) =====================================================================
+:: This is the main way to build this codebase.
+:: To build the codebase run `build main`
+:: Additional flags that might be specified for build are:
+::  - debug                           (Compiles the code in debug mode)
+::  - release                         (Compiles the code in relese mode)
+::  - clean                           (Cleans the build directory before building into it)
+::  - strict                          (Turns off some warning messages that are silences for debug build by default)
+::  - dont_assert_handle_later_macros (Allows HandleLater macros to compile in relese build. Its for testing purposes, should not be used in the finals release build)
+::  (Any combination of these might be used together)
+:: There migth also be more notes about the build file at the end of the build file. 
 
 :: Making sure that we always build from the project directory even if we run the build from any other dir in the system.
 :: By default if a cmd file is located in path X, but is ran from path Y, the local path that the system will use for the script
@@ -94,4 +86,23 @@ if "%build_succ%"=="" echo Failed to build. No build target was specified.
 
 popd
 
+:: =====================================================================================================
+:: NOTES ABOUT THE CMD SYNTAX (just in case)
+:: * To calculate the number of lines in the codebase:
+::       1) Download cloc.exe from this link "https://github.com/aldanial/cloc"
+::       2) Run the following commands (cloc here is assumed to be accessible globally, otherwise you will get an error - if so, use the direct path to it)
+::       cloc src
+::       - to have the line count per file add the following after the command                        : --by-file)
+::       - to not count lines of code of the external dependencies add the following after the command: --exclude-dir=__third_party,__retired_code)
+:: * In bat files, when creating variables using the 'set' command, the variables are just text, kind of.
+::       Then when comparing var to a value later we use '==' operator. 
+::       It compares 2 strings, unless the values inside are numerical. 
+::       This means that we have to get the number of '"' around the values right, to not have this: ""value""=="value"
+::       That is why when we set values using 'set' command, we set it without '"'.
+::       But then when comparing via '==' we aply '"'. Like this: if "%var_name%"=="value".
+::       This way we have the value from the var_name and the value be inside a single pair of '"'.
+::       This sort of standart removes a lot of bugs when it comes to setting up a build file.
+::       Sure, it would be better if Microsoft had made a better script lang, but this technique
+::       definately makes the script file more coherent for both reading and writing. 
+:: =====================================================================================================
 

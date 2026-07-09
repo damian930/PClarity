@@ -169,8 +169,9 @@ void ui_draw()
 
   for EachIndex(commands_index, render_commands.length)
   {
-    Clay_RenderCommand command = render_commands.internalArray[commands_index];
-
+    
+    Clay_RenderCommand command     = render_commands.internalArray[commands_index];
+    Clay_BoundingBox clay_box_rect = command.boundingBox;
     switch (command.commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_NONE:
@@ -178,16 +179,14 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
-        
-        Clay_BoundingBox clay_box_rect      = command.boundingBox;
         Clay_Color clay_box_b_color         = command.renderData.rectangle.backgroundColor;
         Clay_CornerRadius clay_box_corner_r = command.renderData.rectangle.cornerRadius;
 
-        Rect rect = {};
-        MemCopySafe(rect, clay_box_rect); 
-        V4F32 color = {};
-        MemCopySafe(color, clay_box_b_color); 
+        Rect rect          = {};
+        V4F32 color        = {};
         V4F32 corner_radii = {};
+        MemCopySafe(rect, clay_box_rect); 
+        MemCopySafe(color, clay_box_b_color); 
         MemCopySafe(corner_radii, clay_box_corner_r);
 
         F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
@@ -196,32 +195,32 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
-
+        NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
       {
-
+        NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_IMAGE:
       {
-
+        NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
       {
-
+        NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
       {
-
+        NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
-
+        NotImplemented();
       } break;
     }
   }
@@ -1095,10 +1094,30 @@ V4F32 ui_top_border_width()
   return border_width;
 }
 
-// Faster names
 void ui_next_width(UI_Size size) { ui_next_size_x(size); }
 void ui_next_height(UI_Size size) { ui_next_size_y(size); }
 void ui_next_b_color(V4F32 color) { ui_next_background_color(color); }
+void ui_next_padding(F32 padding) 
+{
+  ui_next_padding_left(padding);
+  ui_next_padding_right(padding);
+  ui_next_padding_top(padding);
+  ui_next_padding_bottom(padding);
+}
+void ui_next_corner_r(F32 r)
+{
+  ui_next_corner_radius_top_left(r);
+  ui_next_corner_radius_top_right(r);
+  ui_next_corner_radius_bottom_right(r);
+  ui_next_corner_radius_bottom_left(r);
+}
+void ui_next_border_width(F32 border)
+{
+  ui_push_border_left(border);
+  ui_push_border_right(border);
+  ui_push_border_top(border);
+  ui_push_border_bottom(border);
+}
 
 ///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay

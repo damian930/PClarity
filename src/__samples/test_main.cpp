@@ -92,6 +92,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
       ui_next_width(ui_px(50));
       ui_next_height(ui_px(50));
       ui_next_b_color(blue());
+      ui_next_border_width(2);
+      ui_next_border_color(red());
       ui_box_make({}, UI_Box_flag__has_background);
     }
     ui_end_build();
