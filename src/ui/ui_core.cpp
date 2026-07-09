@@ -242,12 +242,11 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
 }
 
 // TODO: Move this to a bette place in the file when done
-void ui_extend_box_with_custom_data(UI_Box* box, void (*custom_draw)(UI_Box* box_to_draw, void* data)) // TODO: Need a better name when you are sure what this does and is
-{
-  // todo: Here you set the data for the custom data data func and the custom draw data func
 
-  // TODO:
-  box->clay_element_config.custom.customData = (void*)10;
+void ui_extend_box_with_custom_data(UI_Box* box, void (*custom_draw)(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs), void* data) // TODO: Need a better name when you are sure what this does and is
+{
+  box->clay_element_config.custom.customData = custom_draw;
+  box->clay_element_config.userData          = data;
 }
 
 // TODO: This is new test code, move it to a better place when done
@@ -609,20 +608,10 @@ void ui_draw()
         Rect rect           = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
         V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
-        void* custom_data   = command.renderData.custom.customData;
-
-        void(*box_custom_draw_func)(UI_Box*, void*) = (void(*)(UI_Box*, void*))custom_data;
-        // box_custom_draw_func(rect, )
-
-
-        // have the func pointer here and call it with all the data you need
-
-
-
-        BP;
-
-
-        NotImplemented();
+        
+        #define func void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs
+        void (*custom_draw)(func) = (void(*)(func))command.renderData.custom.customData;
+        custom_draw(command.userData, rect, b_color, clay_corner_r);
       } break;
     }
   }

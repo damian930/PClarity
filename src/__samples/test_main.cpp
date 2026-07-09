@@ -20,12 +20,6 @@ void OutputDebugStringF(const char* fmt, ...);
 
 #include "ui/widgets/ui_widgets.h"
 
-void custom_draw_test_func(UI_Box* box, void* custom_data)
-{
-
-
-}
-
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
@@ -82,9 +76,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   //
   R_Target window_frame_buffer_target = r_attach_window(win32_state->window);
   
-  // TODO: Use this for clay ui: 
-  // - Clay_SetLayoutDimensions
-  // - Do we use the multi line text or do we do it ourselvs
+  FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
   for (;!os_window_should_close();)
   {
@@ -94,15 +86,16 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
-      UI_Row()
-      {
-        ui_next_width(ui_px(50));
-        ui_next_height(ui_px(50));
-        ui_next_b_color(blue());
-        UI_Box* box = ui_box_make({}, UI_Box_flag__has_background);
-        // ui_extend_box_with_custom_data(box);
-      }
+      ui_label(Str8FromC("Flopper"), font);
 
+      // UI_Row()
+      // {
+      //   ui_next_width(ui_px(50));
+      //   ui_next_height(ui_px(50));
+      //   ui_next_b_color(blue());
+      //   UI_Box* box = ui_box_make({}, UI_Box_flag__has_background);
+      //   // ui_extend_box_with_custom_data(box);
+      // }
     }
 
     ui_draw();

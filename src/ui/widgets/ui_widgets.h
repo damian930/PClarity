@@ -24,14 +24,37 @@ UI_Actions ui_button(Str8 id)
   return acts;
 }
 
-void ui_lable(Str8 str)
+// TODO: Rename this, this is test for now
+void ui_label_draw_func(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs)
 {
+  struct draw_data {
+    Str8 str;
+    FP_Font* font;
+  };
+  draw_data* data = (draw_data*)custom_data;
+  d_draw_text(data->str, *data->font, final_rect.origin, white());
+}
+void ui_label(Str8 outer_str, FP_Font font)
+{
+  V2F32 str_dims = fp_measure_text(outer_str, font);
+  
+  ui_next_width(ui_px(str_dims.x));
+  ui_next_height(ui_px(str_dims.y));
   UI_Box* box = ui_box_make({}, 0);
 
+  struct draw_data {
+    Str8 str;
+    FP_Font* font;
+  };
 
-  // todo: Measure text here for the str, have the box here be in pixels
-  // make the box
-  // have an extension for the box where you add the text and then have a custom draw for this box
+  draw_data* data = ArenaPush(ui_get_state()->build_arena, draw_data);
+  data->str = outer_str;
+  data->font = &font;
+  data->str.data = ArenaPushArr(ui_get_state()->build_arena, U8, outer_str.count);
+  data->str.count = outer_str.count;
+  memcpy(data->str.data, outer_str.data, data->str.count);
+
+  ui_extend_box_with_custom_data(box, ui_label_draw_func, data);
 }
 
 // TODO: This shoud be more customizable from the outside
