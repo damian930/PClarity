@@ -20,11 +20,21 @@ UI_Actions ui_button(Str8 id)
     UI_Box_flag__has_rounded_corners|
     UI_Box_flag__has_borders
   );
-  // BP;
   UI_Actions acts = ui_actions_from_box(button_box);
   return acts;
 }
 
+void ui_lable(Str8 str)
+{
+  UI_Box* box = ui_box_make({}, 0);
+
+
+  // todo: Measure text here for the str, have the box here be in pixels
+  // make the box
+  // have an extension for the box where you add the text and then have a custom draw for this box
+}
+
+// TODO: This shoud be more customizable from the outside
 void ui_row_begin()
 {
   ui_next_layout(Axis2__x);

@@ -225,7 +225,7 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
   config->layout.childAlignment  = {}; // TODO
 
   if (flags & UI_Box_flag__has_background) { config->backgroundColor = __ui_clay_color_from_v4f32(ui_top_background_color()); }
-  if (flags & UI_Box_flag__has_rounded_corners) { config->cornerRadius = { ui_top_corner_radius().v[UV__top_left], ui_top_corner_radius().v[UV__top_right], ui_top_corner_radius().v[UV__bottom_left], ui_top_corner_radius().v[UV__bottom_right] }; }
+  if (flags & UI_Box_flag__has_rounded_corners) { config->cornerRadius = __ui_clay_corner_radius_from_v2f32(ui_top_corner_radius()); }
 
   if (flags & UI_Box_flag__clip_x) { config->clip.horizontal = true; }
   if (flags & UI_Box_flag__clip_y) { config->clip.vertical = true; }
@@ -239,6 +239,15 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
   config->custom = {}; // TODO:
 
   config->userData = {}; // TODO:
+}
+
+// TODO: Move this to a bette place in the file when done
+void ui_extend_box_with_custom_data(UI_Box* box, void (*custom_draw)(UI_Box* box_to_draw, void* data)) // TODO: Need a better name when you are sure what this does and is
+{
+  // todo: Here you set the data for the custom data data func and the custom draw data func
+
+  // TODO:
+  box->clay_element_config.custom.customData = (void*)10;
 }
 
 // TODO: This is new test code, move it to a better place when done
@@ -517,8 +526,7 @@ void ui_draw()
 
   for EachIndex(commands_index, render_commands.length)
   {
-    Clay_RenderCommand command     = render_commands.internalArray[commands_index];
-    Clay_BoundingBox clay_box_rect = command.boundingBox;
+    Clay_RenderCommand command = render_commands.internalArray[commands_index];
     switch (command.commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_NONE:
@@ -526,15 +534,9 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
-        Clay_Color clay_box_b_color         = command.renderData.rectangle.backgroundColor;
-        Clay_CornerRadius clay_box_corner_r = command.renderData.rectangle.cornerRadius;
-
-        Rect rect          = {};
-        V4F32 color        = {};
-        V4F32 corner_radii = {};
-        MemCopySafe(rect, clay_box_rect); 
-        MemCopySafe(color, clay_box_b_color); 
-        MemCopySafe(corner_radii, clay_box_corner_r);
+        Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
+        V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
+        V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
 
         F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
         d_draw_rect_pro(rect, color, color, color, color, corner_radii, softness);
@@ -542,40 +544,35 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
-        Clay_Color clay_border_color       = command.renderData.border.color;
-        Clay_CornerRadius clay_corner_r    = command.renderData.border.cornerRadius;
-        Clay_BorderWidth clay_border_width = command.renderData.border.width;
+        Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
+        V4F32 border_color = __ui_v4f32_from_clay_color(command.renderData.border.color);
+        V4F32 corner_rs    = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
+        V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
         
-        Rect rect          = {};
-        V4F32 color        = {};
-        V4F32 corner_radii = {};
-        MemCopySafe(rect, clay_box_rect); 
-        MemCopySafe(color, clay_border_color); 
-        MemCopySafe(corner_radii, clay_corner_r);
-
         F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
-        if (clay_border_width.left > 0) 
+        
+        if (border_width.v[RectEdge__left] > 0) 
         {
-          Rect left_border_rect = rect_make(rect.x, rect.y, clay_border_width.left, rect.height);
-          d_draw_rect_pro(left_border_rect, color, color, color, color, corner_radii, softness);
+          Rect left_border_rect = rect_make(rect.x, rect.y, border_width.v[RectEdge__left], rect.height);
+          d_draw_rect_pro(left_border_rect, border_color, border_color, border_color, border_color, corner_rs, softness);
         }
 
-        if (clay_border_width.right > 0) 
+        if (border_width.v[RectEdge__right] > 0)
         {
-          Rect right_border_rect = rect_make(rect.x + rect.width - clay_border_width.right, rect.y, clay_border_width.right, rect.height);
-          d_draw_rect_pro(right_border_rect, color, color, color, color, corner_radii, softness);
+          Rect right_border_rect = rect_make(rect.x + rect.width - border_width.v[RectEdge__right], rect.y, border_width.v[RectEdge__right], rect.height);
+          d_draw_rect_pro(right_border_rect, border_color, border_color, border_color, border_color, corner_rs, softness);
         }
 
-        if (clay_border_width.top > 0) 
+        if (border_width.v[RectEdge__top] > 0)
         {
-          Rect top_border_rect = rect_make(rect.x, rect.y, rect.width, clay_border_width.top);
-          d_draw_rect_pro(top_border_rect, color, color, color, color, corner_radii, softness);
+          Rect top_border_rect = rect_make(rect.x, rect.y, rect.width, border_width.v[RectEdge__top]);
+          d_draw_rect_pro(top_border_rect, border_color, border_color, border_color, border_color, corner_rs, softness);
         }
 
-        if (clay_border_width.bottom > 0) 
+        if (border_width.v[RectEdge__bottom] > 0)
         {
-          Rect bottom_border_rect = rect_make(rect.x, rect.y + rect.height - clay_border_width.bottom, rect.width, clay_border_width.bottom);
-          d_draw_rect_pro(bottom_border_rect, color, color, color, color, corner_radii, softness);
+          Rect bottom_border_rect = rect_make(rect.x, rect.y + rect.height - border_width.v[RectEdge__bottom], rect.width, border_width.v[RectEdge__bottom]);
+          d_draw_rect_pro(bottom_border_rect, border_color, border_color, border_color, border_color, corner_rs, softness);
         }
       } break;
 
@@ -594,12 +591,11 @@ void ui_draw()
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
       {
         B32 is_axis_clipped[Axis2__COUNT] = { command.renderData.clip.horizontal, command.renderData.clip.vertical };
-        Rect clip_rect = {};
-        MemCopySafe(clip_rect, clay_box_rect); 
+        Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
         
         Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
-        if (is_axis_clipped[Axis2__x]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, clip_rect, Axis2__x); }
-        if (is_axis_clipped[Axis2__y]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, clip_rect, Axis2__y); }
+        if (is_axis_clipped[Axis2__x]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, rect, Axis2__x); }
+        if (is_axis_clipped[Axis2__y]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, rect, Axis2__y); }
         d_push_scissor_rect(current_scissor_rect);
       } break;
 
@@ -610,6 +606,22 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
+        Rect rect           = __ui_rect_from_clay_bounding_box(command.boundingBox);
+        V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
+        V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
+        void* custom_data   = command.renderData.custom.customData;
+
+        void(*box_custom_draw_func)(UI_Box*, void*) = (void(*)(UI_Box*, void*))custom_data;
+        // box_custom_draw_func(rect, )
+
+
+        // have the func pointer here and call it with all the data you need
+
+
+
+        BP;
+
+
         NotImplemented();
       } break;
     }
@@ -1573,15 +1585,35 @@ Clay_Color __ui_clay_color_from_v4f32(V4F32 color)
   return clay_color;
 }
 
+V4F32 __ui_v4f32_from_clay_color(Clay_Color clay_color)
+{
+  V4F32 color = {};
+  color.r = clay_color.r;
+  color.g = clay_color.g;
+  color.b = clay_color.b;
+  color.a = clay_color.a;
+  return color;
+}
+
 Clay_BorderWidth __ui_clay_border_width_from_v4f32(V4F32 border)
 {
   Clay_BorderWidth clay_border = {};
-  clay_border.left            = (U16)border.v[0];
-  clay_border.right           = (U16)border.v[1];
-  clay_border.top             = (U16)border.v[2];
-  clay_border.bottom          = (U16)border.v[3];
+  clay_border.left            = (U16)border.v[RectEdge__left];
+  clay_border.right           = (U16)border.v[RectEdge__right];
+  clay_border.top             = (U16)border.v[RectEdge__top];
+  clay_border.bottom          = (U16)border.v[RectEdge__bottom];
   clay_border.betweenChildren = {}; // Not sure if we need this, so not using this yet
   return clay_border;
+}
+
+V4F32 __ui_v4f32_from_clay_border_width(Clay_BorderWidth clay_border_width)
+{
+  V4F32 vec = {};
+  vec.v[RectEdge__left]   = clay_border_width.left;
+  vec.v[RectEdge__right]  = clay_border_width.right;
+  vec.v[RectEdge__top]    = clay_border_width.top;
+  vec.v[RectEdge__bottom] = clay_border_width.bottom;
+  return vec;
 }
 
 Str8 __ui_str8_from_clay_string(Clay_String clay_string)
@@ -1599,6 +1631,46 @@ Clay_String __ui_clay_string_from_str8(Str8 str)
   clay_str.length                = (U32)str.count; Assert(str.count <= u32_max); // TODO: What do we do about that
   clay_str.chars                 = (char*)str.data;
   return clay_str;
+}
+
+Rect __ui_rect_from_clay_bounding_box(Clay_BoundingBox bbox)
+{
+  Rect rect = {};
+  rect.x      = bbox.x;
+  rect.y      = bbox.y;
+  rect.width  = bbox.width;
+  rect.height = bbox.height;
+  return rect;
+}
+
+Clay_BoundingBox __ui_clay_bounding_box_from_rect(Rect rect)
+{
+  Clay_BoundingBox bbox = {};
+  bbox.x      = rect.x;
+  bbox.y      = rect.y;
+  bbox.width  = rect.width;
+  bbox.height = rect.height;
+  return bbox;
+}
+
+V4F32 __ui_v4f32_from_clay_corner_radius(Clay_CornerRadius clay_crs)
+{
+  V4F32 vec = {};
+  vec.v[UV__top_left]     = clay_crs.topLeft;
+  vec.v[UV__top_right]    = clay_crs.topRight;
+  vec.v[UV__bottom_left]  = clay_crs.bottomLeft;
+  vec.v[UV__bottom_right] = clay_crs.bottomRight;
+  return vec;
+}
+
+Clay_CornerRadius __ui_clay_corner_radius_from_v2f32(V4F32 vec)
+{
+  Clay_CornerRadius clay_crs = {};
+  clay_crs.topLeft     = vec.v[UV__top_left];
+  clay_crs.topRight    = vec.v[UV__top_right];
+  clay_crs.bottomLeft  = vec.v[UV__bottom_left];
+  clay_crs.bottomRight = vec.v[UV__bottom_right];
+  return clay_crs;
 }
 
 #endif

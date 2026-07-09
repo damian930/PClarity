@@ -353,6 +353,14 @@ enum UV : U32 {
 	UV__COUNT = 4,
 };
 
+enum RectEdge : U32 {
+	RectEdge__left,
+	RectEdge__right,
+	RectEdge__top,
+	RectEdge__bottom,
+	RectEdge__COUNT,
+};
+
 enum Axis2 : U32 {
 	Axis2__x,
 	Axis2__y,

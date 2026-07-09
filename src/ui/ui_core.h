@@ -262,13 +262,21 @@ void ui_next_height(UI_Size size);
 #define UI_BorderBottom(v)            DeferLoop(ui_push_border_bottom(v),              ui_pop_border_bottom())
 #define UI_Parent(v)                  DeferLoop(ui_push_parent(v),                     ui_pop_parent())
 
+///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay
-Clay_SizingAxis __ui_clay_sizing_axis_from_ui_size(UI_Size ui_size);
-Clay_Padding __ui_clay_padding_from_v4f32(V4F32 padding);
-Clay_Color __ui_clay_color_from_v4f32(V4F32 color);
-Clay_BorderWidth __ui_clay_border_width_from_v4f32(V4F32 border);
-Str8 __ui_str8_from_clay_string(Clay_String clay_string);
-Clay_String __ui_clay_string_from_str8(Str8 str);
+//
+Clay_SizingAxis   __ui_clay_sizing_axis_from_ui_size (UI_Size ui_size);
+Clay_Padding      __ui_clay_padding_from_v4f32       (V4F32 padding);
+Clay_Color        __ui_clay_color_from_v4f32         (V4F32 color);
+V4F32             __ui_v4f32_from_clay_color         (Clay_Color clay_color);
+Clay_BorderWidth  __ui_clay_border_width_from_v4f32  (V4F32 border);
+V4F32             __ui_v4f32_from_clay_border_width  (Clay_BorderWidth clay_border_width);
+Str8              __ui_str8_from_clay_string         (Clay_String clay_string);
+Clay_String       __ui_clay_string_from_str8         (Str8 str);
+Rect              __ui_rect_from_clay_bounding_box   (Clay_BoundingBox bbox);
+Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
+V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
+Clay_CornerRadius __ui_clay_corner_radius_from_v2f32 (V4F32 vec);
 
 // // - Default box settings stacks
 
