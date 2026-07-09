@@ -3,7 +3,13 @@
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
 [ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
+[ ] - Add a button to have a way to have ids work with clay and inputs across frames
 [ ] - Finish the wrapping of clay in the ui layer
+[ ] - Fast path widgets that we might need 
+  [ ] - Label
+  [ ] - Button
+  [ ] - Slider
+  [ ] - Spacer
 [ ] - Test out all the left, right, top, bottom stacks for valid rect side for corner_r, padding, border_width, ...
 [ ] - Add a way to have cursor be set by the ui for buttons and stuf
 [ ] - Have ui use px corners and not 0-1 % corners

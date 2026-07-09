@@ -121,15 +121,17 @@ struct UI_Box {
   U64 children_count;
 };
 
-global UI_Box null_box = {
-  {},
-  &null_box,
-  &null_box,
-  &null_box,
-  &null_box,
-  &null_box,
-  0,
-};
+// TODO: Move this to a better place
+#define __UI_NULL_BOX_VALUE { \
+  {}, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  0, \
+}
+global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
 // This is separated into a separete file just cause its easier to have
 // macros be there, i think.

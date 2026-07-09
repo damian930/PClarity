@@ -70,6 +70,8 @@ void ui_release()
 //
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
 {   
+  Assert( __ui_g_null_box)
+  
   UI_State* state = ui_get_state();
 
   state->build_generation += 1;
@@ -114,7 +116,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   Clay__OpenElement();
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
-  for (UI_Box* child = root->first_child; child != 0 && child != &null_box; child = child->next_sibling)
+  for (UI_Box* child = root->first_child; child != 0 && child != &__ui_g_null_box; child = child->next_sibling)
   {
     __ui_build_clay_element_tree_from_box_tree(child);
   }
@@ -139,17 +141,32 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 //
 B32 ui_box_is_null(UI_Box* box)
 {
-  return (box == 0) || (box == &null_box);
+  return (box == 0) || (box == &__ui_g_null_box);
 }
+
+// TODO:
+// - static ids
+// - dynamic ids
+// - parent relative ids
+// - indexed ids
 
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags)
 {
-  // TODO: Have the childrena nd parent be set up to null box at first
+  Clay_String key = ...;
+  Clay_ElementId id = Clay__HashString(Clay_String key, 0, 0);
+
+
+  
+  // - get id from id_and_text
+  // - get text from id_and_text
+  // - make a clay string from key
+  // - generate hash from it
+  // - use that hash
 
   UI_State* state = ui_get_state();
   
   UI_Box* new_box = ArenaPush(state->build_arena, UI_Box);
-  *new_box = null_box;
+  *new_box = __ui_g_null_box;
 
   __ui_get_next_box_clay_element_config(&new_box->clay_element_config, flags);
   

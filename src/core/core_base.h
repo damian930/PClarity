@@ -55,7 +55,7 @@ Compiler;
 #endif
 
 // todo: test cpp11 verson +, there it is a part of the standard
-#define StaticAssert(expr, ...) static_assert(expr, ##__VA_ARGS__)
+#define StaticAssert(expr, ...) static_assert(expr, __VA_ARGS__) 
 
 #if (!DEBUG_MODE && !RELEASE_MODE)
 	StaticAssert(false, "None of the possible build modes are set. Possible build modes are: Debug, Release.")
@@ -671,6 +671,25 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 		StaticAssert(sizeof(dest) == sizeof(src), "Cant copy memory safely, the sizes of dest and src variables are not the equal."); \
 		memcpy(&dest, &src, sizeof(dest)); \
 	} while(0)
+
+#define MemCompare(dest, src, size) ((memcmp(&dest, &src, size) < 0) ? Comparison__smaller : ((memcmp(&dest, &src, size) == 0) ? Comparison__equal : Comparison__greater))
+#define MemCompareSafe(dest, src, result_p) do { \
+	StaticAssert(sizeof(dest) == sizeof(src), "Cant comapre memory safely, the sizes of dest and src variables are not the equal."); \
+	if (result_p) { *result_p = MemCompare(dest, src, sizeof(dest)); }  \
+} while (0)
+// Damian: 
+// I tried so hard to have MemCompareSafe have this syntax: Comparison comp = MemCompareSafe(x, y);
+// But it cant be. First issue is that i cant use a comma operator like in defer loop to do the
+// static assert and then the comparison after since static assert is not an expression.
+// I could do the compare and then the static assert, but that would mess up cases
+// when if or a loop is used with no {} afterwards since the macro would generate 2 
+// statements, so it would mess it up.
+// I could make a custom macro for static_assert that would also be an expression this way:
+// #define StaticAssert(expr) sizeof(int[(expr ? 1 : -1)])
+// This would work as an expr when condition is static and also true, but would 
+// create shitty errors when false. I tried to find a way to have the compiler not emit errors
+// in specific code ranges and instead emit my own erro with custom text, but that cant be done.
+// So i ended up just making the MemCompareSafe api a bit worse, but you know, what are you gonna do.
 
 // Thanks to AIG for this awesome text generation ))
 global const U64 bit_0  = (1ULL << 0); 

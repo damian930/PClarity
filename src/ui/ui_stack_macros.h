@@ -31,7 +31,7 @@
   EXPANSION(UI_Border_top_stack,    F32, stack_border_top,    0.0f, ui_push_border_top,    ui_next_border_top,    ui_pop_border_top,    ui_auto_pop_border_top,    ui_top_border_top, 64, UI_BorderTop) \
   EXPANSION(UI_Border_bottom_stack, F32, stack_border_bottom, 0.0f, ui_push_border_bottom, ui_next_border_bottom, ui_pop_border_bottom, ui_auto_pop_border_bottom, ui_top_border_bottom, 64, UI_BorderBottom) \
   \
-  EXPANSION(UI_Parent_stack, UI_Box*, stack_parent, &null_box, ui_push_parent, ui_next_parent, ui_pop_parent, ui_auto_pop_parent, ui_top_parent, (64*3), UI_Parent) 
+  EXPANSION(UI_Parent_stack, UI_Box*, stack_parent, &__ui_g_null_box, ui_push_parent, ui_next_parent, ui_pop_parent, ui_auto_pop_parent, ui_top_parent, (64*3), UI_Parent) 
 
 #define __UI_STACK_DEFINE_STACK_STRUCTS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   struct Stack_type_name { \
