@@ -1,19 +1,17 @@
-[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_TEXT
-[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_IMAGE
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
-[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
+[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
 [x] - Add a button to have a way to have ids work with clay and inputs across frames
-[ ] - Have a way to have a custom draw for a box 
+[x] - Have a way to have a custom draw for a box 
 [ ] - Finish the wrapping of clay in the ui layer
 [ ] - Fast path widgets that we might need 
-  [ ] - Label
+  [x] - Label
   [x] - Button
-  [ ] - Slider
-  [ ] - Spacer
-[ ] - Test out all the left, right, top, bottom stacks for valid rect side for corner_r, padding, border_width, ...
+[x] - Test right,left,top,bottom for borders
+[x] - Test right,left,top,bottom for padding
+[ ] - Test right,left,top,bottom for corner_radius
 [ ] - Add a way to have cursor be set by the ui for buttons and stuf
-[ ] - Have ui use px corners and not 0-1 % corners
+[ ] - Have ui use px corners and not 0-1 % corners 
 
 
 

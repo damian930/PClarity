@@ -86,18 +86,16 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
-      ui_label(Str8FromC("Flopper"), font);
-      ui_label(Str8FromC("Here we go again"), font);
-
-
-      // UI_Row()
-      // {
-      //   ui_next_width(ui_px(50));
-      //   ui_next_height(ui_px(50));
-      //   ui_next_b_color(blue());
-      //   UI_Box* box = ui_box_make({}, UI_Box_flag__has_background);
-      //   // ui_extend_box_with_custom_data(box);
-      // }
+      ui_next_width(ui_fit());
+      ui_next_height(ui_fit());
+      ui_next_border_color(nice_blue());
+      ui_next_border_bottom(5);
+      ui_next_padding_bottom(5);
+      UI_Box* box = ui_box_make({}, UI_Box_flag__has_padding|UI_Box_flag__has_borders);
+      UI_Parent(box)
+      {
+        ui_label(Str8FromC("Flopper"), font);        
+      }
     }
 
     ui_draw();
