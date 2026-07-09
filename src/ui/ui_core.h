@@ -112,6 +112,7 @@ typedef U32 UI_Box_flags;
 // TODO: Here will be all the box data that we need that will then be used in the clay thing
 struct UI_Box {
   Clay_ElementDeclaration clay_element_config;
+  B32 has_been_updated_this_frame;
 
   UI_Box* first_child;
   UI_Box* last_child;
@@ -122,14 +123,16 @@ struct UI_Box {
 };
 
 // TODO: Move this to a better place
+// TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
 #define __UI_NULL_BOX_VALUE { \
+  {}, \
   {}, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
-  0, \
+  {}, \
 }
 global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
@@ -153,6 +156,12 @@ struct UI_State {
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
 
   U64 build_generation;
+
+  struct {
+    Clay_ElementId clay_id;
+    B32 is_mouse_down;
+    B32 did_mouse_leave_box_while_was_down;
+  } interacted_with_box_data;
 
   UI_Box* root_box;
   V2F32 mouse_pos_for_this_build;
@@ -189,7 +198,7 @@ void ui_release();
 // - Box making
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 // void ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
-void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_Box_flags flags);
+void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
 
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);

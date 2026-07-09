@@ -55,7 +55,7 @@ Compiler;
 #endif
 
 // todo: test cpp11 verson +, there it is a part of the standard
-#define StaticAssert(expr, ...) static_assert(expr, __VA_ARGS__) 
+#define StaticAssert(expr, ...) static_assert(expr, ##__VA_ARGS__) 
 
 #if (!DEBUG_MODE && !RELEASE_MODE)
 	StaticAssert(false, "None of the possible build modes are set. Possible build modes are: Debug, Release.")
@@ -672,10 +672,10 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 		memcpy(&dest, &src, sizeof(dest)); \
 	} while(0)
 
-#define MemCompare(dest, src, size) ((memcmp(&dest, &src, size) < 0) ? Comparison__smaller : ((memcmp(&dest, &src, size) == 0) ? Comparison__equal : Comparison__greater))
-#define MemCompareSafe(dest, src, result_p) do { \
+#define MemCompare(dest, src, size) (memcmp(&dest, &src, size) == 0 ? true : false)
+#define MemCompareSafe(dest, src, result_b32_p) do { \
 	StaticAssert(sizeof(dest) == sizeof(src), "Cant comapre memory safely, the sizes of dest and src variables are not the equal."); \
-	if (result_p) { *result_p = MemCompare(dest, src, sizeof(dest)); }  \
+	if (result_b32_p) { *result_b32_p = MemCompare(dest, src, sizeof(dest)); }  \
 } while (0)
 // Damian: 
 // I tried so hard to have MemCompareSafe have this syntax: Comparison comp = MemCompareSafe(x, y);

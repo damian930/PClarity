@@ -70,7 +70,15 @@ void ui_release()
 //
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
 {   
-  Assert( __ui_g_null_box)
+  { // Making sure that null box has not been modified last frame by someone 
+    // TODO: This assert breaks, fix this
+    B32 comp = {};
+    UI_Box valid_null_box = __UI_NULL_BOX_VALUE;
+    MemCompareSafe(__ui_g_null_box, valid_null_box, &comp);
+    #if 0 // Commented it out for now
+    Assert(comp);
+    #endif
+  }
   
   UI_State* state = ui_get_state();
 
@@ -101,8 +109,9 @@ void ui_end_build()
   
   UI_State* state = ui_get_state();
   
-  // TODO: Clay_SetPointerState;
-  // TODO: Clay_SetLayoutDimensions
+  bool pointerDown = false; // TODO: Implement this
+  Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, pointerDown);
+  // TODO: do Clay_SetLayoutDimensions
 
   Clay_BeginLayout();
   __ui_build_clay_element_tree_from_box_tree(state->root_box);
@@ -150,25 +159,25 @@ B32 ui_box_is_null(UI_Box* box)
 // - parent relative ids
 // - indexed ids
 
-UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags)
+UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 {
-  Clay_String key = ...;
-  Clay_ElementId id = Clay__HashString(Clay_String key, 0, 0);
-
-
-  
-  // - get id from id_and_text
-  // - get text from id_and_text
-  // - make a clay string from key
-  // - generate hash from it
-  // - use that hash
-
   UI_State* state = ui_get_state();
   
   UI_Box* new_box = ArenaPush(state->build_arena, UI_Box);
   *new_box = __ui_g_null_box;
 
-  __ui_get_next_box_clay_element_config(&new_box->clay_element_config, flags);
+  // Allocating the id and creating a hash for the box
+  Clay_ElementId clay_id = {};
+  {
+    Str8 box_id = str8_copy(state->build_arena, id);
+    Clay_String clay_string_for_clay_id = {};
+    clay_string_for_clay_id.isStaticallyAllocated = false;
+    clay_string_for_clay_id.length                = (U32)box_id.count; // TODO: Figure out what to do with this
+    clay_string_for_clay_id.chars                 = (char*)box_id.data;
+    clay_id = Clay__HashString(clay_string_for_clay_id, 0, 0);
+  }
+
+  __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
   
   new_box->parent = ui_top_parent();
   if (!ui_box_is_null(new_box->parent))
@@ -193,9 +202,9 @@ UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags)
 //   return box;
 // }
 
-void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_Box_flags flags)
+void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags)
 {
-  config->id = {}; // TODO
+  config->id = clay_id;
 
   config->layout.sizing.width    = __ui_clay_sizing_axis_from_ui_size(ui_top_size_x());
   config->layout.sizing.height   = __ui_clay_sizing_axis_from_ui_size(ui_top_size_y());
@@ -206,7 +215,7 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_B
   config->layout.childAlignment  = {}; // TODO
 
   if (flags & UI_Box_flag__has_background) { config->backgroundColor = __ui_clay_color_from_v4f32(ui_top_background_color()); }
-  if (flags & UI_Box_flag__has_rounded_corners) { config->backgroundColor = { ui_top_corner_radius().v[UV__top_left], ui_top_corner_radius().v[UV__top_right], ui_top_corner_radius().v[UV__bottom_left], ui_top_corner_radius().v[UV__bottom_right] }; }
+  if (flags & UI_Box_flag__has_rounded_corners) { config->cornerRadius = { ui_top_corner_radius().v[UV__top_left], ui_top_corner_radius().v[UV__top_right], ui_top_corner_radius().v[UV__bottom_left], ui_top_corner_radius().v[UV__bottom_right] }; }
 
   if (flags & UI_Box_flag__clip_x) { config->clip.horizontal = true; }
   if (flags & UI_Box_flag__clip_y) { config->clip.vertical = true; }
@@ -221,6 +230,270 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_B
 
   config->userData = {}; // TODO:
 }
+
+// TODO: This is new test code, move it to a better place when done
+// ========================================================
+// TODO: See if these comments are still valid
+struct UI_Actions {
+  // Lower level actions
+  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
+  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
+  //
+  // Composed for quick use
+  B32 is_clicked; // These are composed, so we need cross frame state and id
+  B32 went_down;  // These are composed, so we need cross frame state and id
+  B32 went_up;    // These are composed, so we need cross frame state and id
+};
+
+UI_Actions ui_actions_from_box(UI_Box* box)
+{
+  if (box->has_been_updated_this_frame) { NotImplemented(); return {}; } 
+
+  UI_State* state = ui_get_state();
+
+  // Data to get
+  B32 is_hovered              = false;
+  B32 is_down                 = false;
+  B32 was_down                = false;
+  B32 left_box_while_was_down = false;
+  B32 is_active               = false;
+  B32 is_navigated            = false;
+
+  is_hovered = Clay_PointerOver(box->clay_element_config.id); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
+
+  B32 some_other_box_is_being_interacted_with = (
+    state->interacted_with_box_data.clay_id.id != 0 
+    &&
+    state->interacted_with_box_data.clay_id.id == box->clay_element_config.id.id
+  );
+
+  // Either there is no active box or we are the active box
+  // Since interacted box data is retained across frame boundary, 
+  // we just load the retained state and possibly update it here.
+  // No need to load hover, we get it each frame just from the box rect.
+  if (!some_other_box_is_being_interacted_with)
+  {
+    was_down                = state->interacted_with_box_data.is_mouse_down;
+    left_box_while_was_down = state->interacted_with_box_data.did_mouse_leave_box_while_was_down;
+  
+    // Mouse is up, check if it goes down
+    if (is_hovered && !was_down) 
+    {
+      // note: This has a bit of de sync relative to the is_hovered bool since we test if is hovered based on a different mouse pos than the one that was when the mouse went down, most of the time this shoud be fine, but i am not sure about the other times
+      //       Might be nice to use mouse_pos from the prev frame or somethign like that, for now it should be fine
+      B32 mouse_left_went_down = false;
+      {
+        OS_Event_list* events = os_get_frame_event_list();
+        for (OS_Event* ev = events->first; ev; ev = ev->next)
+        {
+          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_down)
+          {
+            mouse_left_went_down = true;
+            os_consume_frame_event(ev);
+          }
+        }
+      }
+
+      if (mouse_left_went_down)  
+      {
+        // We have a new interacted with box
+        Assert(!was_down);
+        Assert(!left_box_while_was_down);
+        Assert(!state->interacted_with_box_data.is_mouse_down);
+        Assert(!state->interacted_with_box_data.did_mouse_leave_box_while_was_down);
+        Assert(state->interacted_with_box_data.clay_id.id == 0);
+
+        is_down = true;
+        state->interacted_with_box_data.is_mouse_down                      = true;
+        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
+        state->interacted_with_box_data.clay_id                            = box->clay_element_config.id;
+      }
+    }
+    else if (was_down) 
+    {
+      is_down = true;
+
+      if (!is_hovered && is_down) { 
+        left_box_while_was_down = true; 
+        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = true;
+      }
+
+      // todo: The events api sucks right now, but it works, i will make a better one
+      B32 mouse_left_went_up = false;
+      {
+        OS_Event_list* events = os_get_frame_event_list();
+        for (OS_Event* ev = events->first; ev; ev = ev->next)
+        {
+          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_up)
+          {
+            mouse_left_went_up = true;
+            os_consume_frame_event(ev);
+            break;
+          }
+        }
+      }
+
+      if (mouse_left_went_up)
+      {
+        Assert(was_down);
+        Assert(state->interacted_with_box_data.is_mouse_down);
+
+        is_down = false;
+        state->interacted_with_box_data.is_mouse_down                      = false;
+        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
+        state->interacted_with_box_data.clay_id                            = Clay_ElementId{};
+      }
+    }
+  }
+
+  // is_active    = str8_match(ctx->active_box_id, this_frames_box->id, 0);
+
+  UI_Actions result_actions = {};
+
+  result_actions.is_hovered              = is_hovered;            
+  result_actions.is_down                 = is_down;               
+  result_actions.was_down                = was_down;              
+  result_actions.left_box_while_was_down = left_box_while_was_down;
+  result_actions.is_clicked              = was_down && !is_down && !left_box_while_was_down;
+  result_actions.went_down               = !was_down && is_down;
+  result_actions.went_up                 = was_down && !is_down;  
+
+  return result_actions;
+}
+
+// ========================================================
+// OLD CODE
+/*
+UI_Actions ui_actions_from_box(UI_Box* this_frames_box)
+{
+  UI_Actions* result_actions = &this_frames_box->actions;
+  if (this_frames_box->has_been_updated_this_build) { return *result_actions; }
+  
+  this_frames_box->has_been_updated_this_build = true;
+    
+  // We dont update a box that doesnt have id on it
+  if (this_frames_box->id.count == 0) { return *result_actions; } 
+      
+  // We dont update boxes that are created this frame and were not present last frame
+  UI_Box* prev_frames_box = ui_get_box_prev_frame(this_frames_box->id);
+  if (ui_box_is_zero(prev_frames_box)) { Assert(IsZeroStruct(*result_actions)); *result_actions; } 
+
+  UI_Context* ctx = ui_get_context();
+
+  // Data to get
+  B32 is_hovered              = false;
+  B32 is_down                 = false;
+  B32 was_down                = false;
+  B32 left_box_while_was_down = false;
+  B32 is_active               = false;
+  B32 is_navigated            = false;
+
+  B32 some_other_box_is_being_interacted_with = (
+    ctx->interacted_with_box_id.count != 0 // There is a box that is interacted with right now
+    &&
+    !str8_match(ctx->interacted_with_box_id, prev_frames_box->id, 0) // We are not the box that is interacted with right now
+  );
+
+  RangeV2F32 interactable_bbox = intersect_range_v2f32(prev_frames_box->clip_bbox, prev_frames_box->final_on_screen_bbox);
+
+  is_hovered = rangeV2F32_within(interactable_bbox, ui_get_mouse_pos());
+
+  // Either there is no active box or we are the active box
+  // Since interacted box data is retained across frame boundary, 
+  // we just load the retained state and possibly update it here.
+  // No need to load hover, we get it each frame just from the box rect.
+  if (!some_other_box_is_being_interacted_with)
+  {
+    was_down                = ctx->interacted_with_box_id__is_mouse_down;
+    left_box_while_was_down = ctx->interacted_with_box_id__did_mouse_leave_box_while_was_down;
+
+    if (is_hovered && !was_down) // Mouse is up, check if we it goes down
+    {
+      // note: This has a bit of de sync relative to the is_hovered bool since we test if is hovered based on a different mouse pos than the one that was when the mouse went down, most of the time this shoud be fine, but i am not sure about the other times
+      //       Might be nice to use mouse_pos from the prev frame or somethign like that, for now it should be fine
+      B32 mouse_left_went_down = false;
+      {
+        OS_Event_list* events = os_get_frame_event_list();
+        for (OS_Event* ev = events->first; ev; ev = ev->next)
+        {
+          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_down)
+          {
+            mouse_left_went_down = true;
+            os_consume_frame_event(ev);
+          }
+        }
+      }
+
+      if (mouse_left_went_down)  
+      {
+        // New box is interacted, so setting the state for it
+        Assert(!was_down);
+        Assert(!left_box_while_was_down);
+        Assert(!ctx->interacted_with_box_id__is_mouse_down);
+        Assert(!ctx->interacted_with_box_id__did_mouse_leave_box_while_was_down);
+        Assert(str8_match(ctx->interacted_with_box_id, Str8{}, 0));
+
+        is_down = true;
+        ctx->interacted_with_box_id__is_mouse_down = true;
+        ctx->interacted_with_box_id__did_mouse_leave_box_while_was_down = false;
+        ctx->interacted_with_box_id = str8_copy_alloc(ui_get_build_arena(), this_frames_box->id);
+      }
+    }
+    else if (was_down) 
+    {
+      is_down = true;
+
+      if (!is_hovered && is_down) { 
+        left_box_while_was_down = true; 
+        ctx->interacted_with_box_id__did_mouse_leave_box_while_was_down = true;
+      }
+
+      // todo: The events api sucks right now, but if it works, i will make a better one
+      B32 mouse_left_went_up = false;
+      {
+        OS_Event_list* events = os_get_frame_event_list();
+        for (OS_Event* ev = events->first; ev; ev = ev->next)
+        {
+          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_up)
+          {
+            mouse_left_went_up = true;
+            os_consume_frame_event(ev);
+            break;
+          }
+        }
+      }
+
+      if (mouse_left_went_up)
+      {
+        Assert(was_down);
+        Assert(ctx->interacted_with_box_id__is_mouse_down);
+
+        is_down = false;
+        ctx->interacted_with_box_id__is_mouse_down                      = false;
+        ctx->interacted_with_box_id__did_mouse_leave_box_while_was_down = false;
+        ctx->interacted_with_box_id = Str8{};
+      }
+    }
+  }
+
+  is_active    = str8_match(ctx->active_box_id, this_frames_box->id, 0);
+  is_navigated = str8_match(ctx->navigated_box_id, this_frames_box->id, 0);
+
+  result_actions->is_hovered              = is_hovered;            
+  result_actions->is_down                 = is_down;               
+  result_actions->was_down                = was_down;              
+  result_actions->left_box_while_was_down = left_box_while_was_down;
+  result_actions->is_clicked              = was_down && !is_down && !left_box_while_was_down;
+  result_actions->went_down               = !was_down && is_down;
+  result_actions->went_up                 = was_down && !is_down;  
+  result_actions->is_active               = is_active;
+  // result_actions->is_navigated            = is_navigated;
+
+  return *result_actions;
+}
+*/
 
 ///////////////////////////////////////////////////////////
 // - UI drawing

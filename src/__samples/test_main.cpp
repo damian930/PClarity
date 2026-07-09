@@ -22,6 +22,8 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "ui/ui_core.h"
 #include "ui/ui_core.cpp"
 
+#include "ui/widgets/ui_widgets.h"
+
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
@@ -91,22 +93,11 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
       ui_next_width(ui_px(100));
-      ui_next_height(ui_px(100));
-      ui_next_b_color(blue());
-      UI_Box* box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_y);
-      UI_Parent(box)
+      ui_next_height(ui_px(50));
+      ui_next_b_color(red());
+      if (ui_button(Str8FromC("Button id")).is_hovered)
       {
-        ui_next_width(ui_px(500));
-        ui_next_height(ui_px(300));
-        ui_next_b_color(red());
-        UI_Box* inner_box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_x);
-        UI_Parent(inner_box)
-        {
-          ui_next_width(ui_px(600));
-          ui_next_height(ui_px(200));
-          ui_next_b_color(green());
-          UI_Box* inner_inner_box = ui_box_make({}, UI_Box_flag__has_background);
-        }
+        OutputDebugStringF("Button is hovered \n");
       }
     }
 
