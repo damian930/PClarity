@@ -7,7 +7,7 @@
 [ ] - Finish the wrapping of clay in the ui layer
 [ ] - Fast path widgets that we might need 
   [ ] - Label
-  [ ] - Button
+  [x] - Button
   [ ] - Slider
   [ ] - Spacer
 [ ] - Test out all the left, right, top, bottom stacks for valid rect side for corner_r, padding, border_width, ...

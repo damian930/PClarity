@@ -230,6 +230,7 @@ V4F32 ui_top_border_width();
 //
 void ui_next_width(UI_Size size);
 void ui_next_height(UI_Size size);
+// TODO: There are some more there that you have defined and have not moved to the .h file yet
 
 // - Macros for automatic stack pushing and popping
 // Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.
@@ -266,6 +267,8 @@ Clay_SizingAxis __ui_clay_sizing_axis_from_ui_size(UI_Size ui_size);
 Clay_Padding __ui_clay_padding_from_v4f32(V4F32 padding);
 Clay_Color __ui_clay_color_from_v4f32(V4F32 color);
 Clay_BorderWidth __ui_clay_border_width_from_v4f32(V4F32 border);
+Str8 __ui_str8_from_clay_string(Clay_String clay_string);
+Clay_String __ui_clay_string_from_str8(Str8 str);
 
 // // - Default box settings stacks
 

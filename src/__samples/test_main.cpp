@@ -1,7 +1,3 @@
-
-#include "ui/ui_core.h"
-#include "ui/ui_core.cpp"
-
 void OutputDebugStringF(const char* fmt, ...);
 
 #include "core/core_include.h"
@@ -92,13 +88,35 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
-      ui_next_width(ui_px(100));
-      ui_next_height(ui_px(50));
-      ui_next_b_color(red());
-      if (ui_button(Str8FromC("Button id")).is_hovered)
+      UI_Row()
       {
-        OutputDebugStringF("Button is hovered \n");
+        ui_next_width(ui_px(100));
+        ui_next_height(ui_px(50));
+        // ui_next_b_color(red());
+        // ui_next_border(2, blue());
+        if (ui_button(Str8FromC("Button id")).is_clicked)
+        {
+          OutputDebugStringF("Button is hovered \n");
+        }
+
+        ui_next_width(ui_px(20));
+        ui_next_height(ui_px(20));
+        ui_next_b_color(green());
+        UI_Box* spacer = ui_box_make({}, UI_Box_flag__has_background);
+
+        // TODO: I think push might not be working
+
+        // TODO: Why does this not have the border
+        ui_next_width(ui_px(100));
+        ui_next_height(ui_px(50));
+        ui_next_b_color(red());
+        ui_next_border(2, blue());
+        if (ui_button(Str8FromC("Button id 2")).is_clicked)
+        {
+          OutputDebugStringF("Button is hovered \n");
+        }
       }
+
     }
 
     ui_draw();

@@ -626,20 +626,37 @@ StaticAssert((U8)~u8_min == u8_max, "u8_max and u8_min are not right.");
 // #pragma warning(pop)
 
 // - Colors 
-tu_specific V4F32 transparent() { return v4f32(0,   0,   0,   0);    } 
-tu_specific V4F32 black()       { return v4f32(0,   0,   0,   255);  } 
-tu_specific V4F32 white()       { return v4f32(255, 255, 255, 255);  } 
-tu_specific V4F32 red()         { return v4f32(255, 0,   0,   255);  } 
-tu_specific V4F32 green()       { return v4f32(0,   255, 0,   255);  } 
-tu_specific V4F32 blue()        { return v4f32(0,   0,   255, 255);  } 
-tu_specific V4F32 yellow()      { return v4f32(255, 255, 0,   255);  } 
-tu_specific V4F32 pink()        { return v4f32(255, 0,   255, 255);  } 
-tu_specific V4F32 teal()        { return v4f32(0,   128, 128, 255);  } 
-tu_specific V4F32 orange()      { return v4f32(252, 102, 0,   255);  } 
-tu_specific V4F32 taupe()       { return v4f32(146, 124, 102, 255);  } 
-tu_specific V4F32 magenta()     { return v4f32(253, 61,  181, 255);  } 
-tu_specific V4F32 nice_green()  { return v4f32(120, 171, 128, 255);  } 
-tu_specific V4F32 nice_blue()   { return v4f32(97,  175, 239, 255 ); } 
+tu_specific V4F32 transparent_u() { return v4f32(0,   0,   0,   0);    } 
+tu_specific V4F32 black_u()       { return v4f32(0,   0,   0,   255);  } 
+tu_specific V4F32 white_u()       { return v4f32(255, 255, 255, 255);  } 
+tu_specific V4F32 red_u()         { return v4f32(255, 0,   0,   255);  } 
+tu_specific V4F32 green_u()       { return v4f32(0,   255, 0,   255);  } 
+tu_specific V4F32 blue_u()        { return v4f32(0,   0,   255, 255);  } 
+tu_specific V4F32 yellow_u()      { return v4f32(255, 255, 0,   255);  } 
+tu_specific V4F32 pink_u()        { return v4f32(255, 0,   255, 255);  } 
+tu_specific V4F32 teal_u()        { return v4f32(0,   128, 128, 255);  } 
+tu_specific V4F32 orange_u()      { return v4f32(252, 102, 0,   255);  } 
+tu_specific V4F32 taupe_u()       { return v4f32(146, 124, 102, 255);  } 
+tu_specific V4F32 magenta_u()     { return v4f32(253, 61,  181, 255);  } 
+tu_specific V4F32 nice_green_u()  { return v4f32(120, 171, 128, 255);  } 
+tu_specific V4F32 nice_blue_u()   { return v4f32(97,  175, 239, 255 ); } 
+//
+#define _F_COLOR_FROM_U_COLOR(u_color) v4f32(u_color.r / 255.0f, u_color.g / 255.0f, u_color.b / 255.0f, u_color.a / 255.0f)
+//
+tu_specific V4F32 transparent() { return _F_COLOR_FROM_U_COLOR(transparent_u()); }
+tu_specific V4F32 black()       { return _F_COLOR_FROM_U_COLOR(black_u());       }
+tu_specific V4F32 white()       { return _F_COLOR_FROM_U_COLOR(white_u());       }
+tu_specific V4F32 red()         { return _F_COLOR_FROM_U_COLOR(red_u());         }
+tu_specific V4F32 green()       { return _F_COLOR_FROM_U_COLOR(green_u());       }
+tu_specific V4F32 blue()        { return _F_COLOR_FROM_U_COLOR(blue_u());        }
+tu_specific V4F32 yellow()      { return _F_COLOR_FROM_U_COLOR(yellow_u());      }
+tu_specific V4F32 pink()        { return _F_COLOR_FROM_U_COLOR(pink_u());        }
+tu_specific V4F32 teal()        { return _F_COLOR_FROM_U_COLOR(teal_u());        }
+tu_specific V4F32 orange()      { return _F_COLOR_FROM_U_COLOR(orange_u());      }
+tu_specific V4F32 taupe()       { return _F_COLOR_FROM_U_COLOR(taupe_u());       }
+tu_specific V4F32 magenta()     { return _F_COLOR_FROM_U_COLOR(magenta_u());     }
+tu_specific V4F32 nice_green()  { return _F_COLOR_FROM_U_COLOR(nice_green_u());  }
+tu_specific V4F32 nice_blue()   { return _F_COLOR_FROM_U_COLOR(nice_blue_u());   }
 
 tu_specific V4F32 color_change_alpha(V4F32 color, F32 new_a);
 tu_specific V4F32 color_light_up(V4F32 color, F32 how_much_lighter);

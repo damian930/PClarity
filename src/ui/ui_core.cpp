@@ -111,7 +111,7 @@ void ui_end_build()
   
   bool pointerDown = false; // TODO: Implement this
   Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, pointerDown);
-  // TODO: do Clay_SetLayoutDimensions
+  Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
 
   Clay_BeginLayout();
   __ui_build_clay_element_tree_from_box_tree(state->root_box);
@@ -124,6 +124,12 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 {
   Clay__OpenElement();
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
+
+  Str8 id = __ui_str8_from_clay_string(root->clay_element_config.id.stringId);
+  if (str8_match(id, Str8FromC("Button id 2"), 0))
+  {
+    // BP;
+  }
 
   for (UI_Box* child = root->first_child; child != 0 && child != &__ui_g_null_box; child = child->next_sibling)
   {
@@ -168,12 +174,10 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 
   // Allocating the id and creating a hash for the box
   Clay_ElementId clay_id = {};
+  if (id.count != 0)
   {
     Str8 box_id = str8_copy(state->build_arena, id);
-    Clay_String clay_string_for_clay_id = {};
-    clay_string_for_clay_id.isStaticallyAllocated = false;
-    clay_string_for_clay_id.length                = (U32)box_id.count; // TODO: Figure out what to do with this
-    clay_string_for_clay_id.chars                 = (char*)box_id.data;
+    Clay_String clay_string_for_clay_id = __ui_clay_string_from_str8(box_id);
     clay_id = Clay__HashString(clay_string_for_clay_id, 0, 0);
   }
 
@@ -185,6 +189,12 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
     DllPushBack_Name_NullFunc(new_box->parent, new_box, first_child, last_child, next_sibling, prev_sibling, ui_box_is_null);
     new_box->parent->children_count += 1;
   }
+
+  // Auto popping all the stacks
+  #define __UI_AUTO_POP_ALL_THE_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+    auto_pop_func_name();
+  __UI_STACK_DATA_TABLE_EXPANSION(__UI_AUTO_POP_ALL_THE_STACKS)
+  #undef __UI_AUTO_POP_ALL_THE_STACKS
 
   return new_box;
 }
@@ -266,7 +276,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 some_other_box_is_being_interacted_with = (
     state->interacted_with_box_data.clay_id.id != 0 
     &&
-    state->interacted_with_box_data.clay_id.id == box->clay_element_config.id.id
+    state->interacted_with_box_data.clay_id.id != box->clay_element_config.id.id
   );
 
   // Either there is no active box or we are the active box
@@ -1495,10 +1505,15 @@ void ui_next_corner_r(F32 r)
 }
 void ui_next_border_width(F32 border)
 {
-  ui_push_border_left(border);
-  ui_push_border_right(border);
-  ui_push_border_top(border);
-  ui_push_border_bottom(border);
+  ui_next_border_left(border);
+  ui_next_border_right(border);
+  ui_next_border_top(border);
+  ui_next_border_bottom(border);
+}
+void ui_next_border(F32 width, V4F32 color)
+{
+  ui_next_border_width(width);
+  ui_next_border_color(color);
 }
 
 ///////////////////////////////////////////////////////////
@@ -1567,6 +1582,23 @@ Clay_BorderWidth __ui_clay_border_width_from_v4f32(V4F32 border)
   clay_border.bottom          = (U16)border.v[3];
   clay_border.betweenChildren = {}; // Not sure if we need this, so not using this yet
   return clay_border;
+}
+
+Str8 __ui_str8_from_clay_string(Clay_String clay_string)
+{
+  Str8 str = {};
+  str.data  = (U8*)clay_string.chars;
+  str.count = (U64)clay_string.length;
+  return str;
+}
+
+Clay_String __ui_clay_string_from_str8(Str8 str)
+{
+  Clay_String clay_str = {};
+  clay_str.isStaticallyAllocated = false;
+  clay_str.length                = (U32)str.count; Assert(str.count <= u32_max); // TODO: What do we do about that
+  clay_str.chars                 = (char*)str.data;
+  return clay_str;
 }
 
 #endif
