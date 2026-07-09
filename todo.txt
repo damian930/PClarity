@@ -1,7 +1,7 @@
 [ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_TEXT
 [ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_IMAGE
-[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
-[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
+[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
+[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
 [ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
 [ ] - Finish the wrapping of clay in the ui layer
 [ ] - Test out all the left, right, top, bottom stacks for valid rect side for corner_r, padding, border_width, ...

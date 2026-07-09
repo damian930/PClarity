@@ -217,11 +217,6 @@ void ui_draw()
 
   for EachIndex(commands_index, render_commands.length)
   {
-    if (d_get_state()->current_scissor_rect_count > render_commands.length)
-    {
-      BP;
-    }
-
     Clay_RenderCommand command     = render_commands.internalArray[commands_index];
     Clay_BoundingBox clay_box_rect = command.boundingBox;
     switch (command.commandType)
@@ -301,13 +296,16 @@ void ui_draw()
         B32 is_axis_clipped[Axis2__COUNT] = { command.renderData.clip.horizontal, command.renderData.clip.vertical };
         Rect clip_rect = {};
         MemCopySafe(clip_rect, clay_box_rect); 
-        d_push_scissor_rect(clip_rect);
-        // TODO: This doesnt accound for only x scissor or only y scissor
+        
+        Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
+        if (is_axis_clipped[Axis2__x]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, clip_rect, Axis2__x); }
+        if (is_axis_clipped[Axis2__y]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, clip_rect, Axis2__y); }
+        d_push_scissor_rect(current_scissor_rect);
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
       {
-        // d_pop_scissor_rect();
+        d_pop_scissor_rect();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
@@ -316,6 +314,8 @@ void ui_draw()
       } break;
     }
   }
+
+  d_pop_scissor_rect();
 }
 
 // TODO: Move this to the bottom when done

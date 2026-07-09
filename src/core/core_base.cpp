@@ -128,6 +128,12 @@ Rect rect_padded(Rect rect, F32 padd)
 	return result;
 }
 
+Rect rect_intersect_on_axis(Rect rect, Rect other, Axis2 axis)
+{
+	RangeV2F32 new_range = intersect_range_v2f32_on_axis(range_v2f32_from_rect(rect), range_v2f32_from_rect(other), axis);
+	return rect_from_range_v2f32(new_range);
+}
+
 ///////////////////////////////////////////////////////////
 // - RangeV2F32
 //

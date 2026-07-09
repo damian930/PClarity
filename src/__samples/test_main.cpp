@@ -92,7 +92,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
       ui_next_width(ui_px(100));
       ui_next_height(ui_px(100));
       ui_next_b_color(blue());
-      UI_Box* box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_x);
+      UI_Box* box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_y);
       UI_Parent(box)
       {
         ui_next_width(ui_px(500));
@@ -101,8 +101,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         UI_Box* inner_box = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip_x);
         UI_Parent(inner_box)
         {
-          ui_next_width(ui_px(50));
-          ui_next_height(ui_px(50));
+          ui_next_width(ui_px(600));
+          ui_next_height(ui_px(200));
           ui_next_b_color(green());
           UI_Box* inner_inner_box = ui_box_make({}, UI_Box_flag__has_background);
         }
