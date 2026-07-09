@@ -1,5 +1,11 @@
+[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_TEXT
+[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_IMAGE
+[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
+[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
+[ ] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
 [ ] - Finish the wrapping of clay in the ui layer
 [ ] - Add a way to have cursor be set by the ui for buttons and stuf
+[ ] - Have ui use px corners and not 0-1 % corners
 
 
 

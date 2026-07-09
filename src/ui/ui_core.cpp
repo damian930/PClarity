@@ -52,6 +52,10 @@ void ui_init()
   Clay_Arena arena         = Clay_CreateArenaWithCapacityAndMemory(mem_size_for_clay, bytes_for_clay_arena);
   Clay_Initialize(arena, Clay_Dimensions{ 100, 100 }, Clay_ErrorHandler{ __ui_error_handler_for_clay, 0 });
   __ui_g_state->arena_for_clay = arena_for_clay;
+
+  // TODO: This is test code
+  // TODO: Release this in the ui_release func
+  __ui_g_state->build_arena = arena_alloc(Megabytes(4));
 }
 
 void ui_release()
@@ -62,35 +66,101 @@ void ui_release()
 }
 
 ///////////////////////////////////////////////////////////
-// - Box making
+// - UI building
 //
-struct UI_Box { int x; };
+void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
+{   
+  UI_State* state = ui_get_state();
 
-void ui_box_make(Str8 id_and_text, UI_Box_flags flags)
-{
-  Clay__OpenElement();
+  // Resetting all the stacks
+  #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+    state->stacks.var_name_inside_state = {};
+  __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
+  #undef UI_RESET_STACKS
 
-  Clay_ElementDeclaration clay_element_config = {};
-  __ui_get_next_box_clay_element_config(&clay_element_config, flags);
-  
-  Clay__ConfigureOpenElementPtr(&clay_element_config);
+  arena_clear(state->build_arena);
+  state->render_commands_as_result_of_ui_build = {};
 
-  Clay__CloseElement();
+  ui_next_width(ui_px(window_dims.x));
+  ui_next_height(ui_px(window_dims.y));
+  state->root_box = ui_box_make(Str8{}, UI_Box_flag__NONE);
 
+  state->mouse_pos_for_this_build = mouse_pos;
 
-  // CLAY({
-  //   .layout = {
-  //       .sizing = {
-  //           .width = CLAY_SIZING_FIXED(200),
-  //           .height = CLAY_SIZING_FIXED(100)
-  //       }
-  //   },
-  //   .backgroundColor = {120, 170, 255, 255}
-  // }) {
-  //     // Empty rectangle
-  // }
+  ui_push_parent(state->root_box);
 }
 
+void ui_end_build()
+{
+  ui_pop_parent();
+  
+  UI_State* state = ui_get_state();
+  
+  // TODO: Clay_SetPointerState;
+  // TODO: Clay_SetLayoutDimensions
+
+  Clay_BeginLayout();
+  __ui_build_clay_element_tree_from_box_tree(state->root_box);
+  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
+  
+  state->render_commands_as_result_of_ui_build = clay_render_commands; 
+}
+
+void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
+{
+  Clay__OpenElement();
+  Clay__ConfigureOpenElementPtr(&root->clay_element_config);
+
+  for (UI_Box* child = root->first_child; child != 0 && child != &null_box; child = child->next_sibling)
+  {
+    __ui_build_clay_element_tree_from_box_tree(child);
+  }
+
+  Clay__CloseElement();
+}
+
+// // Begin layout
+// Clay_BeginLayout();
+
+// // Your UI goes here
+// BuildUI();
+
+// // Finish layout
+// Clay_RenderCommandArray commands = Clay_EndLayout();
+
+// // Draw the commands using your renderer
+// Render(commands);
+
+///////////////////////////////////////////////////////////
+// - Box making
+//
+B32 ui_box_is_null(UI_Box* box)
+{
+  return (box == 0) || (box == &null_box);
+}
+
+UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags)
+{
+  // TODO: Have the childrena nd parent be set up to null box at first
+
+  UI_State* state = ui_get_state();
+  
+  UI_Box* new_box = ArenaPush(state->build_arena, UI_Box);
+  *new_box = null_box;
+
+  __ui_get_next_box_clay_element_config(&new_box->clay_element_config, flags);
+  
+  new_box->parent = ui_top_parent();
+  if (!ui_box_is_null(new_box->parent))
+  {
+    DllPushBack_Name_NullFunc(new_box->parent, new_box, first_child, last_child, next_sibling, prev_sibling, ui_box_is_null);
+    new_box->parent->children_count += 1;
+  }
+
+  return new_box;
+}
+
+// TODO:
 // void ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
 // {
 //   Scratch scratch = get_scratch(0, 0);
@@ -133,33 +203,6 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_B
 }
 
 ///////////////////////////////////////////////////////////
-// - UI building
-//
-void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
-{   
-  UI_State* state = ui_get_state();
-
-  // Resetting all the stacks
-  #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name) \
-    state->var_name_inside_state = {};
-  __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
-  #undef UI_RESET_STACKS
-
-  Clay_BeginLayout();
-
-  // TODO: See if you need to build a box from a builder thing here 
-
-  // todo: Set all the stacks here
-}
-
-void ui_end_build()
-{
-  UI_State* state = ui_get_state();
-  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
-  state->render_commands_as_result_of_ui_build = clay_render_commands; 
-}
-
-///////////////////////////////////////////////////////////
 // - UI drawing
 //
 void ui_draw()
@@ -169,7 +212,6 @@ void ui_draw()
 
   for EachIndex(commands_index, render_commands.length)
   {
-    
     Clay_RenderCommand command     = render_commands.internalArray[commands_index];
     Clay_BoundingBox clay_box_rect = command.boundingBox;
     switch (command.commandType)
@@ -195,7 +237,41 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
-        NotImplemented();
+        Clay_Color clay_border_color       = command.renderData.border.color;
+        Clay_CornerRadius clay_corner_r    = command.renderData.border.cornerRadius;
+        Clay_BorderWidth clay_border_width = command.renderData.border.width;
+        
+        Rect rect          = {};
+        V4F32 color        = {};
+        V4F32 corner_radii = {};
+        MemCopySafe(rect, clay_box_rect); 
+        MemCopySafe(color, clay_border_color); 
+        MemCopySafe(corner_radii, clay_corner_r);
+
+        F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
+        if (clay_border_width.left > 0) 
+        {
+          Rect left_border_rect = rect_make(rect.x, rect.y, clay_border_width.left, rect.height);
+          d_draw_rect_pro(left_border_rect, color, color, color, color, corner_radii, softness);
+        }
+
+        if (clay_border_width.right > 0) 
+        {
+          Rect right_border_rect = rect_make(rect.x + rect.width - clay_border_width.right, rect.y, clay_border_width.right, rect.height);
+          d_draw_rect_pro(right_border_rect, color, color, color, color, corner_radii, softness);
+        }
+
+        if (clay_border_width.top > 0) 
+        {
+          Rect top_border_rect = rect_make(rect.x, rect.y, rect.width, clay_border_width.top);
+          d_draw_rect_pro(top_border_rect, color, color, color, color, corner_radii, softness);
+        }
+
+        if (clay_border_width.bottom > 0) 
+        {
+          Rect bottom_border_rect = rect_make(rect.x, rect.y + rect.height - clay_border_width.bottom, rect.width, clay_border_width.bottom);
+          d_draw_rect_pro(bottom_border_rect, color, color, color, color, corner_radii, softness);
+        }
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:

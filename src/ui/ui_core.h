@@ -109,6 +109,28 @@ typedef U32 UI_Box_flags;
 //   V2F32 clip_offset; 
 // };
 
+// TODO: Here will be all the box data that we need that will then be used in the clay thing
+struct UI_Box {
+  Clay_ElementDeclaration clay_element_config;
+
+  UI_Box* first_child;
+  UI_Box* last_child;
+  UI_Box* next_sibling;
+  UI_Box* prev_sibling;
+  UI_Box* parent;
+  U64 children_count;
+};
+
+global UI_Box null_box = {
+  {},
+  &null_box,
+  &null_box,
+  &null_box,
+  &null_box,
+  &null_box,
+  0,
+};
+
 // This is separated into a separete file just cause its easier to have
 // macros be there, i think.
 // Some of those macros need some types from above, so we include it here.
@@ -118,69 +140,24 @@ typedef U32 UI_Box_flags;
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 
 struct UI_State {
+  // TODO: Add a counter for boxes made last build
+  // TODO: Add a build counter just for debug purposes if we need to
+
   Arena* state_arena;
+  Arena* arena_for_clay; // This is clay internal memory
 
-  Arena* arena_for_clay;
-
+  Arena* build_arena;
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
 
-  #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
-  __UI_STACK_DATA_TABLE_EXPANSION(EXPANSION)
-  #undef EXPANSTION
+  UI_Box* root_box;
+  V2F32 mouse_pos_for_this_build;
 
-  // Stacks
-  // #define X(Stack_type_name,    inner_data_type,    var_name_inside_state,    default_value,    push_func_name,    set_next_func_name,    pop_func_name,    auto_pop_func_name,    get_top_func_name) \
-  //   Stack_type_name var_name_inside_state
-  // __UI_STACK_DATA_TABLE
-  // #undef X
-
-  // F32 mouse_x;
-  // F32 mouse_y;
-  // //
-  // Str8 interacted_with_box_id;
-  // B32 interacted_with_box_id__is_mouse_down;
-  // B32 interacted_with_box_id__did_mouse_leave_box_while_was_down;
-  // //
-  // Str8 navigated_box_id;
-  // //
-  // Str8 active_box_id;
-  // //
-  // OS_Cursor final_cursor;
-  // //
-  // Arena* style_stacks_arena; 
-  // //
-  // // Default style stacks
-  // UI_Box_flags_stack     flags_stack;
-  // UI_Layout_axis_stack   layout_axis_stack;
-  // UI_Semantic_size_stack semantic_size_x_stack;
-  // UI_Semantic_size_stack semantic_size_y_stack;
-  // UI_Border_width_stack  border_width_stack;
-  // UI_Border_color_stack  border_color_stack;
-  // UI_Padding_stack       padding_stack;
-  // UI_Child_gap_stack     child_gap_stack;
-  // UI_Vertex_color_stack  vertex_color_stacks[UV__COUNT];
-  // UI_Corner_radius_stack corner_radius_stack;
-  // UI_Softness_stack      softness_stack;
-  // //
-  // // Text style stacks
-  // UI_Text_font_stack text_font_stack;
-
-  // // Some style defaults
-  // struct {
-  //   UI_Box_flags flags;
-  //   Axis2        layout_axis;
-  //   UI_Size      size_x;
-  //   UI_Size      size_y;
-  //   F32          border_width;
-  //   V4F32        border_color;
-  //   F32          padding;
-  //   F32          child_gap;
-  //   V4F32        vertex_colors[UV__COUNT];
-  //   V4F32        corner_radii;
-  //   F32          softness;
-
-  //   FP_Font font;
-  // } defaults;
+  // Locking them under a struct so ui_state is easier to view in the debugger
+  struct {
+    #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
+    __UI_STACK_DATA_TABLE_EXPANSION(EXPANSION)
+    #undef EXPANSTION
+  } stacks;
 };
 
 // // - Context variables
@@ -204,13 +181,14 @@ void ui_release();
 // Str8 ui_get_text_part_from_str8(Str8 id_and_text);
 
 // - Box making
-void ui_box_make(Str8 id_and_text, UI_Box_flags flags);
+UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 // void ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, UI_Box_flags flags);
 
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);
 void ui_end_build();
+void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
 
 // - UI drawing
 void ui_draw();
@@ -236,6 +214,36 @@ V4F32 ui_top_border_width();
 //
 void ui_next_width(UI_Size size);
 void ui_next_height(UI_Size size);
+
+// - Macros for automatic stack pushing and popping
+// Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.
+//         This is exactly the reason why ryan has his own table tool generation. Also his tool outputs files that you
+//         then can go read the code for, which is the issue with macros - you dont really see the final code. 
+//         So gonna have to define the DeferLoop macros for push and pops manually
+// 
+// #define __UI_STACK_DEFINE_DEFER_PUSH_POP_MACROS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+//   #define defer_push_pop_macro_name(v) DeferLoop(push_func_name(v), pop_func_name())
+// #undef __UI_STACK_DEFINE_DEFER_PUSH_POP_MACROS
+//
+#define UI_SizeX(v)                   DeferLoop(ui_push_size_x(v),                     ui_pop_size_x())
+#define UI_SizeY(v)                   DeferLoop(ui_push_size_y(v),                     ui_pop_size_y())
+#define UI_Childgap(v)                DeferLoop(ui_push_child_gap(v),                  ui_pop_child_gap())
+#define UI_PaddingLeft(v)             DeferLoop(ui_push_padding_left(v),               ui_pop_padding_left())
+#define UI_PaddingTop(v)              DeferLoop(ui_push_padding_top(v),                ui_pop_padding_top())
+#define UI_PaddingRight(v)            DeferLoop(ui_push_padding_right(v),              ui_pop_padding_right())
+#define UI_PaddingBottom(v)           DeferLoop(ui_push_padding_bottom(v),             ui_pop_padding_bottom())
+#define UI_Layout(v)                  DeferLoop(ui_push_layout(v),                     ui_pop_layout())
+#define UI_BColor(v)                  DeferLoop(ui_push_background_color(v),           ui_pop_background_color())
+#define UI_CornerRadiusTopLeft(v)     DeferLoop(ui_push_corner_radius_top_left(v),     ui_pop_corner_radius_top_left())
+#define UI_CornerRadiusTopRight(v)    DeferLoop(ui_push_corner_radius_top_right(v),    ui_pop_corner_radius_top_right())
+#define UI_CornerRadiusBottomRight(v) DeferLoop(ui_push_corner_radius_bottom_right(v), ui_pop_corner_radius_bottom_right())
+#define UI_CornerRadiusBottomLeft(v)  DeferLoop(ui_push_corner_radius_bottom_left(v),  ui_pop_corner_radius_bottom_left())
+#define UI_BorderColor(v)             DeferLoop(ui_push_border_color(v),               ui_pop_border_color())
+#define UI_BorderLeft(v)              DeferLoop(ui_push_border_left(v),                ui_pop_border_left())
+#define UI_BorderRight(v)             DeferLoop(ui_push_border_right(v),               ui_pop_border_right())
+#define UI_BorderTop(v)               DeferLoop(ui_push_border_top(v),                 ui_pop_border_top())
+#define UI_BorderBottom(v)            DeferLoop(ui_push_border_bottom(v),              ui_pop_border_bottom())
+#define UI_Parent(v)                  DeferLoop(ui_push_parent(v),                     ui_pop_parent())
 
 // - Helpers to wrap around clay
 Clay_SizingAxis __ui_clay_sizing_axis_from_ui_size(UI_Size ui_size);
