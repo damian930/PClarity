@@ -87,6 +87,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     UI_Build(os_get_window_dims(), os_get_mouse_pos())
     {
       ui_label(Str8FromC("Flopper"), font);
+      ui_label(Str8FromC("Here we go again"), font);
+
 
       // UI_Row()
       // {

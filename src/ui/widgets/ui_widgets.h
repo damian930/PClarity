@@ -25,14 +25,15 @@ UI_Actions ui_button(Str8 id)
 }
 
 // TODO: Rename this, this is test for now
-void ui_label_draw_func(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs)
+// void ui_label_draw_func(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs)
+UI_BOX_CUSTOM_DRAW(ui_label_draw_func)
 {
   struct draw_data {
     Str8 str;
     FP_Font* font;
   };
   draw_data* data = (draw_data*)custom_data;
-  d_draw_text(data->str, *data->font, final_rect.origin, white());
+  d_draw_text(data->str, *data->font, provided_data.final_box_rect.origin, white());
 }
 void ui_label(Str8 outer_str, FP_Font font)
 {
@@ -54,7 +55,7 @@ void ui_label(Str8 outer_str, FP_Font font)
   data->str.count = outer_str.count;
   memcpy(data->str.data, outer_str.data, data->str.count);
 
-  ui_extend_box_with_custom_data(box, ui_label_draw_func, data);
+  ui_extend_box_with_custom_draw_function(box, ui_label_draw_func, data);
 }
 
 // TODO: This shoud be more customizable from the outside

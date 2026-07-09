@@ -195,11 +195,6 @@ void ui_release();
 // // - IDs
 // Str8 ui_get_text_part_from_str8(Str8 id_and_text);
 
-// - Box making
-UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
-// void ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
-void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
-
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);
 void ui_end_build();
@@ -208,6 +203,22 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
 
 // - UI drawing
 void ui_draw();
+
+// - Box making
+UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
+UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
+void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
+
+// - Box custom draw extention
+struct UI_Provided_data_for_custom_draw {
+  Rect final_box_rect;
+  V4F32 background_color;
+  V4F32 corner_radii;
+};
+#define UI_BOX_CUSTOM_DRAW_FUNC()
+#define UI_BOX_CUSTOM_DRAW(name) void name(UI_Provided_data_for_custom_draw provided_data, void* custom_data)
+typedef UI_BOX_CUSTOM_DRAW(UI_Box_custom_draw_func_type);
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data);
 
 // - Size makers
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);

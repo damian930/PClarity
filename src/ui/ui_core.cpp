@@ -199,18 +199,17 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   return new_box;
 }
 
-// TODO:
-// void ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
-// {
-//   Scratch scratch = get_scratch(0, 0);
-//   va_list args;
-//   va_start(args, flags);
-//   Str8 str = str8_valist(scratch.arena, fmt, args);
-//   UI_Box* box = ui_box_make(str, flags);
-//   va_end(args);
-//   end_scratch(&scratch);
-//   return box;
-// }
+UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
+{
+  Scratch scratch = get_scratch(0, 0);
+  va_list args;
+  va_start(args, flags);
+  Str8 str = str8_valist(scratch.arena, fmt, args);
+  UI_Box* box = ui_box_make(str, flags);
+  va_end(args);
+  end_scratch(&scratch);
+  return box;
+}
 
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags)
 {
@@ -238,14 +237,16 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
   config->floating = {}; // TODO;
   config->custom = {}; // TODO:
 
-  config->userData = {}; // TODO:
+  // Damian: Not touching userData here, its for custom stuff, stuff like cutstom drawing
+  // config->userData = {}; // TODO:
 }
 
-// TODO: Move this to a bette place in the file when done
-
-void ui_extend_box_with_custom_data(UI_Box* box, void (*custom_draw)(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs), void* data) // TODO: Need a better name when you are sure what this does and is
+///////////////////////////////////////////////////////////
+// - Box custom draw extention
+//
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
 {
-  box->clay_element_config.custom.customData = custom_draw;
+  box->clay_element_config.custom.customData = (void*)custom_draw;
   box->clay_element_config.userData          = data;
 }
 
@@ -609,9 +610,13 @@ void ui_draw()
         V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
         V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
         
-        #define func void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs
-        void (*custom_draw)(func) = (void(*)(func))command.renderData.custom.customData;
-        custom_draw(command.userData, rect, b_color, clay_corner_r);
+        UI_Box_custom_draw_func_type* custom_draw_func = (UI_Box_custom_draw_func_type*)command.renderData.custom.customData;
+        UI_Provided_data_for_custom_draw provided_data = {};
+        provided_data.final_box_rect   = rect;
+        provided_data.background_color = b_color;
+        provided_data.corner_radii     = clay_corner_r;
+        
+        custom_draw_func(provided_data, command.userData);
       } break;
     }
   }
