@@ -43,14 +43,14 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   //
   {
     win32_state->window.window_class.cbSize        = sizeof(WNDCLASSEXA);
-    win32_state->window.window_class.style         = CS_HREDRAW|CS_VREDRAW/*| CS_DBLCLKS*/; // todo: Look into hredraw and vredraw
+    win32_state->window.window_class.style         = CS_HREDRAW|CS_VREDRAW;
     win32_state->window.window_class.lpfnWndProc   = win32_proc;
     win32_state->window.window_class.hInstance     = app_instance;
     win32_state->window.window_class.hIcon         = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(1));
-    win32_state->window.window_class.hCursor       = LoadCursorA(0, IDC_ARROW);
+    win32_state->window.window_class.hCursor       = LoadCursorW(0, IDC_ARROW);
     win32_state->window.window_class.hbrBackground = Null;
     win32_state->window.window_class.lpszMenuName  = Null;
-    win32_state->window.window_class.lpszClassName = L"file_explorer_app_flopper_class_name";
+    win32_state->window.window_class.lpszClassName = L"pclarity_app_flopper_class_name";
     win32_state->window.window_class.hIconSm       = Null;
 
     ATOM wc_atom = RegisterClassExW(&win32_state->window.window_class);
@@ -60,7 +60,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     win32_state->window.handle = CreateWindowExW(
       WS_EX_NOREDIRECTIONBITMAP,
       win32_state->window.window_class.lpszClassName,
-      L"File_explorer",
+      L"PClarity",
       WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, CW_USEDEFAULT,
       800, 600,
@@ -76,9 +76,10 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   ///////////////////////////////////////////////////////////
   // - App loop
   //
-  R_Target window_frame_buffer_target = r_attach_window(win32_state->window);
-  
+  R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
+
+  pcl_init();
 
   for (;!os_window_should_close();)
   {
@@ -88,7 +89,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     pcl_do_ui(font);
     
-    r_clear_target(window_frame_buffer_target, black());
+    r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
 
     d_end_batching();

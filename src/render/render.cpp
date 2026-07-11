@@ -259,7 +259,7 @@ void r_relesase()
 ///////////////////////////////////////////////////////////
 // - Rendering work flow 
 //
-R_Target r_attach_window(OS_Window window)
+R_Handle r_attach_window(OS_Window window)
 {
   // todo: Check if window is not zero here when you start having them
 
@@ -349,7 +349,7 @@ R_Target r_attach_window(OS_Window window)
     // dxgi_device->Release();
   }
 
-  R_Target handle = {};
+  R_Handle handle = {};
   handle.__win32_window_handle_for_assert = window.handle;
   handle.swap_chain  = swap_chain;
   handle.comp_device = comp_device;
@@ -358,9 +358,9 @@ R_Target r_attach_window(OS_Window window)
   return handle;
 }
 
-void r_prepare_canvas(R_Target* chain)
+void r_prepare_canvas(R_Handle* chain)
 {
-  if (!__r_is_target_valid_target_chain(*chain)) { BP; return; }
+  if (!__r_is_handle_valid_handle_chain(*chain)) { BP; return; }
   {
     B32 match = chain->__win32_window_handle_for_assert == os_get_state()->window.handle;
     if (!match) 
@@ -380,7 +380,7 @@ void r_prepare_canvas(R_Target* chain)
 
   D3D_State* d3d = r_get_state();
 
-  V2F32 chain_dims  = r_get_target_dims(*chain);
+  V2F32 chain_dims  = r_get_handle_dims(*chain);
   V2F32 window_dims = os_get_client_area_dims();
 
   // Resizing the frame buffer
@@ -408,12 +408,12 @@ void r_prepare_canvas(R_Target* chain)
 //       that i render into it in the end.
 //       -- When fixing this api, go int othe draw layer and see what the target that is passed in there is used for to know the 
 //       data flow better and not change this with no detailed knowlage about the depending system.
-void r_submit(R_Target target, D_Command_batch_list* command_batch_list)
+void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
 {
-  if (!__r_is_target_valid_target(target)) { BP; return; }
+  if (!__r_is_handle_valid_handle(target)) { BP; return; }
 
   D3D_State* d3d = r_get_state();
-  V2F32 rtv_dims = r_get_target_dims(target);
+  V2F32 rtv_dims = r_get_handle_dims(target);
 
   // Setting state that is the same for all batches
   {
@@ -507,7 +507,7 @@ void r_submit(R_Target target, D_Command_batch_list* command_batch_list)
     }
     else if (batch->command_type == D_Command_type__Texture)
     {
-      if (__r_is_target_valid_target(batch->texture))
+      if (__r_is_handle_valid_handle(batch->texture))
       {
         d3d->context->IASetInputLayout(d3d->texture_program.input_layout);
   
@@ -552,7 +552,7 @@ void r_submit(R_Target target, D_Command_batch_list* command_batch_list)
             instance_data.dest_rect_size   = node->command.u.texture_c.dest_rect.dims; 
             instance_data.src_rect_origin  = node->command.u.texture_c.src_rect.origin; 
             instance_data.src_rect_size    = node->command.u.texture_c.src_rect.dims;
-            instance_data.src_texture_dims = r_get_target_dims(batch->texture);
+            instance_data.src_texture_dims = r_get_handle_dims(batch->texture);
             instance_data.tint             = node->command.u.texture_c.tint;
             memcpy((R_Texture_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
           }
@@ -572,9 +572,9 @@ void r_submit(R_Target target, D_Command_batch_list* command_batch_list)
   d3d->context->ClearState();
 }
 
-void r_present(R_Target target, B32 vsync)
+void r_present(R_Handle target, B32 vsync)
 {
-  if (!__r_is_target_valid_target_chain(target)) { BP; return; }
+  if (!__r_is_handle_valid_handle_chain(target)) { BP; return; }
   
   if (os_get_state()->window.handle == target.__win32_window_handle_for_assert)
   {
@@ -606,7 +606,7 @@ void r_present(R_Target target, B32 vsync)
 ///////////////////////////////////////////////////////////
 // - Texture stuff
 //
-R_Target r_make_texture(U32 width, U32 height)
+R_Handle r_make_texture(U32 width, U32 height)
 {
   D3D_State* d3d = r_get_state();
 
@@ -645,15 +645,15 @@ R_Target r_make_texture(U32 width, U32 height)
   d3d->device->CreateRenderTargetView(texture, 0, &rtv);
 
   // On fail d3d will keep those pointer at 0
-  R_Target handle = {};
+  R_Handle handle = {};
   handle.texture     = texture;
   handle.texture_rtv = rtv;
   return handle;
 }
 
-void r_release_texture(R_Target* texture)
+void r_release_texture(R_Handle* texture)
 {
-  if (!__r_is_target_valid_target(*texture)) { BP; return; }
+  if (!__r_is_handle_valid_handle(*texture)) { BP; return; }
 
   texture->texture_rtv->Release();
   texture->texture->Release();
@@ -730,17 +730,17 @@ R_Program r_program_from_file(const WCHAR* shader_program_file,
 
 // note: Not sure how i feel about this, i would rather maybe have this be in the queue with batching and not just here like this,
 //       kind of makes it harder to track when you draw and when you blit
-void r_clear_target(R_Target target, V4F32 color)
+void r_clear_handle(R_Handle target, V4F32 color)
 {
-  if (!__r_is_target_valid_target(target)) { BP; return; }
+  if (!__r_is_handle_valid_handle(target)) { BP; return; }
   
   D3D_State* d3d = r_get_state();
   d3d->context->ClearRenderTargetView(target.texture_rtv, color.v);
 }
 
-Image r_image_from_texture(Arena* arena, R_Target texture)
+Image r_image_from_texture(Arena* arena, R_Handle texture)
 {
-  if (!__r_is_target_valid_target(texture)) { BP; return Image{}; }
+  if (!__r_is_handle_valid_handle(texture)) { BP; return Image{}; }
 
   D3D_State* d3d = r_get_state();
   HRESULT hr = S_OK;
@@ -813,9 +813,9 @@ Image r_image_from_texture(Arena* arena, R_Target texture)
   return image;
 }
 
-void r_export_texture(R_Target texture, Str8 file_name)
+void r_export_texture(R_Handle texture, Str8 file_name)
 {
-  if (!__r_is_target_valid_target(texture)) { BP; return; }
+  if (!__r_is_handle_valid_handle(texture)) { BP; return; }
 
   Scratch scratch = get_scratch(0, 0);
   Image image = r_image_from_texture(scratch.arena, texture);
@@ -835,7 +835,7 @@ void r_export_image(Image image, Str8 file_name)
   end_scratch(&scratch);
 }
 
-R_Target r_load_texture_from_file(Str8 file_name)
+R_Handle r_load_texture_from_file(Str8 file_name)
 {
   Scratch scratch = get_scratch(0, 0);
   D3D_State* d3d = r_get_state();
@@ -847,7 +847,7 @@ R_Target r_load_texture_from_file(Str8 file_name)
   int n_channels = 0;
   U8* image_bytes = stbi_load((char*)file_name_nt.data, &width, &height, &n_channels, 4);
 
-  R_Target result_texture = {};
+  R_Handle result_texture = {};
   if (image_bytes)
   {
     Image image = {};
@@ -862,7 +862,7 @@ R_Target r_load_texture_from_file(Str8 file_name)
   return result_texture;
 }
 
-R_Target r_load_texture_from_image(Image image)
+R_Handle r_load_texture_from_image(Image image)
 {
   D3D_State* d3d = r_get_state();
   if (image.bytes_per_pixel != 4) { NotImplemented(); } // Only DXGI_FORMAT_R8G8B8A8_UNORM supported for now
@@ -888,7 +888,7 @@ R_Target r_load_texture_from_image(Image image)
   d3d->device->CreateRenderTargetView(d3d_texture, 0, &d3d_texture_rtv);
 
   // On fail d3d will keep those pointer at 0
-  R_Target texture = {};
+  R_Handle texture = {};
   texture.texture     = d3d_texture;
   texture.texture_rtv = d3d_texture_rtv;
   return texture;
@@ -897,15 +897,15 @@ R_Target r_load_texture_from_image(Image image)
 // note: I am not sure about this function, it has a bunch of restriction that i have to work relative to, 
 //       so for now i will just blug in the bool for the caller to know if this was succ or fail
 void r_copy_into_texture_from_texture(
-  R_Target dest_texture,
-  R_Target src_texture,
+  R_Handle dest_texture,
+  R_Handle src_texture,
   B32* out_opt_is_succ
 ) {
   if (out_opt_is_succ) { *out_opt_is_succ = false; }
-  if (!__r_is_target_valid_target(dest_texture))                                     { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
-  if (!__r_is_target_valid_target(src_texture))                                      { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
-  if (r_target_match(dest_texture, src_texture))                                     { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
-  if (!v2f32_match(r_get_target_dims(dest_texture), r_get_target_dims(src_texture))) { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
+  if (!__r_is_handle_valid_handle(dest_texture))                                     { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
+  if (!__r_is_handle_valid_handle(src_texture))                                      { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
+  if (r_handle_match(dest_texture, src_texture))                                     { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
+  if (!v2f32_match(r_get_handle_dims(dest_texture), r_get_handle_dims(src_texture))) { BP; if (out_opt_is_succ) { *out_opt_is_succ = false; } return; }
   // note: Not checking if the texture are of the same pixel type, since we only support one right now
 
   D3D_State* d3d = r_get_state();
@@ -915,25 +915,25 @@ void r_copy_into_texture_from_texture(
   //       so technically this func has a bug
 }
 
-V2F32 r_get_target_dims(R_Target target)
+V2F32 r_get_handle_dims(R_Handle handle)
 {
-  if (!__r_is_target_valid_target(target)) { BP; return V2F32{}; }
+  if (!__r_is_handle_valid_handle(handle)) { BP; return V2F32{}; }
 
   D3D11_TEXTURE2D_DESC desc = {};
-  target.texture->GetDesc(&desc);
+  handle.texture->GetDesc(&desc);
   return v2f32((F32)desc.Width, (F32)desc.Height);
 }
 
 ///////////////////////////////////////////////////////////
 // - Boring stuff with handles 
 //
-R_Target r_target_zero_handle()
+R_Handle r_zero_handle()
 {
-  R_Target handle = {};
+  R_Handle handle = {};
   return handle;
 }
 
-B32 r_target_match(R_Target target, R_Target other)
+B32 r_handle_match(R_Handle target, R_Handle other)
 {
   B32 match = (
        target.texture     == other.texture
@@ -952,7 +952,7 @@ B32 r_target_match(R_Target target, R_Target other)
 ///////////////////////////////////////////////////////////
 // - Extra handle checks
 //
-B32 __r_is_target_valid_target(R_Target target)
+B32 __r_is_handle_valid_handle(R_Handle target)
 {
   D3D_State* d3d = r_get_state();
   B32 valid = (
@@ -962,7 +962,7 @@ B32 __r_is_target_valid_target(R_Target target)
   return valid;
 }
 
-B32 __r_is_target_valid_target_chain(R_Target target)
+B32 __r_is_handle_valid_handle_chain(R_Handle target)
 {
   B32 valid = (
        target.texture     != 0

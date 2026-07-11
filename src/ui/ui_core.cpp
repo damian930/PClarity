@@ -91,6 +91,9 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
   #undef UI_RESET_STACKS
 
+  state->hovered_ids = UI_Box_id_list{};
+  state->final_hover_box = ui_null_box();
+
   arena_clear(state->build_arena);
   state->render_commands_as_result_of_ui_build = {};
 
@@ -121,17 +124,89 @@ void ui_end_build()
   Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
   
   state->render_commands_as_result_of_ui_build = clay_render_commands; 
+
+  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+  {
+    if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__enter)
+    {
+      BP;
+      break;    
+    }
+  }
+
+  // if (state->hovered_ids.count > 0)
+  // {
+  //   UI_Box_id_node* deepest_hovered_box_id = state->hovered_ids.first;
+  //   UI_Box* deepest_hovered_box = ui_find_box_by_id(deepest_hovered_box_id->id);
+  //   if (!ui_box_is_null(deepest_hovered_box))
+  //   {
+  //     os_set_cursor(deepest_hovered_box->hover_cursor);
+  //   }
+  // }
+
+  if (!ui_box_is_null(state->final_hover_box))
+  {
+    os_set_cursor(state->final_hover_box->hover_cursor);
+  }
+
+}
+
+// TODO: Move this somwhere if ends up beeeing used
+UI_Box* __ui_find_box_by_id_helper(UI_Box* root, Clay_ElementId id)
+{
+  UI_Box* found_box = ui_null_box();
+  if (ui_box_is_null(root)) { return found_box; }
+  else if (root->clay_element_config.id.id == id.id) { found_box = root; }
+  else 
+  {
+    for (UI_Box* child = root->first_child; !ui_box_is_null(child); child = child->next_sibling)
+    {
+      found_box = __ui_find_box_by_id_helper(child, id);
+      if (!ui_box_is_null(found_box)) { break; }
+    }
+  }
+  return found_box;
+}
+
+UI_Box* ui_find_box_by_id(Clay_ElementId id)
+{
+  UI_State* state = ui_get_state();
+  UI_Box* box = __ui_find_box_by_id_helper(state->root_box, id);
+  return box;
 }
 
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 {
+  UI_State* state = ui_get_state();
+  
   Clay__OpenElement();
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
-  Str8 id = __ui_str8_from_clay_string(root->clay_element_config.id.stringId);
-  if (str8_match(id, Str8FromC("Button id 2"), 0))
+  B32 match = false;
+  Str8 id = str8_manual_view((U8*)root->clay_element_config.id.stringId.chars, root->clay_element_config.id.stringId.length);
+  if (str8_match(id, Str8FromC("Test id for first button"), 0))
   {
-    // BP;
+    match = true;
+  }
+
+  if (Clay_Hovered())
+  {
+    if (match)
+    {
+      // BP;
+    } 
+    UI_Box_id_node* id_node = ArenaPush(ui_get_build_arena(), UI_Box_id_node);
+    id_node->id = root->clay_element_config.id;
+
+    QueuePushBack(&state->hovered_ids, id_node);
+    state->hovered_ids.count += 1;
+  
+    // --
+
+    if (root->has_hover_cursor)
+    {
+      state->final_hover_box = root;
+    }
   }
 
   for (UI_Box* child = root->first_child; child != 0 && child != &__ui_g_null_box; child = child->next_sibling)
@@ -148,6 +223,11 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 B32 ui_box_is_null(UI_Box* box)
 {
   return (box == 0) || (box == &__ui_g_null_box);
+}
+
+UI_Box* ui_null_box()
+{
+  return &__ui_g_null_box;
 }
 
 // TODO:
@@ -173,7 +253,10 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   }
 
   __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
-  
+  new_box->hover_cursor = ui_top_hover_cursor();
+  // TODO: Change the line below
+  if (new_box->hover_cursor != OS_Cursor__arrow) { new_box->has_hover_cursor = true; }
+
   new_box->parent = ui_top_parent();
   if (!ui_box_is_null(new_box->parent))
   {
@@ -212,7 +295,24 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
   
   if (flags & UI_Box_flag__has_padding) { config->layout.padding = __ui_clay_padding_from_v4f32(ui_top_padding()); }
   if (flags & UI_Box_flag__has_child_gap) { config->layout.childGap = (U16)ui_top_child_gap(); }
-  config->layout.childAlignment  = {}; // TODO
+  
+  // TODO: If this gets used than thave this be a helper that goes from your type to clay type and in reverse
+  {
+    UI_Alignment_x al = ui_top_alignment_x();
+    if (0) {}
+    else if (al == UI_Alignment_x__left) { config->layout.childAlignment.x = CLAY_ALIGN_X_LEFT; }
+    else if (al == UI_Alignment_x__center) { config->layout.childAlignment.x = CLAY_ALIGN_X_CENTER; }
+    else if (al == UI_Alignment_x__right) { config->layout.childAlignment.x = CLAY_ALIGN_X_RIGHT; }
+  }
+
+  // TODO: If this gets used than thave this be a helper that goes from your type to clay type and in reverse
+  {
+    UI_Alignment_y al = ui_top_alignment_y();
+    if (0) {}
+    else if (al == UI_Alignment_y__top) { config->layout.childAlignment.y = CLAY_ALIGN_Y_TOP; }
+    else if (al == UI_Alignment_y__center) { config->layout.childAlignment.y = CLAY_ALIGN_Y_CENTER; }
+    else if (al == UI_Alignment_y__bottom) { config->layout.childAlignment.y = CLAY_ALIGN_Y_BOTTOM; }
+  }
 
   if (flags & UI_Box_flag__has_background) { config->backgroundColor = __ui_clay_color_from_v4f32(ui_top_background_color()); }
   if (flags & UI_Box_flag__has_rounded_corners) { config->cornerRadius = __ui_clay_corner_radius_from_v2f32(ui_top_corner_radius()); }
@@ -499,11 +599,19 @@ UI_Size ui_px(F32 value)             { return ui_size_make(UI_Size_kind__px, val
 UI_Size ui_fit_mm(F32 min, F32 max)  { return ui_size_make(UI_Size_kind__fit, min, max); } 
 UI_Size ui_grow_mm(F32 min, F32 max) { return ui_size_make(UI_Size_kind__grow, min, max); }         
 UI_Size ui_fit()                     { return ui_size_make(UI_Size_kind__fit, 0.0f, 0.0f); } 
-UI_Size ui_grow()                    { return ui_size_make(UI_Size_kind__percent_of_parent, 0.0f, 0.0f); }         
+UI_Size ui_grow()                    { return ui_size_make(UI_Size_kind__grow, 0.0f, 0.0f); }         
 UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent_of_parent, p, p); }         
 
 ///////////////////////////////////////////////////////////
-// - Stack funtions
+// - Other
+//
+Arena* ui_get_build_arena()
+{
+  return ui_get_state()->build_arena;
+}
+
+///////////////////////////////////////////////////////////
+// - Stack functions and helper
 //
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_PUSH_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_SET_NEXT_FUNC)
@@ -569,6 +677,16 @@ void ui_next_border(F32 width, V4F32 color)
 {
   ui_next_border_width(width);
   ui_next_border_color(color);
+}
+void ui_next_layout_x() { ui_next_layout(Axis2__x); }
+void ui_next_layout_y() { ui_next_layout(Axis2__y); }
+
+///////////////////////////////////////////////////////////
+// - Box style setters for already created boxed
+//
+void ui_set_box_b_color(UI_Box* box, V4F32 color)
+{
+  box->clay_element_config.backgroundColor = __ui_clay_color_from_v4f32(color);
 }
 
 ///////////////////////////////////////////////////////////

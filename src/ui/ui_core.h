@@ -48,71 +48,37 @@ enum UI_Box_flag : U32 {
 };
 typedef U32 UI_Box_flags;
 
-// typedef void (*UI_Box_custom_draw_func_type) (UI_Box* box);
+enum UI_Alignment_x : U32 {
+  UI_Alignment_x__left,
+  UI_Alignment_x__center,
+  UI_Alignment_x__right,
+  UI_Alignment_x__COUNT,
+};
 
-// struct UI_Box {
-//   // Standard box settings
-//   UI_Box_flags flags;
-//   Axis2        layout_axis;
-//   UI_Size      semantic_size[Axis2__COUNT];
-//   F32          border_width; // TODO: This is new, IMPLEMENT
-//   V4F32        border_color;
-//   V4F32        vertex_colors[UV__COUNT];
-//   V4F32        corner_radii; 
-//   F32          softness;
+enum UI_Alignment_y : U32 {
+  UI_Alignment_y__top,
+  UI_Alignment_y__center,
+  UI_Alignment_y__bottom,
+  UI_Alignment_y__COUNT,
+};
 
-//   // Text stuff (Bit less common setting for a box)
-//   Str8 text;
-//   FP_Font font;
-
-//   // Custom draw 
-//   UI_Box_custom_draw_func_type custom_draw_func;
-//   void* custom_draw_data;
-
-//   // Clip data 
-//   // TODO: Document this. Go see the TODO for final_on_screen_bbox to see what you need here
-//   V2F32 clip_offset; 
-//   RangeV2F32 clip_bbox; // This shoud be documented
-
-//   // Per build  
-//   Str8 id; 
-//   B32 has_been_updated_this_build;
-//   // UI_Actions actions;
-//   //
-//   // Intermediate data for ui building 
-//   // Dont recommend using this outiside the sizing and positioning logic routines
-//   V2F32 final_on_screen_size; 
-//   V2F32 final_parent_offset;  
-//   //
-//   // Final ui build data. 
-//   V2F32 inner_content_dims;        // Inner contents of a box. Might be larger than a box. Mostly used for clip boxes to figure out scrolling offset and such.
-//   RangeV2F32 final_on_screen_bbox; // BB that the user sees on the screen after the ui is drawn
-//   // TODO: This doesnt mean that this says it means when we have clipped going on
-//   //       Go document this relative to clipped and also document the clipped box stored per each box.
-//   //
-//   // Per build box tree
-//   UI_Box* first_child;
-//   UI_Box* last_child;
-//   UI_Box* next_sibling;
-//   UI_Box* prev_sibling;
-//   UI_Box* parent;
-//   U64 children_count;
-
-//   // TODO: This is a test thing
-//   B32 center_children_on_non_layout_axis;
-// };
-
-// struct UI_Box_data {
-//   B32 is_found;
-//   RangeV2F32 on_screen_bbox;
-//   V2F32 inner_content_dims;
-//   V2F32 clip_offset; 
-// };
+// // Controls the alignment along the y axis (vertical) of child elements.
+// typedef CLAY_PACKED_ENUM {
+//     // (Default) Aligns child elements to the top of this element, offset by padding.width.top
+//     CLAY_ALIGN_Y_TOP,
+//     // Aligns child elements to the bottom of this element, offset by padding.width.bottom
+//     CLAY_ALIGN_Y_BOTTOM,
+//     // Aligns child elements vertically to the center of this element
+//     CLAY_ALIGN_Y_CENTER,
+// } Clay_LayoutAlignmentY;
 
 // TODO: Here will be all the box data that we need that will then be used in the clay thing
 struct UI_Box {
   Clay_ElementDeclaration clay_element_config;
   B32 has_been_updated_this_frame;
+
+  B32 has_hover_cursor;
+  OS_Cursor hover_cursor;
 
   UI_Box* first_child;
   UI_Box* last_child;
@@ -125,6 +91,8 @@ struct UI_Box {
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
 #define __UI_NULL_BOX_VALUE { \
+  {}, \
+  {}, \
   {}, \
   {}, \
   &__ui_g_null_box, \
@@ -144,6 +112,17 @@ global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 // Stack structs
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 
+struct UI_Box_id_node {
+  Clay_ElementId id;
+  UI_Box_id_node* next;
+};
+
+struct UI_Box_id_list {
+  UI_Box_id_node* first;
+  UI_Box_id_node* last;
+  U64 count;
+};
+
 // TODO: Move data fiels in state for better structural meaning
 struct UI_State {
   // TODO: Add a counter for boxes made last build
@@ -154,6 +133,9 @@ struct UI_State {
 
   Arena* build_arena;
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
+
+  UI_Box_id_list hovered_ids;
+  UI_Box* final_hover_box;
 
   U64 build_generation;
 
@@ -198,6 +180,11 @@ void ui_release();
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
+// =========
+// TODO: Move this somwhere if ends up beeeing used
+UI_Box* __ui_find_box_by_id_helper(UI_Box* root, Clay_ElementId id);
+UI_Box* ui_find_box_by_id(Clay_ElementId id);
+// =========
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
 #define UI_Build(window_dims, mouse_pos) DeferLoop(ui_begin_build(window_dims, mouse_pos), ui_end_build())
 
@@ -205,6 +192,8 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
 void ui_draw();
 
 // - Box making
+B32 ui_box_is_null(UI_Box* box);
+UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
@@ -215,9 +204,8 @@ struct UI_Provided_data_for_custom_draw {
   V4F32 background_color;
   V4F32 corner_radii;
 };
-#define UI_BOX_CUSTOM_DRAW_FUNC()
-#define UI_BOX_CUSTOM_DRAW(name) void name(UI_Provided_data_for_custom_draw provided_data, void* custom_data)
-typedef UI_BOX_CUSTOM_DRAW(UI_Box_custom_draw_func_type);
+#define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data, void* custom_data)
+typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_type);
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data);
 
 // - Size makers
@@ -229,7 +217,10 @@ UI_Size ui_fit();
 UI_Size ui_grow();                        
 UI_Size ui_p_of_p(F32 p);                 
 
-// - Stack functions
+// - Other
+Arena* ui_get_build_arena();
+
+// - Stack functions and helper
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_AUTO_POP_FUNC)
@@ -241,6 +232,14 @@ V4F32 ui_top_border_width();
 //
 void ui_next_width(UI_Size size);
 void ui_next_height(UI_Size size);
+// 
+void ui_next_layout_x();
+void ui_next_layout_y();
+
+// - Box style setters for already created boxed
+void ui_set_box_b_color(UI_Box* box, V4F32 color);
+
+
 // TODO: There are some more there that you have defined and have not moved to the .h file yet
 
 // - Macros for automatic stack pushing and popping
@@ -272,6 +271,10 @@ void ui_next_height(UI_Size size);
 #define UI_BorderTop(v)               DeferLoop(ui_push_border_top(v),                 ui_pop_border_top())
 #define UI_BorderBottom(v)            DeferLoop(ui_push_border_bottom(v),              ui_pop_border_bottom())
 #define UI_Parent(v)                  DeferLoop(ui_push_parent(v),                     ui_pop_parent())
+//
+#define UI_Width(v) UI_SizeX(v)
+#define UI_Height(v) UI_SizeY(v)
+#define UI_Padding(v) UI_PaddingLeft(v) UI_PaddingTop(v) UI_PaddingRight(v) UI_PaddingBottom(v)
 
 ///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay

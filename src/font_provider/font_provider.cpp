@@ -167,7 +167,7 @@ FP_Font fp_load_font(Str8 ttf_file_path, F32 font_size, RangeU64 unicode_range_t
   rgba_font_atlas_image.bytes_per_pixel = 4;
 
 
-  R_Target atlas_texture = r_load_texture_from_image(rgba_font_atlas_image);
+  R_Handle atlas_texture = r_load_texture_from_image(rgba_font_atlas_image);
 
   // Setting font data
   {

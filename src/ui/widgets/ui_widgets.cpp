@@ -308,7 +308,7 @@ void __ui_color_picker_h_draw_func(UI_Box* box)
 // - Image
 //
 struct _UI_Image_data {
-  R_Target texture;
+  R_Handle texture;
 };
 
 void __ui_image_draw_func(UI_Box* box)
@@ -316,13 +316,13 @@ void __ui_image_draw_func(UI_Box* box)
   _UI_Image_data* data = (_UI_Image_data*)box->custom_draw_data;
   RangeV2F32 dest_range = box->final_on_screen_bbox;
   Rect dest_rect = rect_from_range_v2f32(dest_range);
-  Rect source_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_target_dims(data->texture)); 
+  Rect source_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(data->texture)); 
   d_draw_texture_pro(data->texture, dest_rect, source_rect, white_);
 }
 
-void ui_image(R_Target texture)
+void ui_image(R_Handle texture)
 {
-  V2F32 texture_dims = r_get_target_dims(texture);
+  V2F32 texture_dims = r_get_handle_dims(texture);
   ui_width(ui_px(texture_dims.x)); 
   ui_height(ui_px(texture_dims.y));
   UI_Box* image_box = ui_box_make(Str8{}, 0);

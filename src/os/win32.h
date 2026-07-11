@@ -1,6 +1,7 @@
 #ifndef OS_WIN32_H
 #define OS_WIN32_H
 
+#define UNICODE 1
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
 #include "windowsx.h"
@@ -287,19 +288,16 @@ void os_sleep(U64 ms);
 // U64 os_get_keyboard_initial_repeat_delay();
 // U64 os_get_keyboard_subsequent_repeat_delay();
 
-// - Misc
-enum OS_Cursor : U32{
+// - Cursor stuff
+enum OS_Cursor : U32 {
   OS_Cursor__arrow, 
   OS_Cursor__hand,
   OS_Cursor__crosshair,
   OS_Cursor__pen,
+  OS_Cursor__text_selection,
+  OS_Cursor__unavailable,
   OS_Cursor__COUNT,
 };
-
-Str8 os_get_path_to_system_fonts();
 void os_set_cursor(OS_Cursor cursor);
-OS_Cursor os_get_cursor();
-void os_show_cursor(B32 show);
-U64 os_get_mouse_double_click_max_time_ms();
 
 #endif

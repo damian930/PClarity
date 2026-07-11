@@ -26,7 +26,7 @@ UI_Actions ui_button(Str8 id)
 
 // TODO: Rename this, this is test for now
 // void ui_label_draw_func(void* custom_data, Rect final_rect, V4F32 b_color, V4F32 corner_rs)
-UI_BOX_CUSTOM_DRAW(ui_label_draw_func)
+UI_CUSTOM_DRAW_BOX_DEF(ui_label_draw_func)
 {
   struct draw_data {
     Str8 str;
@@ -66,18 +66,58 @@ void ui_label(Str8 outer_str)
   ui_extend_box_with_custom_draw_function(box, ui_label_draw_func, data);
 }
 
-// TODO: This shoud be more customizable from the outside
-void ui_row_begin()
+void ui_spacer(UI_Size size)
 {
-  ui_next_layout(Axis2__x);
+  UI_Box* parent = ui_top_parent();
+  if (0) {}
+  else if (parent->clay_element_config.layout.layoutDirection == CLAY_LEFT_TO_RIGHT) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
+  else if (parent->clay_element_config.layout.layoutDirection == CLAY_TOP_TO_BOTTOM) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
+  ui_box_make(Str8{}, 0);
+}
+
+// TODO: This shoud be more customizable from the outside
+void ui_begin_layout_stack(Axis2 axis)
+{
+  ui_next_layout(axis);
   UI_Box* box = ui_box_make({}, 0);
   ui_push_parent(box);
 }
-void ui_row_end()
+void ui_end_layout_stack()
 {
   ui_pop_parent();
 }
-#define UI_Row() DeferLoop(ui_row_begin(), ui_row_end())
+#define UI_Row() DeferLoop(ui_begin_layout_stack(Axis2__x), ui_end_layout_stack())
+#define UI_Col() DeferLoop(ui_begin_layout_stack(Axis2__y), ui_end_layout_stack())
+
+#define UI_CUSTOM_DATA_FOR_IMAGE(var_name) \
+struct var_name { \
+  R_Handle texture; \
+};
+UI_CUSTOM_DRAW_BOX_DEF(__ui_image_draw_func)
+{
+  UI_CUSTOM_DATA_FOR_IMAGE(Custom_data);
+  Custom_data* data = (Custom_data*)custom_data;
+
+  Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(data->texture));
+  d_draw_texture_pro(data->texture, provided_data.final_box_rect, texture_rect, white());
+}
+void ui_image(R_Handle texture, F32 width_px, F32 height_px)
+{
+  V2F32 dims = r_get_handle_dims(texture);
+
+  ui_next_width(ui_px(width_px));
+  ui_next_height(ui_px(height_px));
+  UI_Box* box = ui_box_make({}, 0);
+
+  UI_CUSTOM_DATA_FOR_IMAGE(Custom_data);
+  Custom_data* custom_data = ArenaPush(ui_get_build_arena(), Custom_data);
+  custom_data->texture = texture;
+
+  ui_extend_box_with_custom_draw_function(box, __ui_image_draw_func, (void*)custom_data);
+}
+#undef UI_CUSTOM_DATA_FOR_IMAGE
+
+// TODO: COl
 
 // THIS IS OLD CODE
 // ==============

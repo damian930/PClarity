@@ -23,7 +23,7 @@ struct FP_Kerning_entry {
 
 struct FP_Font {
   // ID3D11RenderTargetView* atlas_texture;
-  R_Target atlas_texture;
+  R_Handle atlas_texture;
 
   RangeU64 codepoint_range;
   FP_Codepoint_data* codepoints_data_arr;

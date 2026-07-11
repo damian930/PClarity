@@ -10,10 +10,10 @@
   \
   EXPANSION(UI_Child_gap_stack,      F32,     stack_child_gap,      0.0f,     ui_push_child_gap,      ui_next_child_gap,      ui_pop_child_gap,      ui_auto_pop_child_gap,      ui_top_child_gap, 64, UI_Childgap) \
   \
-  EXPANSION(UI_Padding_left_stack,   F32,     stack_padding_left,   0.0f,     ui_push_padding_left,   ui_next_padding_left,   ui_pop_paddiing_left,   ui_auto_pop_padding_left,   ui_top_padding_left, 64, UI_PaddingLeft) \
-  EXPANSION(UI_Padding_top_stack,    F32,     stack_padding_top,    0.0f,     ui_push_padding_top,    ui_next_padding_top,    ui_pop_paddiing_top,    ui_auto_pop_padding_top,    ui_top_padding_top, 64, UI_PaddingTop) \
-  EXPANSION(UI_Padding_right_stack,  F32,     stack_padding_right,  0.0f,     ui_push_padding_right,  ui_next_padding_right,  ui_pop_paddiing_right,  ui_auto_pop_padding_right,  ui_top_padding_right, 64, UI_PaddingRight) \
-  EXPANSION(UI_Padding_bottom_stack, F32,     stack_padding_bottom, 0.0f,     ui_push_padding_bottom, ui_next_padding_bottom, ui_pop_paddiing_bottom, ui_auto_pop_padding_bottom, ui_top_padding_bottom, 64, UI_PaddingBottom) \
+  EXPANSION(UI_Padding_left_stack,   F32,     stack_padding_left,   0.0f,     ui_push_padding_left,   ui_next_padding_left,   ui_pop_padding_left,   ui_auto_pop_padding_left,   ui_top_padding_left, 64, UI_PaddingLeft) \
+  EXPANSION(UI_Padding_top_stack,    F32,     stack_padding_top,    0.0f,     ui_push_padding_top,    ui_next_padding_top,    ui_pop_padding_top,    ui_auto_pop_padding_top,    ui_top_padding_top, 64, UI_PaddingTop) \
+  EXPANSION(UI_Padding_right_stack,  F32,     stack_padding_right,  0.0f,     ui_push_padding_right,  ui_next_padding_right,  ui_pop_padding_right,  ui_auto_pop_padding_right,  ui_top_padding_right, 64, UI_PaddingRight) \
+  EXPANSION(UI_Padding_bottom_stack, F32,     stack_padding_bottom, 0.0f,     ui_push_padding_bottom, ui_next_padding_bottom, ui_pop_padding_bottom, ui_auto_pop_padding_bottom, ui_top_padding_bottom, 64, UI_PaddingBottom) \
   \
   EXPANSION(UI_Layout_axis_stack, Axis2, stack_layout_axis, Axis2__y,     ui_push_layout, ui_next_layout, ui_pop_layout, ui_auto_pop_layout, ui_top_layout, 64, UI_Layout) \
   \
@@ -34,7 +34,12 @@
   EXPANSION(UI_Parent_stack, UI_Box*, stack_parent, &__ui_g_null_box, ui_push_parent, ui_next_parent, ui_pop_parent, ui_auto_pop_parent, ui_top_parent, (64*3), UI_Parent) \
   \
   EXPANSION(UI_Font_stack,      FP_Font, stack_font,      FP_Font{}, ui_push_font,      ui_next_font,      ui_pop_font,      ui_auto_pop_font,      ui_top_font,      64, UI_Font) \
-  EXPANSION(UI_Font_size_stack, F32,     stack_font_size, 32.0f,     ui_push_font_size, ui_next_font_size, ui_pop_font_size, ui_auto_pop_font_size, ui_top_font_size, 64, UI_Font_Size) \
+  EXPANSION(UI_Font_size_stack, F32,     stack_font_size, 16.0f,     ui_push_font_size, ui_next_font_size, ui_pop_font_size, ui_auto_pop_font_size, ui_top_font_size, 64, UI_Font_Size) \
+  \
+  EXPANSION(UI_Alignment_x_stack, UI_Alignment_x, stack_alignment_x, UI_Alignment_x__left, ui_push_alignment_x, ui_next_alignment_x, ui_pop_alignment_x, ui_auto_pop_alignment_x, ui_top_alignment_x, 64, UI_AlignmentX) \
+  EXPANSION(UI_Alignment_y_stack, UI_Alignment_y, stack_alignment_y, UI_Alignment_y__top, ui_push_alignment_y, ui_next_alignment_y, ui_pop_alignment_y, ui_auto_pop_alignment_y, ui_top_alignment_y, 64, UI_AlignmentY) \
+  \
+  EXPANSION(UI_Hover_cursor_stack, OS_Cursor, stack_hover_cursor, OS_Cursor__arrow, ui_push_hover_cursor, ui_next_hover_cursor, ui_pop_hover_cursor, ui_auto_pop_hover_cursor, ui_top_hover_cursor, 64, UI_HoverCursor) 
 
 #define __UI_STACK_DEFINE_STACK_STRUCTS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   struct Stack_type_name { \

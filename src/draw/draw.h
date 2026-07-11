@@ -39,10 +39,10 @@ struct D_Command_node {
 struct D_Command_batch {
   // Provided by the caller to the batch maker
   D_Command_type command_type;                 
-  R_Target       texture; // Right now this might or might not be used, kind of like for a fat struct
+  R_Handle       texture; // Right now this might or might not be used, kind of like for a fat struct
 
   // Provided by batch setting stacks
-  R_Target     target;                       
+  R_Handle     target;                       
   Rect         scissor_rect;                 
   R_Blend_kind blend_kind;                   
   R_Fill_mode  fill_mode;                       
@@ -70,7 +70,7 @@ struct D_State {
   R_Blend_kind arr_of_blend_kinds[64];
   U64 current_blend_kind_count;
   //
-  R_Target arr_of_render_targets[64];
+  R_Handle arr_of_render_targets[64];
   U64 current_render_target_count;
   //
   Rect arr_of_scissor_rects[64];
@@ -87,7 +87,7 @@ struct D_State {
 
   struct {
     R_Blend_kind blend_kind;
-    R_Target     render_target;
+    R_Handle     render_target;
     Rect         scissor_rect;
     R_Fill_mode  fill_mode;
     F32          offset_x;
@@ -104,16 +104,16 @@ void     d_init();
 void     d_release();
 
 // - Batching
-void                  d_begin_batching(R_Target target) ;
+void                  d_begin_batching(R_Handle target) ;
 void                  d_end_batching();
 D_Command_batch_list* d_get_batch_list();
-D_Command_batch*      d_add_new_batch(D_Command_type command_type, R_Target texture);
-D_Command_batch*      d_get_or_add_batch_for_settings(D_Command_type command_type, R_Target texture);
+D_Command_batch*      d_add_new_batch(D_Command_type command_type, R_Handle texture);
+D_Command_batch*      d_get_or_add_batch_for_settings(D_Command_type command_type, R_Handle texture);
 void                  d_add_command_to_batch(D_Command_batch* batch, D_Command command);
 
 // - Low level draw commands that require the caller to know how the shader works
 void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, F32 softness, V4F32 border_color);
-void d_add_texture_command(R_Target texture, Rect dest_rect, Rect src_rect, V4F32 tint);
+void d_add_texture_command(R_Handle texture, Rect dest_rect, Rect src_rect, V4F32 tint);
 
 // - Higher level draw commands that dont require the caller to know how the shader works
 void d_fill_with_color(V4F32 color);
@@ -126,8 +126,8 @@ void d_draw_rect_inset_borders(Rect rect, V4F32 color, F32 thickness, V4F32 corn
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness);
 void d_draw_circle_inset_border(V2F32 center, F32 r, V4F32 color, F32 thickness, F32 softness);
 
-void d_draw_texture(R_Target texture, V2F32 pos);
-void d_draw_texture_pro(R_Target texture, Rect dest_rect, Rect source_rect, V4F32 tint);
+void d_draw_texture(R_Handle texture, V2F32 pos);
+void dd_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint);
 
 void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color);
 void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...);
@@ -138,9 +138,9 @@ void         d_pop_blend_kind();
 R_Blend_kind __d_get_current_blend_kind__defaults();
 #define      D_BlendKind(blend_kind) DeferLoop(d_push_blend_kind(blend_kind), d_pop_blend_kind())
 
-void     d_push_render_target(R_Target target);
+void     d_push_render_target(R_Handle target);
 void     d_pop_render_target();
-R_Target __d_get_current_render_target__defaults();
+R_Handle __d_get_current_render_target__defaults();
 #define  D_RenderTarget(target) DeferLoop(d_push_render_target(target), d_pop_render_target())
 
 void    d_push_scissor_rect(Rect rect);
