@@ -13,7 +13,8 @@
 [ ] - Add a way to have cursor be set by the ui for buttons and stuf
 [ ] - Have ui use px corners and not 0-1 % corners 
 
-[ ] - Add support for cussors from win32 to have the ability to swithch between them
+[x] - Add support for cussors from win32 to have the ability to swithch between them
+[x] - Fix the bug where ther resize cursor is not showing up nativelly when window is resized due to the WM_SETCURSOR custom message handling logic 
 [ ] - Add an external profiler to the app
 [ ] - Add things to layers to just have quick messages when we use the layers without having them be initialised or some like that.
       Since a lot of the layers are statefull and have an idea about in which order things are to be used it might help in some cases. 

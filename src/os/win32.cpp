@@ -20,6 +20,8 @@ struct OS_Window {
   B32 should_close;
   OS_Cursor frame_cursor;
 
+  B32 is_beeing_resized;
+
   // Per frame data
   V2F32 dims;
   V2F32 client_area_dims;
@@ -444,6 +446,9 @@ void os_frame_begin()
   }
 
   os_state->frame_generation_counter += 1;
+
+  // TODO: This is new test code, so just putting it somewhere
+  os_state->window.is_beeing_resized = false;
 
   // Creating frame events though the winproc
   for (MSG msg = {}; PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE);)
@@ -1116,31 +1121,33 @@ LRESULT win32_proc(
     // Used to let the window manager set the proper cursor at window enter.
     case WM_SETCURSOR: 
     {
-      WCHAR* cursor_idc = IDC_ARROW;
-      switch (win32_state->window.frame_cursor)
+      if (win32_state->window.is_beeing_resized)
       {
-        default: case OS_Cursor__arrow: { cursor_idc = IDC_ARROW; } break;
-        case OS_Cursor__hand:           { cursor_idc = IDC_HAND; } break;
-        case OS_Cursor__crosshair:      { cursor_idc = IDC_CROSS; } break;
-        case OS_Cursor__pen:            { cursor_idc = MAKEINTRESOURCE(32631); } break;
-        case OS_Cursor__text_selection: { cursor_idc = IDC_IBEAM; } break;
-        case OS_Cursor__unavailable:    { cursor_idc = IDC_NO; } break;
+        result = DefWindowProcW(window_handle, message, w_param, l_param); 
       }
+      else 
+      {
+        WCHAR* cursor_idc = IDC_ARROW;
+        switch (win32_state->window.frame_cursor)
+        {
+          default: case OS_Cursor__arrow: { cursor_idc = IDC_ARROW; } break;
+          case OS_Cursor__hand:           { cursor_idc = IDC_HAND; } break;
+          case OS_Cursor__crosshair:      { cursor_idc = IDC_CROSS; } break;
+          case OS_Cursor__pen:            { cursor_idc = MAKEINTRESOURCE(32631); } break;
+          case OS_Cursor__text_selection: { cursor_idc = IDC_IBEAM; } break;
+          case OS_Cursor__unavailable:    { cursor_idc = IDC_NO; } break;
+        }
+  
+        HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);
+        if (win32_cursor_handle == 0) { Assert(0); }
+  
+        B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
+        Assert(DestroyCursor_succ);
+  
+        HCURSOR prev_win32_cursor = SetCursor(win32_cursor_handle);
 
-      HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);
-      if (win32_cursor_handle == 0) { Assert(0); }
-
-      B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
-      Assert(DestroyCursor_succ);
-
-      HCURSOR prev_win32_cursor = SetCursor(win32_cursor_handle);
-
-      // if (LOWORD(l_param) == HTCLIENT) {
-        // SetCursor(win32_state->window.frame_cursor);
-        // result = TRUE;
-      // }
-      // result = DefWindowProcW(window_handle, message, w_param, l_param); 
-      result = TRUE;
+        result = TRUE;
+      }
     } break;
 
     case WM_CAPTURECHANGED:
@@ -1155,15 +1162,30 @@ LRESULT win32_proc(
       result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
 
+    case WM_NCHITTEST:
+    {
+      LRESULT hit_area = DefWindowProc(window_handle, message, w_param, l_param);
+      switch (hit_area)
+      {
+        case HTLEFT:
+        case HTRIGHT:
+        case HTTOP:
+        case HTBOTTOM:
+        case HTTOPLEFT:
+        case HTTOPRIGHT:
+        case HTBOTTOMLEFT:
+        case HTBOTTOMRIGHT: 
+        {
+          win32_state->window.is_beeing_resized = true;
+        } break;
+      }
+      result = hit_area;
+    } break;
+
     case WM_ACTIVATEAPP: // note: Message that out window is about to be activated or is not longer active
     {
       result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
-
-    // case WM_SIZE: 
-    // {
-
-    // } break;
 
     case WM_PAINT:
     {

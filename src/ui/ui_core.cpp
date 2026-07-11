@@ -253,9 +253,13 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   }
 
   __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
-  new_box->hover_cursor = ui_top_hover_cursor();
-  // TODO: Change the line below
-  if (new_box->hover_cursor != OS_Cursor__arrow) { new_box->has_hover_cursor = true; }
+
+  // TODO: If this ends up beeing used more than just here, then have this be a func in the macro file for stacks
+  if (state->stacks.stack_hover_cursor.count > 0 || state->stacks.stack_hover_cursor.is_single_use_value_set) // Only having a cursor if there is one, disregard the default cursor
+  {
+    new_box->hover_cursor = ui_top_hover_cursor();
+    if (new_box->hover_cursor != OS_Cursor__arrow) { new_box->has_hover_cursor = true; }
+  }
 
   new_box->parent = ui_top_parent();
   if (!ui_box_is_null(new_box->parent))
