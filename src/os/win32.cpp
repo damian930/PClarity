@@ -20,7 +20,7 @@ struct OS_Window {
   B32 should_close;
   OS_Cursor frame_cursor;
 
-  B32 is_beeing_resized;
+  B32 received_message_for_cursor_being_in_the_resie_area;
 
   // Per frame data
   V2F32 dims;
@@ -448,7 +448,7 @@ void os_frame_begin()
   os_state->frame_generation_counter += 1;
 
   // TODO: This is new test code, so just putting it somewhere
-  os_state->window.is_beeing_resized = false;
+  os_state->window.received_message_for_cursor_being_in_the_resie_area = false;
 
   // Creating frame events though the winproc
   for (MSG msg = {}; PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE);)
@@ -1121,7 +1121,7 @@ LRESULT win32_proc(
     // Used to let the window manager set the proper cursor at window enter.
     case WM_SETCURSOR: 
     {
-      if (win32_state->window.is_beeing_resized)
+      if (win32_state->window.received_message_for_cursor_being_in_the_resie_area)
       {
         result = DefWindowProcW(window_handle, message, w_param, l_param); 
       }
@@ -1141,8 +1141,9 @@ LRESULT win32_proc(
         HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);
         if (win32_cursor_handle == 0) { Assert(0); }
   
-        B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
-        Assert(DestroyCursor_succ);
+        // TODO: See if you need to use this here
+        // B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
+        // Assert(DestroyCursor_succ);
   
         HCURSOR prev_win32_cursor = SetCursor(win32_cursor_handle);
 
@@ -1176,7 +1177,7 @@ LRESULT win32_proc(
         case HTBOTTOMLEFT:
         case HTBOTTOMRIGHT: 
         {
-          win32_state->window.is_beeing_resized = true;
+          win32_state->window.received_message_for_cursor_being_in_the_resie_area = true;
         } break;
       }
       result = hit_area;

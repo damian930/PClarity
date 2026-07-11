@@ -91,7 +91,6 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
   #undef UI_RESET_STACKS
 
-  state->hovered_ids = UI_Box_id_list{};
   state->final_hover_box = ui_null_box();
 
   arena_clear(state->build_arena);
@@ -101,7 +100,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 
   ui_next_width(ui_px(window_dims.x));
   ui_next_height(ui_px(window_dims.y));
-  state->root_box = ui_box_make(Str8{}, UI_Box_flag__NONE);
+  state->root_box = ui_box_make(Str8FromC("__UI_ROOT_BOX__"), UI_Box_flag__NONE);
 
   state->mouse_pos_for_this_build   = mouse_pos;
   state->window_dims_for_this_build = window_dims;
@@ -115,15 +114,17 @@ void ui_end_build()
   
   UI_State* state = ui_get_state();
   
-  bool pointerDown = false; // TODO: Implement this
+  bool pointerDown = false; // TODO: Implement this if needed, this is a todo just so when you see this code you remember about this even if you still dont have to implement this
   Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, pointerDown);
   Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
 
-  Clay_BeginLayout();
-  __ui_build_clay_element_tree_from_box_tree(state->root_box);
-  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
-  
-  state->render_commands_as_result_of_ui_build = clay_render_commands; 
+  // Building the whole clay ui tree from our own ui tree
+  {
+    Clay_BeginLayout();
+    __ui_build_clay_element_tree_from_box_tree(state->root_box);
+    Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
+    state->render_commands_as_result_of_ui_build = clay_render_commands; 
+  }
 
   for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
   {
@@ -182,34 +183,15 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   Clay__OpenElement();
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
-  B32 match = false;
-  Str8 id = str8_manual_view((U8*)root->clay_element_config.id.stringId.chars, root->clay_element_config.id.stringId.length);
-  if (str8_match(id, Str8FromC("Test id for first button"), 0))
-  {
-    match = true;
-  }
-
   if (Clay_Hovered())
   {
-    if (match)
-    {
-      // BP;
-    } 
-    UI_Box_id_node* id_node = ArenaPush(ui_get_build_arena(), UI_Box_id_node);
-    id_node->id = root->clay_element_config.id;
-
-    QueuePushBack(&state->hovered_ids, id_node);
-    state->hovered_ids.count += 1;
-  
-    // --
-
     if (root->has_hover_cursor)
     {
       state->final_hover_box = root;
     }
   }
 
-  for (UI_Box* child = root->first_child; child != 0 && child != &__ui_g_null_box; child = child->next_sibling)
+  for (UI_Box* child = root->first_child; !ui_box_is_null(child); child = child->next_sibling)
   {
     __ui_build_clay_element_tree_from_box_tree(child);
   }
@@ -291,6 +273,8 @@ UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
 
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags)
 {
+  flags |= ui_top_extra_flags();
+  
   config->id = clay_id;
 
   config->layout.sizing.width    = __ui_clay_sizing_axis_from_ui_size(ui_top_size_x());
@@ -330,10 +314,11 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
   
   config->image = {}; // TODO:
   config->floating = {}; // TODO;
-  config->custom = {}; // TODO:
-
-  // Damian: Not touching userData here, its for custom stuff, stuff like cutstom drawing
-  // config->userData = {}; // TODO:
+  
+  // Damian: Not touching clay_config->userData and clay_config->custom here, 
+  //         its for custom stuff, stuff like cutstom drawing
+  // config->custom = {}; 
+  // config->userData = {}; 
 }
 
 ///////////////////////////////////////////////////////////
@@ -343,6 +328,18 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
 {
   box->clay_element_config.custom.customData = (void*)custom_draw;
   box->clay_element_config.userData          = data;
+}
+
+///////////////////////////////////////////////////////////
+// - Box data queries
+//
+UI_Box_data ui_box_data_from_box(UI_Box* box)
+{
+  Clay_ElementData clay_element_data = Clay_GetElementData(box->clay_element_config.id);
+  UI_Box_data result_data = {};
+  result_data.is_found    = clay_element_data.found;
+  result_data.rect        = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
+  return result_data;
 }
 
 // TODO: This is new test code, move it to a better place when done
@@ -497,6 +494,8 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
+        // BP;
+
         Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
         V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
@@ -593,6 +592,13 @@ void ui_draw()
 //
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2)
 {
+  if (kind == UI_Size_kind__percent_of_parent)
+  {
+    Assert(value1 == value2);
+    clamp_f32_inplace(&value1, 0.0f, 1.0f);
+    clamp_f32_inplace(&value2, 0.0f, 1.0f);
+  }
+
   UI_Size size = {};
   size.kind   = kind;
   size.value1 = value1;
@@ -612,6 +618,11 @@ UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent
 Arena* ui_get_build_arena()
 {
   return ui_get_state()->build_arena;
+}
+
+V2F32 ui_get_mouse_pos()
+{
+  return ui_get_state()->mouse_pos_for_this_build;
 }
 
 ///////////////////////////////////////////////////////////
@@ -663,6 +674,13 @@ void ui_next_padding(F32 padding)
   ui_next_padding_top(padding);
   ui_next_padding_bottom(padding);
 }
+void ui_next_padding_diff(F32 left, F32 right, F32 top, F32 down)
+{
+  ui_next_padding_left(left);
+  ui_next_padding_right(right);
+  ui_next_padding_top(top);
+  ui_next_padding_bottom(down);
+}
 void ui_next_corner_r(F32 r)
 {
   ui_next_corner_radius_top_left(r);
@@ -682,8 +700,14 @@ void ui_next_border(F32 width, V4F32 color)
   ui_next_border_width(width);
   ui_next_border_color(color);
 }
+void ui_next_padded_border(F32 width, V4F32 color) 
+{
+  ui_next_border(width, color);
+  ui_next_padding(width);
+}
 void ui_next_layout_x() { ui_next_layout(Axis2__x); }
 void ui_next_layout_y() { ui_next_layout(Axis2__y); }
+
 
 ///////////////////////////////////////////////////////////
 // - Box style setters for already created boxed

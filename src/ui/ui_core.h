@@ -104,6 +104,11 @@ struct UI_Box {
 }
 global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
+struct UI_Box_data {
+  B32 is_found;
+  Rect rect;
+};
+
 // This is separated into a separete file just cause its easier to have
 // macros be there, i think.
 // Some of those macros need some types from above, so we include it here.
@@ -111,17 +116,6 @@ global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
 // Stack structs
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
-
-struct UI_Box_id_node {
-  Clay_ElementId id;
-  UI_Box_id_node* next;
-};
-
-struct UI_Box_id_list {
-  UI_Box_id_node* first;
-  UI_Box_id_node* last;
-  U64 count;
-};
 
 // TODO: Move data fiels in state for better structural meaning
 struct UI_State {
@@ -134,7 +128,6 @@ struct UI_State {
   Arena* build_arena;
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
 
-  UI_Box_id_list hovered_ids;
   UI_Box* final_hover_box;
 
   U64 build_generation;
@@ -208,6 +201,9 @@ struct UI_Provided_data_for_custom_draw {
 typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_type);
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data);
 
+// - Box data queries
+UI_Box_data ui_box_data_from_box(UI_Box* box);
+
 // - Size makers
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
 UI_Size ui_px(F32 value);                 
@@ -219,6 +215,7 @@ UI_Size ui_p_of_p(F32 p);
 
 // - Other
 Arena* ui_get_build_arena();
+V2F32 ui_get_mouse_pos();
 
 // - Stack functions and helper
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)
@@ -271,6 +268,11 @@ void ui_set_box_b_color(UI_Box* box, V4F32 color);
 #define UI_BorderTop(v)               DeferLoop(ui_push_border_top(v),                 ui_pop_border_top())
 #define UI_BorderBottom(v)            DeferLoop(ui_push_border_bottom(v),              ui_pop_border_bottom())
 #define UI_Parent(v)                  DeferLoop(ui_push_parent(v),                     ui_pop_parent())
+#define UI_Font(v)                    DeferLoop(ui_push_font(v),                       ui_pop_font())
+#define UI_FontSize(v)                DeferLoop(ui_push_font_size(v),                  ui_pop_font_size())
+#define UI_AlignmentX(v)              DeferLoop(ui_push_alignment_x(v),                ui_pop_alignment_x())
+#define UI_AlignmentY(v)              DeferLoop(ui_push_alignment_y(v),                ui_pop_alignment_y())
+#define UI_HoverCursor(v)             DeferLoop(ui_push_hover_cursor(v),               ui_pop_hover_cursor())
 //
 #define UI_Width(v) UI_SizeX(v)
 #define UI_Height(v) UI_SizeY(v)

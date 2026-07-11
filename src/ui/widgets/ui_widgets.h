@@ -66,6 +66,23 @@ void ui_label(Str8 outer_str)
   ui_extend_box_with_custom_draw_function(box, ui_label_draw_func, data);
 }
 
+void ui_label_f(const char* fmt, ...)
+{
+  va_list argptr;
+  va_start(argptr, fmt);
+  Scratch scratch = get_scratch(0, 0);
+  U64 buffer_count = 128;
+  U8* buffer = ArenaPushArr(scratch.arena, U8, buffer_count);
+  int err = vsnprintf((char*)buffer, buffer_count, fmt, argptr);
+  if (err < 0) { Assert(0); }
+  else if (err >= buffer_count) { Assert(0); }
+  else if (err < buffer_count) { /* All good */ }
+  va_end(argptr);
+  Str8 str = str8_manual_view(buffer, (U64)err);
+  ui_label(str);
+  end_scratch(&scratch);
+}
+
 void ui_spacer(UI_Size size)
 {
   UI_Box* parent = ui_top_parent();

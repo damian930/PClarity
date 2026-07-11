@@ -80,6 +80,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
   pcl_init();
+  PCL_State pcl = {};
 
   for (;!os_window_should_close();)
   {
@@ -87,7 +88,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    pcl_do_ui(font);
+    pcl_frame_update(&pcl);
+    pcl_do_ui(font, &pcl);
     
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
