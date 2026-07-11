@@ -196,7 +196,7 @@ void ui_release();
 // Str8 ui_get_text_part_from_str8(Str8 id_and_text);
 
 // - UI building
-void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos);
+void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
 #define UI_Build(window_dims, mouse_pos) DeferLoop(ui_begin_build(window_dims, mouse_pos), ui_end_build())

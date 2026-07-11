@@ -129,8 +129,8 @@ void d_draw_circle_inset_border(V2F32 center, F32 r, V4F32 color, F32 thickness,
 void d_draw_texture(R_Target texture, V2F32 pos);
 void d_draw_texture_pro(R_Target texture, Rect dest_rect, Rect source_rect, V4F32 tint);
 
-void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color);
-void d_draw_text_f(const char* fmt, FP_Font font, V2F32 pos, V4F32 color, ...);
+void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color);
+void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...);
 
 // - Push/Pops 
 void         d_push_blend_kind(R_Blend_kind blend_kind);

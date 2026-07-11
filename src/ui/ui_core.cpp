@@ -42,7 +42,7 @@ void ui_set_state(UI_State* state)
 
 void ui_init()
 {
-  Arena* state_arena = arena_alloc(Kilobytes(16));
+  Arena* state_arena = arena_alloc(Kilobytes(32));
   __ui_g_state = ArenaPush(state_arena, UI_State);
   __ui_g_state->state_arena = state_arena;
 
@@ -68,7 +68,7 @@ void ui_release()
 ///////////////////////////////////////////////////////////
 // - UI building
 //
-void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
+void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 {   
   { // Making sure that null box has not been modified last frame by someone 
     // TODO: This assert breaks, fix this
@@ -86,12 +86,15 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos)
 
   // Resetting all the stacks
   #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
-    state->stacks.var_name_inside_state = {};
+    state->stacks.var_name_inside_state = {}; \
+    state->stacks.var_name_inside_state.default_value = default_expr; 
   __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
   #undef UI_RESET_STACKS
 
   arena_clear(state->build_arena);
   state->render_commands_as_result_of_ui_build = {};
+
+  ui_push_font(default_font);
 
   ui_next_width(ui_px(window_dims.x));
   ui_next_height(ui_px(window_dims.y));
@@ -492,12 +495,12 @@ UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2)
   size.value2 = value2; 
   return size;
 }
-UI_Size ui_px(F32 value)                 { return ui_size_make(UI_Size_kind__px, value, 0.0f); }
-UI_Size ui_fit_mm(F32 min, F32 max)      { return ui_size_make(UI_Size_kind__fit, min, max); } 
-UI_Size ui_grow_mm(F32 min, F32 max)     { return ui_size_make(UI_Size_kind__grow, min, max); }         
-UI_Size ui_fit()                         { return ui_size_make(UI_Size_kind__fit, 0.0f, 0.0f); } 
-UI_Size ui_grow()                        { return ui_size_make(UI_Size_kind__percent_of_parent, 0.0f, 0.0f); }         
-UI_Size ui_p_of_p(F32 p)                 { return ui_size_make(UI_Size_kind__percent_of_parent, p, 0.0f); }         
+UI_Size ui_px(F32 value)             { return ui_size_make(UI_Size_kind__px, value, 0.0f); }
+UI_Size ui_fit_mm(F32 min, F32 max)  { return ui_size_make(UI_Size_kind__fit, min, max); } 
+UI_Size ui_grow_mm(F32 min, F32 max) { return ui_size_make(UI_Size_kind__grow, min, max); }         
+UI_Size ui_fit()                     { return ui_size_make(UI_Size_kind__fit, 0.0f, 0.0f); } 
+UI_Size ui_grow()                    { return ui_size_make(UI_Size_kind__percent_of_parent, 0.0f, 0.0f); }         
+UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent_of_parent, p, p); }         
 
 ///////////////////////////////////////////////////////////
 // - Stack funtions

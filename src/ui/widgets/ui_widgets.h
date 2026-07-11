@@ -30,13 +30,19 @@ UI_BOX_CUSTOM_DRAW(ui_label_draw_func)
 {
   struct draw_data {
     Str8 str;
-    FP_Font* font;
+    FP_Font font;
+    F32 font_size;
   };
+
+  // TODO: Start having size be used for when drawing the thing here
   draw_data* data = (draw_data*)custom_data;
-  d_draw_text(data->str, *data->font, provided_data.final_box_rect.origin, white());
+  d_draw_text(data->str, data->font, data->font_size, provided_data.final_box_rect.origin, white());
 }
-void ui_label(Str8 outer_str, FP_Font font)
+void ui_label(Str8 outer_str)
 {
+  FP_Font font  = ui_top_font();
+  F32 font_size = ui_top_font_size();
+
   V2F32 str_dims = fp_measure_text(outer_str, font);
   
   ui_next_width(ui_px(str_dims.x));
@@ -45,13 +51,15 @@ void ui_label(Str8 outer_str, FP_Font font)
 
   struct draw_data {
     Str8 str;
-    FP_Font* font;
+    FP_Font font;
+    F32 font_size;
   };
 
   draw_data* data = ArenaPush(ui_get_state()->build_arena, draw_data);
-  data->str = outer_str;
-  data->font = &font;
-  data->str.data = ArenaPushArr(ui_get_state()->build_arena, U8, outer_str.count);
+  data->str       = outer_str;
+  data->font      = font;
+  data->font_size = font_size;
+  data->str.data  = ArenaPushArr(ui_get_state()->build_arena, U8, outer_str.count);
   data->str.count = outer_str.count;
   memcpy(data->str.data, outer_str.data, data->str.count);
 

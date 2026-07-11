@@ -240,11 +240,13 @@ void d_draw_texture_pro(R_Target texture, Rect dest_rect, Rect source_rect, V4F3
   d_add_texture_command(texture, dest_rect, source_rect, tint);
 }
 
-void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
+void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color)
 {
-  F32 origin_y = pos.y + font.ascent;
-  F32 x_offset = 0.0f;
+  F32 scale_factor = font_size / font.size;
   
+  F32 origin_y = pos.y + (font.ascent * scale_factor);
+  F32 x_offset = 0.0f;
+
   for (U64 ch_index = 0; ch_index < text.count; ch_index += 1)
   {
     U8 ch = text.data[ch_index];
@@ -254,18 +256,18 @@ void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
 
     // Just puttin them 1 next to another
     Rect dest_rect = {};
-    dest_rect.x      = origin_x + glyph_data.bearing_x;
-    dest_rect.y      = origin_y - glyph_data.bearing_y;
-    dest_rect.width  = glyph_data.rect_on_atlas.width;
-    dest_rect.height = glyph_data.rect_on_atlas.height;
+    dest_rect.x      = origin_x + (glyph_data.bearing_x * scale_factor);
+    dest_rect.y      = origin_y - (glyph_data.bearing_y * scale_factor);
+    dest_rect.width  = (glyph_data.rect_on_atlas.width * scale_factor);
+    dest_rect.height = (glyph_data.rect_on_atlas.height * scale_factor);
     
     d_draw_texture_pro(font.atlas_texture, dest_rect, glyph_data.rect_on_atlas, color);
 
-    F32 advance = glyph_data.advance;
+    F32 advance = (glyph_data.advance * scale_factor);
     if (ch_index < text.count - 1)
     {
       FP_Kerning_entry entry = fp_get_kerning(font, ch, text.data[ch_index + 1]);
-      if (!IsMemZero(entry)) { advance += entry.advance; }
+      if (!IsMemZero(entry)) { advance += (entry.advance * scale_factor); }
     } 
     x_offset += advance; 
   }
@@ -273,7 +275,7 @@ void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
   #if DEBUG_MODE
   { // Making sure that the x here is the same as in fp to make sure that that we dont do any stupid mistackes
     V2F32 fp_text_dims = fp_measure_text(text, font);
-    Assert(fp_text_dims.x == x_offset);
+    Assert(fp_text_dims.x * scale_factor == x_offset);
   }
   #endif
 
@@ -288,13 +290,13 @@ void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
   #endif
 }
 
-void d_draw_text_f(const char* fmt, FP_Font font, V2F32 pos, V4F32 color, ...)
+void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...)
 {
   Scratch scratch = get_scratch(0, 0);
   va_list valist;
   va_start(valist, color);
   Str8 str = str8_valist(scratch.arena, fmt, valist);
-  d_draw_text(str, font, pos, color);
+  d_draw_text(str, font, font_size, pos, color);
   va_end(valist);
   end_scratch(&scratch);
 }
