@@ -25,9 +25,8 @@ Sessions ends when:
 - (will htink about later) app has been inactive for a long period to support suspension
 
 --- Store per Session ----
-- app name
-- exe name
-- exe path
+- process name
+- exe path/name
 - icon
 - pid
 - ppid
@@ -142,9 +141,64 @@ Renamed exe
 
 
 */
+
+#define MAX_PATH_SIZE 32767
+
 int main()
 {
+  // TODO(S): Support Unicode!
 
+  allocate_thread_context();
+  B32 os_init_succ = os_init();
+  if (!os_init_succ) { return -1; }
+  OS_State* win32_state = os_get_state();
+  
+  // NOTE(S): 
+  char exe_path[MAX_PATH_SIZE];
+  DWORD exe_path_size{MAX_PATH_SIZE};
+
+  for (;!os_window_should_close();)
+  {
+    exe_path_size = 0;
+    
+    // get window handle of window user is interacting with (you change foreground window with Window+Alt+Tab or just clicking on window)
+    HWND foreground_hwnd = GetForegroundWindow();
+    if (!foreground_hwnd)
+    {
+      printf("GetForegroundWindow() err");
+      return 0;
+    }
+
+    // get pid
+    DWORD pid{};
+    GetWindowThreadProcessId(foreground_hwnd, &pid);  // Note(S): returns thread id
+
+    HANDLE p_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!p_handle)
+    {
+      printf("OpenProcess err");  // Note(S): May crash because process is more elevated than ours, may crash for other reasons. All that can just be ignored. We don't care about processes that are elevated. If the user runs this app as admin, then we will capture them, simple. Or we can ignore by checking their access token, and if its admin we ignore again.
+    }
+    
+    if (!QueryFullProcessImageNameA(p_handle, 0, exe_path, &exe_path_size))
+    {
+      printf("QueryFullProcessImageNameA err");
+    }
+
+    // TODO(S): Get display name. 
+    // This is a little more involved, and will require using the native api.
+    // For the app/display name, I need to get full exe path, and read its FileDescription (from the PE i think)
+    // if its a packaged app, read its manifest display name.
+
+    // TODO(S): Get memory/cpu/gpu usage. 
+    // All of these are not directly queryable. I have to calculate this. 
+    // memory and cpu seem doable, but I am not sure about gpu, I think it will require using directx.
+    
+    // print
+    printf("exe path: %s\n", exe_path);
+
+    // TODO(S): Implement proper timer
+    Sleep(2000);  
+  }
 
 
 
