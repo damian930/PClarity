@@ -5,7 +5,28 @@ enum PCL_Command {
   PCL_Command__NONE,
   PCL_Command__go_to_settings,
   PCL_Command__go_to_home,
+  PCL_Command__close_the_app, // TODO:
+  PCL_Command__new_main_font_size,
   PCL_Command__COUNT,
+};
+
+struct PCL_Command_node {
+  PCL_Command command;
+  PCL_Command_node* next;
+  PCL_Command_node* prev;
+};
+
+struct PCL_Command_list {
+  PCL_Command_node* first;
+  PCL_Command_node* last;
+  U64 count;
+};
+
+global Str8 pcl_command_name_for_user[PCL_Command__COUNT] = {
+  Str8FromC("PCL_Command__NONE"),
+  Str8FromC("Open Settings"),
+  Str8FromC("Open Home"),
+  Str8FromC("Exit"),
 };
 
 enum PCL_Color_name : U32 {
@@ -13,6 +34,7 @@ enum PCL_Color_name : U32 {
   PCL_Color_name__main_background,
   PCL_Color_name__secondary_background,
   PCL_Color_name__item_selected,
+  PCL_Color_name__change_main_font_size,
   PCL_Color_name__COUNT,
 };
 
@@ -22,10 +44,25 @@ enum PCL_Menu {
 };
 
 struct PCL_State {
-  PCL_Command ui_made_command_to_execute;
-
+  B32 is_command_window_open;
   PCL_Menu current_menu;
+  F32 main_font_size;
+
+  // Data that might be used for commands at the start of the next frame
+  F32 new_font_size;
+
+  Arena* frame_arena;
+  PCL_Command_list defered_commands_to_start_of_next_frame;
 };
+
+void pcl_defer_command_to_start_of_next_frame(PCL_State* PCL, PCL_Command command)
+{
+  PCL_Command_node* command_node = ArenaPush(PCL->frame_arena, PCL_Command_node);
+  command_node->command = command;
+  PCL_Command_list* command_list = &PCL->defered_commands_to_start_of_next_frame;
+  DllPushBack(command_list, command_node);
+  command_list->count += 1;
+}
 
 // TODO: These should be the part of the PCL_State, i just havent moved them yet in there
 global F32 pcl_font_size                  = 24.0f;
@@ -50,13 +87,15 @@ V4F32 pcl_color_from_name(PCL_Color_name color_name)
   return color;
 }
 
-F32 pcl_ui_slider(F32 width, F32 height, F32 value, RangeF32 range_for_value, Str8 id)
+// TODO: This should use dragging instead of just the mouse pos 
+F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id)
 {
   clamp_f32_inplace(&value, range_for_value.min, range_for_value.max);
 
-  // TODO: Round this slider here
-  ui_next_width(ui_px(width));
-  ui_next_height(ui_px(height));
+  UI_Size size_x = ui_top_size_x();
+  UI_Size size_y = ui_top_size_y();
+
+  // Damian: Sizes from the outside are used here
   ui_next_padded_border(2, white());
   ui_next_hover_cursor(OS_Cursor__hand);
   UI_Box* slider_top_box = ui_box_make(id, UI_Box_flag__has_padding|UI_Box_flag__has_borders);
@@ -83,9 +122,7 @@ F32 pcl_ui_slider(F32 width, F32 height, F32 value, RangeF32 range_for_value, St
     UI_Box_data slider_box_data = ui_box_data_from_box(slider_top_box);
     if (slider_box_data.is_found)
     {
-      F32 mouse_to_slider_relative = ui_get_mouse_pos().x - (slider_box_data.rect.origin.x + 2);
-      F32 mouse_inside_slider_pos_normalised = mouse_to_slider_relative / (slider_box_data.rect.width - 2);
-
+      F32 mouse_inside_slider_pos_normalised = (ui_get_mouse_pos().x - slider_box_data.rect.x) / (slider_box_data.rect.width - 2);
       new_value = lerp_f32(range_for_value.min, range_for_value.max, mouse_inside_slider_pos_normalised);
     }
   }
@@ -94,43 +131,82 @@ F32 pcl_ui_slider(F32 width, F32 height, F32 value, RangeF32 range_for_value, St
   return new_value;
 }
 
-void pcl_init()
+PCL_State pcl_init()
 {
   pcl_icon_settings         = r_load_texture_from_file(Str8FromC("../data/icons/gear.png"));
   pcl_icon_home             = r_load_texture_from_file(Str8FromC("../data/icons/house.png"));
   pcl_icon_magnifying_glass = r_load_texture_from_file(Str8FromC("../data/icons/magnifying_glass.png"));
+
+  PCL_State state = {};
+  state.current_menu   = PCL_Menu__home;
+  state.main_font_size = 20;
+  state.frame_arena = arena_alloc(Megabytes(64));
+
+  return state;
 }
 
 void pcl_frame_update(PCL_State* PCL)
 {
-  // todo: Here we do the commands that we have got from the prev frame ui interactions
-  switch (PCL->ui_made_command_to_execute)
-  {
-    case PCL_Command__COUNT: 
-    default: { InvalidCodePath(); } break;
-
-    case PCL_Command__NONE: {} break;  
-    
-    case PCL_Command__go_to_settings: 
-    { 
-      PCL->current_menu = PCL_Menu__settings;
-    } break;
-
-    case PCL_Command__go_to_home:
+  // Damian: Handling the defered commands 
+  for (
+    PCL_Command_node* command_node = PCL->defered_commands_to_start_of_next_frame.first; 
+    command_node != 0;
+    command_node = command_node->next  
+  ) {
+    switch (command_node->command)
     {
-      PCL->current_menu = PCL_Menu__home;
-    } break;
+      case PCL_Command__COUNT: 
+      default: { InvalidCodePath(); } break;
+  
+      case PCL_Command__NONE: {} break;  
+      
+      case PCL_Command__go_to_settings: 
+      { 
+        PCL->current_menu = PCL_Menu__settings;
+      } break;
+  
+      case PCL_Command__go_to_home:
+      {
+        PCL->current_menu = PCL_Menu__home;
+      } break;
+  
+      case PCL_Command__new_main_font_size:
+      {
+        PCL->main_font_size = PCL->new_font_size;
+      } break;
+    }
   }
-  PCL->ui_made_command_to_execute = PCL_Command__NONE;
+
+  // Clearing per frame data before we start the new frame for real
+  PCL->defered_commands_to_start_of_next_frame = {};
+  arena_clear(PCL->frame_arena);
+
+  B32 ctrl_p_down = false;
+  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+  {
+    if (ev->kind == OS_Event_kind__key && ev->key_event.went_up && ev->key_event.key == Key__p && (ev->key_event.modifiers& OS_Event_modifier__control))
+    {
+      ctrl_p_down = true;
+      os_consume_frame_event(ev);
+      break;
+    }
+  }
+
+  if (ctrl_p_down) 
+  {
+    PCL->is_command_window_open = true;
+  }
 }
 
 void pcl_do_ui(FP_Font font, PCL_State* PCL)
 {
-  Assert(PCL->ui_made_command_to_execute == PCL_Command__NONE); 
+  Assert(IsZeroStruct(PCL->defered_commands_to_start_of_next_frame)); 
 
   ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
 
-  F32 icon_size = ui_top_font_size() * 3; // Damian: For now this is how it is 
+  ui_push_font_size(PCL->main_font_size);
+
+  F32 icon_size = ui_top_font_size() * 3; // Damian: For now this is how it is, TODO
 
   ui_next_width(ui_p_of_p(1));
   ui_next_height(ui_p_of_p(1));
@@ -139,7 +215,7 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
     ui_next_width(ui_fit());
     ui_next_height(ui_p_of_p(1));
     ui_next_b_color(pcl_color_from_name(PCL_Color_name__main_background));
-    ui_next_padding(pcl_font_size * 0.25f);
+    ui_next_padding(ui_top_font_size() * 0.25f);
     ui_next_layout_y();
     ui_next_alignment_x(UI_Alignment_x__center);
     UI_Box* box = ui_box_make_f("Left box id", UI_Box_flag__has_background|UI_Box_flag__has_padding);
@@ -158,7 +234,7 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         UI_Actions home_button_acts = ui_actions_from_box(home_button);
         if (home_button_acts.is_clicked)
         {
-          PCL->ui_made_command_to_execute = PCL_Command__go_to_home;
+          pcl_defer_command_to_start_of_next_frame(PCL, PCL_Command__go_to_home);
         }
         if (home_button_acts.is_hovered) {
           ui_set_box_b_color(home_button, pcl_color_from_name(PCL_Color_name__item_selected));
@@ -180,7 +256,7 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         UI_Actions settings_button_acts = ui_actions_from_box(settings_button);
         if (settings_button_acts.is_clicked)
         {
-          PCL->ui_made_command_to_execute = PCL_Command__go_to_settings;
+          pcl_defer_command_to_start_of_next_frame(PCL, PCL_Command__go_to_settings);
         }
         if (settings_button_acts.is_hovered) {
           ui_set_box_b_color(settings_button, pcl_color_from_name(PCL_Color_name__item_selected));
@@ -195,18 +271,18 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
   
     if (PCL->current_menu == PCL_Menu__settings)
     {
-      // This here should be a slider for font size
-
       ui_next_padding(50);
       ui_next_extra_flags(UI_Box_flag__has_padding);
+      ui_next_width(ui_px(500));
+      ui_next_height(ui_px(500));
       UI_Col()
       {
-        static F32 value = 0.0f; 
-        value = pcl_ui_slider(200, 100, value, rangeF32(0, 100), Str8FromC("Test slider id"));
-        ui_spacer(ui_px(15));
-        ui_label_f("%.0f \n", value);
+        ui_next_width(ui_grow());
+        ui_next_height(ui_rem(1));
+        F32 new_font_size = pcl_ui_slider(PCL->main_font_size, rangeF32(4, 64), Str8FromC("Test slider id"));
+        pcl_defer_command_to_start_of_next_frame(PCL, PCL_Command__new_main_font_size);
+        PCL->new_font_size = new_font_size;
       }
-
 
       ui_next_font_size(64);
       ui_label_f("Settings menu here");
@@ -252,6 +328,535 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
       InvalidCodePath();
     }
 
+    // Spawning the command window on top of everything else 
+    if (PCL->is_command_window_open)
+    {
+      UI_Parent(ui_get_root())
+      {
+        ui_next_width(ui_grow());
+        ui_next_height(ui_grow());
+        ui_next_alignment_x(UI_Alignment_x__center);
+        ui_next_alignment_y(UI_Alignment_y__center);
+        ui_next_extra_flags(UI_Box_flag__floating);
+        UI_Parent(ui_box_make({}, 0))
+        {
+          V4F32 orange_back_color   = rgba_from_hex(0x4f3417FF); 
+          V4F32 orange_border_color = rgba_from_hex(0xe29328FF);
+          V4F32 dark_back_color     = rgba_from_hex(0x1a1a1aFF);
+
+          UI_BorderColor(orange_border_color)
+          {
+            ui_next_width(ui_p_of_p(0.5f));
+            ui_next_height(ui_p_of_p(0.85f));
+            ui_next_border_width(4);
+            ui_next_padding(4);
+            ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
+            UI_Col()
+            {
+              ui_next_width(ui_p_of_p(1));
+              ui_next_height(ui_fit()); // todo: This should be the size of the text that will be used to input the text in there
+              ui_next_border_width(4);
+              ui_next_padding(2 * 4);
+              ui_next_b_color(orange_back_color);
+              ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding|UI_Box_flag__has_background);
+              UI_Parent(ui_box_make({}, 0))
+              {
+                UI_FontSize(ui_top_font().size)
+                {
+                  Scratch scratch = get_scratch(0, 0);
+    
+                  static U8 text_buffer[32] = {};
+                  static U64 text_buffer_size = {};
+                  static U64 cursor_pos = {};
+                  static U64 section_start_pos = {};
+
+                  ui_next_b_color(blue());
+                  ui_next_extra_flags(UI_Box_flag__has_background);
+                  UI_Text_op_list op_list = {};
+                  UI_Col()
+                  {
+                    UI_Text_op_list op_list_ = ui_text_edit_box(scratch.arena, true, ui_px(300), text_buffer, text_buffer_size, ArrayCount(text_buffer), cursor_pos, section_start_pos, Str8FromC("Test text edit field"));
+                    op_list = op_list_;
+                  }
+
+                  ui_aply_text_ops(op_list, text_buffer, ArrayCount(text_buffer), &text_buffer_size, &cursor_pos, &section_start_pos, Null, Null);
+    
+                  end_scratch(&scratch);
+                }
+              }
+
+              // todo: Here just spawn each of the command thing to show the user to use
+              
+              ui_next_width(ui_grow());
+              ui_next_height(ui_grow());
+              ui_next_b_color(dark_back_color);
+              UI_Box* command_scroll_list = ui_box_make({}, UI_Box_flag__has_background|UI_Box_flag__clip);
+              UI_Parent(command_scroll_list)
+              { 
+                for EachEnumRange(command, PCL_Command, PCL_Command__go_to_settings, PCL_Command__COUNT)
+                {
+                  UI_Col()
+                  {
+                    ui_label(pcl_command_name_for_user[command]);
+                    // ui_label_f("Some text in smaller font that tells the user in detail about the command");
+                  }
+                }
+              }
+
+              // TODO:
+              // UI_Row()
+              // {
+              //   // todo: Here is the list of the command that might be used
+              
+              //   // todo: Here will be the slider for the list
+              // }
+            }
+
+          }
+
+
+        }
+      }
+    }
+
+  }
+
+  ui_end_build();
+}
+
+///////////////////////////////////////////////////////////
+// - Testing how a table for the process data will work, never done this sort of ui before
+//
+void test_table_ui(FP_Font font)
+{
+  ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+  ui_push_font_size(24);
+
+  // State that is retained by the table
+  struct Table_col_data {
+    Str8 header_text;
+    F32 p_of_p_header_size;
+  };
+
+  // Heading meta data
+  static Table_col_data table_header_data[] = {
+    { Str8FromC("H1"),  0.5f },
+    { Str8FromC("H2"),  0.25f },
+    { Str8FromC("H3"),  0.25f },
+  };
+
+  // Table ui build
+  B32 did_resizer_get_dragged = false;
+  U64 column_index_whos_resizer_got_dragged = 0;
+  F32 drag_delta = 0;
+  //
+  ui_next_width(ui_px(500));
+  ui_next_height(ui_px(500));
+  ui_next_padded_border(3, nice_green());
+  ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
+  UI_Col()
+  {
+    // Header ui
+    ui_next_width(ui_grow());
+    UI_Row()
+    {
+      for (U64 header_index = 0; header_index < ArrayCount(table_header_data); header_index += 1)
+      {
+        ui_next_width(ui_p_of_p(table_header_data[header_index].p_of_p_header_size));
+        ui_next_height(ui_fit());
+        ui_next_padded_border(1, nice_blue());
+        ui_next_alignment_x(UI_Alignment_x__center);
+        ui_next_layout_x();
+        UI_Parent(ui_box_make_f("Table header %lld", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_index))
+        {
+          ui_label(table_header_data[header_index].header_text);
+
+          ui_spacer(ui_grow());
+
+          if (header_index < ArrayCount(table_header_data) - 1)
+          {
+            ui_next_width(ui_px(5));
+            ui_next_height(ui_grow());
+            ui_next_b_color(orange());
+            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+            UI_Box* header_column_resizer = ui_box_make_f("Resizer for header %lld", UI_Box_flag__has_background, header_index);
+            
+            UI_Actions resizer_actions = ui_actions_from_box(header_column_resizer);
+            if (resizer_actions.is_down)
+            {
+              did_resizer_get_dragged = true;
+              column_index_whos_resizer_got_dragged = header_index;
+              drag_delta = ui_get_mouse_pos().x - ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down.x;
+            }
+          }
+
+        }
+      }
+    }
+
+    static struct {
+      const char* col1;
+      const char* col2;
+      const char* col3;
+    } data_rows[] = {
+      { "More text here", "2", "3" },
+      { "1", "2", "Some text" },
+      { "1", "Here we are", "3" },
+    };
+
+    // Rows ui
+    for EachIndex(i, ArrayCount(data_rows))
+    {
+      ui_next_width(ui_p_of_p(1));
+      ui_next_height(ui_fit());
+      UI_Row()
+      {
+        ui_next_width(ui_p_of_p(table_header_data[0].p_of_p_header_size));
+        ui_next_height(ui_fit());
+        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
+        {
+          ui_label_f("%s", data_rows[i].col1);
+        }
+
+        ui_next_width(ui_px(5));
+        ui_next_height(ui_grow());
+        ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
+        ui_box_make({}, UI_Box_flag__has_background);
+
+        ui_next_width(ui_p_of_p(table_header_data[1].p_of_p_header_size));
+        ui_next_height(ui_fit());
+        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
+        {
+          ui_label_f("%s", data_rows[i].col1);
+        }
+
+        ui_next_width(ui_px(5));
+        ui_next_height(ui_grow());
+        ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
+        ui_box_make({}, UI_Box_flag__has_background);
+
+        ui_next_width(ui_p_of_p(table_header_data[2].p_of_p_header_size));
+        ui_next_height(ui_fit());
+        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
+        {
+          ui_label_f("%s", data_rows[i].col1);
+        }
+
+      }
+    }
+  }
+
+  // Table inputs and resizing
+  if (did_resizer_get_dragged)
+  {
+    // todo: Here you have to chnage the whole row of the p of p %s to have the table render in different size
+    B32 all_headers_found = true;
+    Rect rects_for_each_header[ArrayCount(table_header_data)] = {};
+    for EachIndex(header_index, ArrayCount(table_header_data))
+    {
+      Scratch scratch = get_scratch(0, 0);
+      Str8 header_id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+      UI_Box_data header_box_data = ui_box_data_from_id(header_id);
+      if (!header_box_data.is_found) {
+        all_headers_found = false;
+      } else {
+        rects_for_each_header[header_index] = header_box_data.rect;
+      }
+      end_scratch(&scratch);
+    }
+
+    if (all_headers_found)
+    {
+      V2F32 initial_mouse_pos = ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down;
+      V2F32 mouse_pos         = ui_get_mouse_pos();
+      V2F32 prev_mouse_pos    = ui_get_prev_mouse_pos();
+
+      // todo: Compare the mouse pos to the box rect
+
+      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
+      F32 mouse_relative_to_header = mouse_pos.x - rect_for_header_that_got_dragged.x;
+      // todo: Width should be there
+
+      F32 total_rects_width = 0.0f;
+      for EachIndex(i, ArrayCount(rects_for_each_header))
+      {
+        total_rects_width += rects_for_each_header[i].width;
+      }
+
+      for EachIndex(i, ArrayCount(rects_for_each_header))
+      {
+        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
+      }
+
+      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
+      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
+
+      F32 prev_dragged_rect_width = dragged_rect->width;
+      dragged_rect->width = mouse_relative_to_header;
+      rect_after_dragged_rect->width -= (dragged_rect->width - prev_dragged_rect_width);
+    
+      for EachIndex(i, ArrayCount(rects_for_each_header))
+      {
+        Rect rect = rects_for_each_header[i];
+        F32 p_of_p = rect.width / total_rects_width;
+        table_header_data[i].p_of_p_header_size = p_of_p;
+      }
+    }
+  }
+
+  ui_end_build();
+}
+
+///////////////////////////////////////////////////////////
+// - Extracting table api like you saw casey do 
+//
+struct Table_header_col_data {
+  Str8 str;
+  F32 percentage_of_the_table_content_size;
+};
+
+struct Table_header_col_data_node {
+  Table_header_col_data header_col_data;
+  Table_header_col_data_node* next;
+};
+
+struct Table_header_col_data_list {
+  Table_header_col_data_node* first;
+  Table_header_col_data_node* last;
+  U64 count;
+};
+
+struct Table_row_entry {
+  Str8 str;
+};  
+
+struct Table_row_entry_node {
+  Table_row_entry entry;
+  Table_row_entry_node* next;
+};
+
+struct Table_row_entry_list {
+  Table_row_entry_node* first;
+  Table_row_entry_node* last;
+  U64 count;
+};
+
+struct Table_row_node {
+  Table_row_entry_list entry;
+  Table_row_node* next;
+  Table_row_node* prev;
+};
+
+struct Table_row_list {
+  Table_row_node* first;
+  Table_row_node* last;
+  U64 count;
+};
+
+struct Table_state {
+  Table_header_col_data_list header_col_data_list;
+  Table_row_list row_list;
+};
+
+void table_add_header(Arena* arena, Table_state* table_state, F32 p, Str8 str)
+{
+  Table_header_col_data_node* header_node = ArenaPush(arena, Table_header_col_data_node);
+  Table_header_col_data* header_col_data = &header_node->header_col_data;
+  header_col_data->percentage_of_the_table_content_size = p;
+  header_col_data->str = str8_copy(arena, str);
+
+  QueuePushBack(&table_state->header_col_data_list, header_node);
+  table_state->header_col_data_list.count += 1;
+}
+
+Table_row_entry_list* table_add_row(Arena* arena, Table_state* table_state)
+{
+  Table_row_node* row = ArenaPush(arena, Table_row_node);
+  DllPushBack(&table_state->row_list, row);
+  table_state->row_list.count += 1;
+  return &row->entry;
+}
+
+void table_add_col_data_to_row(Arena* arena, Table_row_entry_list* row_entry_list, Str8 str_to_add)
+{
+  Table_row_entry_node* new_entry = ArenaPush(arena, Table_row_entry_node);
+  new_entry->entry.str = str8_copy(arena, str_to_add);
+
+  QueuePushBack(row_entry_list, new_entry);
+  row_entry_list->count += 1;
+}
+
+void table_extraction_test(Table_state* table_state, FP_Font font)
+{
+  ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+  ui_push_font_size(24);
+
+  // Table ui build
+  B32 did_resizer_get_dragged = false;
+  U64 column_index_whos_resizer_got_dragged = 0;
+  F32 drag_delta = 0;
+  //
+  ui_next_width(ui_px(500));
+  ui_next_height(ui_px(500));
+  ui_next_padded_border(1, nice_green());
+  ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
+  UI_Col()
+  {
+    // Header ui
+    ui_next_width(ui_grow());
+    UI_Row()
+    {
+      U64 header_node_index = 0;
+      for (
+        Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
+        header_node != 0;
+        header_node = header_node->next
+      ) {
+        Table_header_col_data header_data = header_node->header_col_data;
+
+        ui_next_width(ui_p_of_p(header_data.percentage_of_the_table_content_size));
+        ui_next_height(ui_fit());
+        ui_next_padded_border(1, nice_blue());
+        ui_next_alignment_x(UI_Alignment_x__center);
+        ui_next_layout_x();
+        UI_Parent(ui_box_make_f("Table header %p", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_node))
+        {
+          ui_label(header_data.str);
+
+          ui_spacer(ui_grow());
+
+          if (header_node != table_state->header_col_data_list.last)
+          {
+            ui_next_width(ui_px(5));
+            ui_next_height(ui_grow());
+            ui_next_b_color(orange());
+            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+            UI_Box* header_column_resizer = ui_box_make_f("Resizer for header %p", UI_Box_flag__has_background, header_node);
+            
+            UI_Actions resizer_actions = ui_actions_from_box(header_column_resizer);
+            if (resizer_actions.is_down)
+            {
+              did_resizer_get_dragged = true;
+              column_index_whos_resizer_got_dragged = header_node_index;
+              drag_delta = ui_get_mouse_pos().x - ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down.x;
+            }
+          }
+
+          header_node_index += 1;
+        }
+      }
+    }
+
+    // Rows ui
+    for (
+      Table_row_node* row_node = table_state->row_list.first;
+      row_node != 0;
+      row_node = row_node->next
+    ) {
+      ui_next_width(ui_p_of_p(1));
+      ui_next_height(ui_fit());
+      UI_Row()
+      {
+        Table_header_col_data_node* header_col_node = table_state->header_col_data_list.first;
+        for (
+          Table_row_entry_node* row_enty_node = row_node->entry.first;
+          row_enty_node != 0;
+          row_enty_node = row_enty_node->next
+        ) {
+          Table_row_entry row_data = row_enty_node->entry;
+
+          ui_next_width(ui_p_of_p(header_col_node->header_col_data.percentage_of_the_table_content_size));
+          ui_next_height(ui_fit());
+          ui_next_layout_x();
+          UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
+          {
+            ui_next_width(ui_fit());
+            ui_next_height(ui_fit());
+            ui_next_b_color(green());
+            ui_next_extra_flags(UI_Box_flag__has_background);
+            UI_Col()
+            {
+              ui_label(row_enty_node->entry.str);
+            }
+          
+            ui_spacer(ui_grow());
+            
+            if (row_enty_node != row_node->entry.last)
+            {
+              ui_next_width(ui_px(5));
+              ui_next_height(ui_grow());
+              ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
+              ui_box_make({}, UI_Box_flag__has_background);
+            }
+          }
+
+          header_col_node = header_col_node->next;
+        }
+      }
+    }
+  }
+
+  // Table inputs and resizing
+  if (did_resizer_get_dragged)
+  {
+    Scratch scratch = get_scratch(0, 0);
+
+    // todo: Here you have to chnage the whole row of the p of p %s to have the table render in different size
+    B32 all_headers_found = true;
+    U64 header_count = table_state->header_col_data_list.count;
+    Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
+    
+    {
+      Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
+      for EachIndex(header_index, header_count)
+      {
+        Str8 header_id = str8_fmt(scratch.arena, "Table header %p", header_node );
+        UI_Box_data header_box_data = ui_box_data_from_id(header_id);
+        if (!header_box_data.is_found) {
+          all_headers_found = false;
+        } else {
+          rects_for_each_header[header_index] = header_box_data.rect;
+        }
+        header_node = header_node->next;
+      }
+    }
+
+    if (all_headers_found)
+    {
+      V2F32 initial_mouse_pos = ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down;
+      V2F32 mouse_pos         = ui_get_mouse_pos();
+      V2F32 prev_mouse_pos    = ui_get_prev_mouse_pos();
+
+      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
+      F32 mouse_relative_to_header = mouse_pos.x - rect_for_header_that_got_dragged.x;
+
+      F32 total_rects_width = 0.0f;
+      for EachIndex(i, header_count)
+      {
+        total_rects_width += rects_for_each_header[i].width;
+      }
+
+      for EachIndex(i, header_count)
+      {
+        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
+      }
+
+      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
+      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
+
+      F32 prev_dragged_rect_width = dragged_rect->width;
+      dragged_rect->width = mouse_relative_to_header;
+      rect_after_dragged_rect->width -= (dragged_rect->width - prev_dragged_rect_width);
+    
+      Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
+      for EachIndex(i, header_count)
+      {
+        Rect rect = rects_for_each_header[i];
+        F32 p_of_p = rect.width / total_rects_width;
+        header_node->header_col_data.percentage_of_the_table_content_size = p_of_p;
+        header_node = header_node->next;
+      }
+    }
   }
 
   ui_end_build();

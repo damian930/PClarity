@@ -19,6 +19,7 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "ui/ui_core.cpp"
 
 #include "ui/widgets/ui_widgets.h"
+#include "ui/widgets/ui_widgets.cpp"
 
 #include "pclarity/pclarity_ui.h"
 
@@ -79,8 +80,31 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
-  pcl_init();
-  PCL_State pcl = {};
+  PCL_State pcl = pcl_init();
+  
+  Arena* table_arena = arena_alloc(Megabytes(4));
+  Table_state* table_state = ArenaPush(table_arena, Table_state);
+  
+  {
+    table_add_header(table_arena, table_state, 0.4f, Str8FromC("H1"));
+    table_add_header(table_arena, table_state, 0.4f, Str8FromC("H2"));
+    table_add_header(table_arena, table_state, 0.2f, Str8FromC("H3"));
+
+    Table_row_entry_list* row_1 = table_add_row(table_arena, table_state);
+    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H1_data"));
+    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H2_data"));
+    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H3_data"));
+  
+    Table_row_entry_list* row_2 = table_add_row(table_arena, table_state);
+    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H1_data"));
+    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H2_data"));
+    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H3_data"));
+  
+    Table_row_entry_list* row_3 = table_add_row(table_arena, table_state);
+    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H1_data"));
+    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H2_data"));
+    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H3_data"));
+  }
 
   for (;!os_window_should_close();)
   {
@@ -88,9 +112,12 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    pcl_frame_update(&pcl);
-    pcl_do_ui(font, &pcl);
-    
+    // pcl_frame_update(&pcl);
+    // pcl_do_ui(font, &pcl);
+    // test_table_ui(font);
+    // test_code_for_table_api(font);
+    table_extraction_test(table_state, font);
+
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
 

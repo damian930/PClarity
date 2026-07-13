@@ -109,6 +109,19 @@ struct UI_Box_data {
   Rect rect;
 };
 
+struct UI_Actions {
+  // Lower level actions
+  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
+  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
+  //
+  // Composed for quick use
+  B32 is_clicked; // These are composed, so we need cross frame state and id
+  B32 went_down;  // These are composed, so we need cross frame state and id
+  B32 went_up;    // These are composed, so we need cross frame state and id
+};
+
 // This is separated into a separete file just cause its easier to have
 // macros be there, i think.
 // Some of those macros need some types from above, so we include it here.
@@ -132,15 +145,21 @@ struct UI_State {
 
   U64 build_generation;
 
+  // TODO: This might not be needed, take a look
+  UI_Box* next_new_elements_parent_box;
+
   struct {
     Clay_ElementId clay_id;
     B32 is_mouse_down;
     B32 did_mouse_leave_box_while_was_down;
+    V2F32 pos_when_mouse_went_down;
   } interacted_with_box_data;
 
   UI_Box* root_box;
   V2F32 mouse_pos_for_this_build;
   V2F32 window_dims_for_this_build;
+
+  V2F32 mouse_pos_for_prev_build;
 
   // Locking them under a struct so ui_state is easier to view in the debugger
   struct {
@@ -190,6 +209,10 @@ UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
+//
+// TODO: This is new, so just putting it here for now
+// Str8 __ui_get_id_part_from_str8(Str8 str);
+// Str8 __ui_get_text_part_from_str8(Str8 str);
 
 // - Box custom draw extention
 struct UI_Provided_data_for_custom_draw {
@@ -202,11 +225,17 @@ typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_type);
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data);
 
 // - Box data queries
+UI_Box_data ui_box_data_from_id(Str8 id);
 UI_Box_data ui_box_data_from_box(UI_Box* box);
+//
+UI_Actions ui_actions_from_box(UI_Box* box);
+// 
+V2F32 ui_clip_offset_from_box(UI_Box* box);
 
 // - Size makers
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
 UI_Size ui_px(F32 value);                 
+UI_Size ui_rem(F32 scale);                 
 UI_Size ui_fit_mm(F32 min, F32 max);      
 UI_Size ui_grow_mm(F32 min, F32 max);     
 UI_Size ui_fit();                         
@@ -216,6 +245,9 @@ UI_Size ui_p_of_p(F32 p);
 // - Other
 Arena* ui_get_build_arena();
 V2F32 ui_get_mouse_pos();
+V2F32 ui_get_prev_mouse_pos();
+UI_Box* ui_get_current_parent();
+UI_Box* ui_get_root();
 
 // - Stack functions and helper
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)

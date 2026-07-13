@@ -102,6 +102,8 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   ui_next_height(ui_px(window_dims.y));
   state->root_box = ui_box_make(Str8FromC("__UI_ROOT_BOX__"), UI_Box_flag__NONE);
 
+  state->mouse_pos_for_prev_build = state->mouse_pos_for_this_build;
+
   state->mouse_pos_for_this_build   = mouse_pos;
   state->window_dims_for_this_build = window_dims;
 
@@ -125,25 +127,6 @@ void ui_end_build()
     Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
     state->render_commands_as_result_of_ui_build = clay_render_commands; 
   }
-
-  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
-  {
-    if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__enter)
-    {
-      BP;
-      break;    
-    }
-  }
-
-  // if (state->hovered_ids.count > 0)
-  // {
-  //   UI_Box_id_node* deepest_hovered_box_id = state->hovered_ids.first;
-  //   UI_Box* deepest_hovered_box = ui_find_box_by_id(deepest_hovered_box_id->id);
-  //   if (!ui_box_is_null(deepest_hovered_box))
-  //   {
-  //     os_set_cursor(deepest_hovered_box->hover_cursor);
-  //   }
-  // }
 
   if (!ui_box_is_null(state->final_hover_box))
   {
@@ -243,7 +226,8 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
     if (new_box->hover_cursor != OS_Cursor__arrow) { new_box->has_hover_cursor = true; }
   }
 
-  new_box->parent = ui_top_parent();
+  state->next_new_elements_parent_box = ui_top_parent();
+  new_box->parent = state->next_new_elements_parent_box;
   if (!ui_box_is_null(new_box->parent))
   {
     DllPushBack_Name_NullFunc(new_box->parent, new_box, first_child, last_child, next_sibling, prev_sibling, ui_box_is_null);
@@ -310,15 +294,63 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
 
   if (flags & UI_Box_flag__has_borders) { config->border = { __ui_clay_color_from_v4f32(ui_top_border_color()), __ui_clay_border_width_from_v4f32(ui_top_border_width()) }; }
   
-  config->aspectRatio = {}; // TODO:
+  // TODO: Deal with the fact that clay doesnt allow for single axis float, Assert for now
+  if (!(flags & UI_Box_flag__floating) && ((flags & UI_Box_flag__floating_x) || (flags & UI_Box_flag__floating_y))) { InvalidCodePath(); }
   
-  config->image = {}; // TODO:
-  config->floating = {}; // TODO;
-  
+  if (flags & UI_Box_flag__floating)
+  {
+    config->floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
+    config->floating.attachTo           = CLAY_ATTACH_TO_PARENT;             // Damian: Not sure where i need this, so just const right now
+    config->floating.clipTo             = CLAY_CLIP_TO_NONE;                 // Damian: Not sure where i need this, so just const right now
+    // Clay_Vector2 offset;
+    // Clay_Dimensions expand;
+    // uint32_t parentId;
+    // int16_t zIndex;
+    // Clay_FloatingAttachPoints attachPoints;
+    // Clay_PointerCaptureMode pointerCaptureMode;
+    // Clay_FloatingAttachToElement attachTo;
+    // Clay_FloatingClipToElement clipTo;
+  }
+
+  config->aspectRatio = {}; // TODO: 
+  config->image       = {}; // TODO: 
+
   // Damian: Not touching clay_config->userData and clay_config->custom here, 
   //         its for custom stuff, stuff like cutstom drawing
   // config->custom = {}; 
   // config->userData = {}; 
+}
+
+Str8 __ui_get_id_part_from_str8(Str8 str)
+{
+  RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
+  RangeU64 range_for_triple_hash = str8_find(str, Str8FromC("###"), 0);
+
+  Str8 id_part = str;
+  if (rangeU64_count(range_for_triple_hash) > 0)
+  {
+    id_part = str8_substring(str, range_for_triple_hash.min, range_for_triple_hash.max);
+  }
+
+  return id_part;
+}
+
+Str8 __ui_get_text_part_from_str8(Str8 str)
+{
+  RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
+  RangeU64 range_for_triple_hash = str8_find(str, Str8FromC("###"), 0);
+
+  Str8 text_part = str;
+  if (rangeU64_count(range_for_triple_hash) > 0)
+  {
+    text_part = str8_substring(str, 0, range_for_triple_hash.min);
+  }
+  else if (rangeU64_count(range_for_double_hash) > 0)
+  {
+    text_part = str8_substring(str, 0, range_for_double_hash.min);
+  }
+
+  return text_part;
 }
 
 ///////////////////////////////////////////////////////////
@@ -330,33 +362,39 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
   box->clay_element_config.userData          = data;
 }
 
+void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
+{
+  box->clay_element_config.clip.childOffset.x = clip_offset;
+
+
+  // Damian: The code below doesnt work, i am not sure why, it has to do with the order in which we call clay stuff
+  // Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
+  // if (clay_scroll_data.found)
+  // {
+  //   clay_scroll_data.scrollPosition->x = clip_offset;
+  // }
+}
+
 ///////////////////////////////////////////////////////////
 // - Box data queries
 //
-UI_Box_data ui_box_data_from_box(UI_Box* box)
+UI_Box_data ui_box_data_from_id(Str8 id)
 {
-  Clay_ElementData clay_element_data = Clay_GetElementData(box->clay_element_config.id);
+  Clay_String clay_string            = __ui_clay_string_from_str8(id);
+  Clay_ElementId clay_id             = Clay__HashString(clay_string, 0, 0);
+  Clay_ElementData clay_element_data = Clay_GetElementData(clay_id);
   UI_Box_data result_data = {};
   result_data.is_found    = clay_element_data.found;
   result_data.rect        = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
   return result_data;
 }
 
-// TODO: This is new test code, move it to a better place when done
-// ========================================================
-// TODO: See if these comments are still valid
-struct UI_Actions {
-  // Lower level actions
-  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
-  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
-  //
-  // Composed for quick use
-  B32 is_clicked; // These are composed, so we need cross frame state and id
-  B32 went_down;  // These are composed, so we need cross frame state and id
-  B32 went_up;    // These are composed, so we need cross frame state and id
-};
+UI_Box_data ui_box_data_from_box(UI_Box* box)
+{
+  Str8 id = __ui_str8_from_clay_string(box->clay_element_config.id.stringId);
+  UI_Box_data data = ui_box_data_from_id(id);
+  return data;
+}
 
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
@@ -414,12 +452,14 @@ UI_Actions ui_actions_from_box(UI_Box* box)
         Assert(!left_box_while_was_down);
         Assert(!state->interacted_with_box_data.is_mouse_down);
         Assert(!state->interacted_with_box_data.did_mouse_leave_box_while_was_down);
+        Assert(IsZeroStruct(state->interacted_with_box_data.pos_when_mouse_went_down));
         Assert(state->interacted_with_box_data.clay_id.id == 0);
 
         is_down = true;
         state->interacted_with_box_data.is_mouse_down                      = true;
         state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
         state->interacted_with_box_data.clay_id                            = box->clay_element_config.id;
+        state->interacted_with_box_data.pos_when_mouse_went_down           = ui_get_mouse_pos();
       }
     }
     else if (was_down) 
@@ -454,6 +494,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
         is_down = false;
         state->interacted_with_box_data.is_mouse_down                      = false;
         state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
+        state->interacted_with_box_data.pos_when_mouse_went_down           = v2f32(0, 0);
         state->interacted_with_box_data.clay_id                            = Clay_ElementId{};
       }
     }
@@ -472,6 +513,13 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   result_actions.went_up                 = was_down && !is_down;  
 
   return result_actions;
+}
+
+V2F32 ui_clip_offset_from_box(UI_Box* box)
+{
+  Clay_ScrollContainerData scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
+  V2F32 offset = { scroll_data.scrollPosition->x, scroll_data.scrollPosition->y };
+  return offset;
 }
 
 ///////////////////////////////////////////////////////////
@@ -494,8 +542,6 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
-        // BP;
-
         Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
         V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
@@ -606,6 +652,7 @@ UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2)
   return size;
 }
 UI_Size ui_px(F32 value)             { return ui_size_make(UI_Size_kind__px, value, 0.0f); }
+UI_Size ui_rem(F32 scale)            { return ui_px(ui_top_font_size() * scale); }                 
 UI_Size ui_fit_mm(F32 min, F32 max)  { return ui_size_make(UI_Size_kind__fit, min, max); } 
 UI_Size ui_grow_mm(F32 min, F32 max) { return ui_size_make(UI_Size_kind__grow, min, max); }         
 UI_Size ui_fit()                     { return ui_size_make(UI_Size_kind__fit, 0.0f, 0.0f); } 
@@ -623,6 +670,21 @@ Arena* ui_get_build_arena()
 V2F32 ui_get_mouse_pos()
 {
   return ui_get_state()->mouse_pos_for_this_build;
+}
+
+V2F32 ui_get_prev_mouse_pos()
+{
+  return ui_get_state()->mouse_pos_for_prev_build;
+}
+
+UI_Box* ui_get_current_parent()
+{
+  return ui_get_state()->next_new_elements_parent_box;
+}
+
+UI_Box* ui_get_root()
+{
+  return ui_get_state()->root_box;
 }
 
 ///////////////////////////////////////////////////////////

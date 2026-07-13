@@ -296,6 +296,7 @@ enum OS_Cursor : U32 {
   OS_Cursor__pen,
   OS_Cursor__text_selection,
   OS_Cursor__unavailable,
+  OS_Cursor__horizontal_resize,
   OS_Cursor__COUNT,
 };
 void os_set_cursor(OS_Cursor cursor);

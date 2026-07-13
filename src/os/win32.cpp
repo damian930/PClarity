@@ -925,27 +925,6 @@ void os_set_cursor(OS_Cursor cursor)
   os_get_state()->window.frame_cursor = cursor;
   BOOL PostMessageW_succ = PostMessageW(os_get_state()->window.handle, WM_SETCURSOR, Null, Null);
   Assert(PostMessageW_succ);
-
-  // // todo: Send the message here to have the cursor changed next frame
-
-  // WCHAR* cursor_idc = IDC_ARROW;
-  // switch (cursor)
-  // {
-  //   default: case OS_Cursor__arrow: { cursor_idc = IDC_ARROW; } break;
-  //   case OS_Cursor__hand:           { cursor_idc = IDC_HAND; } break;
-  //   case OS_Cursor__crosshair:      { cursor_idc = IDC_CROSS; } break;
-  //   case OS_Cursor__pen:            { cursor_idc = MAKEINTRESOURCE(32631); } break;
-  //   case OS_Cursor__text_selection: { cursor_idc = IDC_IBEAM; } break;
-  //   case OS_Cursor__unavailable:    { cursor_idc = IDC_NO; } break;
-  // }
-
-  // HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);
-  // if (win32_cursor_handle == 0) { Assert(0); }
-
-  // B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
-  // Assert(DestroyCursor_succ);
-
-  // HCURSOR prev_win32_cursor = SetCursor(win32_cursor_handle);
 }
 
 ///////////////////////////////////////////////////////////
@@ -1130,12 +1109,13 @@ LRESULT win32_proc(
         WCHAR* cursor_idc = IDC_ARROW;
         switch (win32_state->window.frame_cursor)
         {
-          default: case OS_Cursor__arrow: { cursor_idc = IDC_ARROW; } break;
-          case OS_Cursor__hand:           { cursor_idc = IDC_HAND; } break;
-          case OS_Cursor__crosshair:      { cursor_idc = IDC_CROSS; } break;
-          case OS_Cursor__pen:            { cursor_idc = MAKEINTRESOURCE(32631); } break;
-          case OS_Cursor__text_selection: { cursor_idc = IDC_IBEAM; } break;
-          case OS_Cursor__unavailable:    { cursor_idc = IDC_NO; } break;
+          default: case OS_Cursor__arrow:    { cursor_idc = IDC_ARROW; } break;
+          case OS_Cursor__hand:              { cursor_idc = IDC_HAND; } break;
+          case OS_Cursor__crosshair:         { cursor_idc = IDC_CROSS; } break;
+          case OS_Cursor__pen:               { cursor_idc = MAKEINTRESOURCE(32631); } break;
+          case OS_Cursor__text_selection:    { cursor_idc = IDC_IBEAM; } break;
+          case OS_Cursor__unavailable:       { cursor_idc = IDC_NO; } break;
+          case OS_Cursor__horizontal_resize: { cursor_idc = IDC_SIZEWE; } break;
         }
   
         HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);

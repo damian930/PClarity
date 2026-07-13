@@ -833,6 +833,5 @@ typedef U64 Time; // This is used as just a value from Readable_time, it has to 
 tu_specific Time time_from_readable_time(Readable_time* r_time);
 tu_specific Readable_time readable_time_from_time(Time time);
 
-
 #endif
 
