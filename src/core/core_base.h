@@ -556,6 +556,13 @@ tu_specific S16 abs_s16(S16 x);
 tu_specific S32 abs_s32(S32 x);
 tu_specific S64 abs_s64(S64 x);
 
+tu_specific F32 sign_f32(F32 x);
+tu_specific F64 sign_f64(F64 x);
+tu_specific S8  sign_s8 (S8 x);
+tu_specific S16 sign_s16(S16 x);
+tu_specific S32 sign_s32(S32 x);
+tu_specific S64 sign_s64(S64 x);
+
 tu_specific F32 clamp_f32(F32 value, F32 min, F32 max);
 tu_specific F64 clamp_f64(F64 value, F64 min, F64 max);
 tu_specific S8  clamp_s8 (S8  value, S8  min, S8  max);
@@ -832,6 +839,8 @@ typedef U64 Time; // This is used as just a value from Readable_time, it has to 
 
 tu_specific Time time_from_readable_time(Readable_time* r_time);
 tu_specific Readable_time readable_time_from_time(Time time);
+
+// TODO: This might be stupid, but if this is, then just have this be 
 
 #endif
 

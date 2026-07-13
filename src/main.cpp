@@ -82,28 +82,38 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   PCL_State pcl = pcl_init();
   
-  Arena* table_arena = arena_alloc(Megabytes(4));
-  Table_state* table_state = ArenaPush(table_arena, Table_state);
-  
-  {
-    table_add_header(table_arena, table_state, 0.4f, Str8FromC("H1"));
-    table_add_header(table_arena, table_state, 0.4f, Str8FromC("H2"));
-    table_add_header(table_arena, table_state, 0.2f, Str8FromC("H3"));
+  // Arena* table_arena = arena_alloc(Megabytes(4));
+  // Table_state* table_state = ArenaPush(table_arena, Table_state);
+  // {
+  //   table_add_header(table_arena, table_state, 0.4f, Str8FromC("H1"));
+  //   table_add_header(table_arena, table_state, 0.4f, Str8FromC("H2"));
+  //   table_add_header(table_arena, table_state, 0.2f, Str8FromC("H3"));
 
-    Table_row_entry_list* row_1 = table_add_row(table_arena, table_state);
-    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H1_data"));
-    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H2_data"));
-    table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H3_data"));
+  //   Table_row_entry_list* row_1 = table_add_row(table_arena, table_state);
+  //   table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H1_data"));
+  //   table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H2_data"));
+  //   table_add_col_data_to_row(table_arena, row_1, Str8FromC("Row1_H3_data"));
   
-    Table_row_entry_list* row_2 = table_add_row(table_arena, table_state);
-    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H1_data"));
-    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H2_data"));
-    table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H3_data"));
+  //   Table_row_entry_list* row_2 = table_add_row(table_arena, table_state);
+  //   table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H1_data"));
+  //   table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H2_data"));
+  //   table_add_col_data_to_row(table_arena, row_2, Str8FromC("Row2_H3_data"));
   
-    Table_row_entry_list* row_3 = table_add_row(table_arena, table_state);
-    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H1_data"));
-    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H2_data"));
-    table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H3_data"));
+  //   Table_row_entry_list* row_3 = table_add_row(table_arena, table_state);
+  //   table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H1_data"));
+  //   table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H2_data"));
+  //   table_add_col_data_to_row(table_arena, row_3, Str8FromC("Row3_H3_data"));
+  // }
+
+  UI_Table_config table_conf = {};
+  {
+    table_conf.row_size_in_pixels        = 100;
+    table_conf.header_sizes_p_of_p[0]    = 0.25f;
+    table_conf.header_sizes_p_of_p[1]    = 0.5f;
+    table_conf.header_sizes_p_of_p[2]    = 0.25f;
+    table_conf.header_sizes_p_of_p_count = 3;
+    table_conf.border_color              = green();
+    table_conf.border_around_width       = 2;
   }
 
   for (;!os_window_should_close();)
@@ -116,7 +126,27 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     // pcl_do_ui(font, &pcl);
     // test_table_ui(font);
     // test_code_for_table_api(font);
-    table_extraction_test(table_state, font);
+    // table_do_ui_build(&table_conf, font, 500, 500);
+
+    ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+    ui_push_font_size(24);
+    {
+      static F32 box_width = 100;
+      ui_next_width(ui_px(200));
+      ui_next_height(ui_px(50));
+      box_width = pcl_ui_slider(box_width, rangeF32(10, 200), Str8FromC("Slider id"));
+
+      ui_next_width(ui_px(box_width));
+      ui_next_height(ui_fit());
+      ui_next_b_color(nice_blue());
+      ui_next_extra_flags(UI_Box_flag__has_background);
+      UI_Wrapper()
+      {
+        ui_label(Str8FromC("fsdlfjsdklfsdklfsdjlfksdf"));
+      }
+
+    }
+    ui_end_build();
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();

@@ -14,9 +14,21 @@ void ui_end_layout_stack();
 #define UI_Row() DeferLoop(ui_begin_layout_stack(Axis2__x), ui_end_layout_stack())
 #define UI_Col() DeferLoop(ui_begin_layout_stack(Axis2__y), ui_end_layout_stack())
 
+// - Simple wrapper
+void ui_begin_wrapper();
+void ui_end_wrapper();
+#define UI_Wrapper() DeferLoop(ui_begin_wrapper(), ui_end_wrapper())
+
 // - Labels
 void ui_label(Str8 outer_str);
 void ui_label_f(const char* fmt, ...);
+//
+// Damian: I got so sick of trying to type text instead of label. I am just gonna add text to just then call label since label is a more general work for that.
+void ui_text(Str8 str);
+void ui_text_f(const char* fmt, ...);
+
+// - Ellipsed labels
+void ui_label_ellipsed(Str8 str);
 
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);

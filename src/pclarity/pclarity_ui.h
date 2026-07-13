@@ -427,189 +427,6 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
 ///////////////////////////////////////////////////////////
 // - Testing how a table for the process data will work, never done this sort of ui before
 //
-void test_table_ui(FP_Font font)
-{
-  ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
-  ui_push_font_size(24);
-
-  // State that is retained by the table
-  struct Table_col_data {
-    Str8 header_text;
-    F32 p_of_p_header_size;
-  };
-
-  // Heading meta data
-  static Table_col_data table_header_data[] = {
-    { Str8FromC("H1"),  0.5f },
-    { Str8FromC("H2"),  0.25f },
-    { Str8FromC("H3"),  0.25f },
-  };
-
-  // Table ui build
-  B32 did_resizer_get_dragged = false;
-  U64 column_index_whos_resizer_got_dragged = 0;
-  F32 drag_delta = 0;
-  //
-  ui_next_width(ui_px(500));
-  ui_next_height(ui_px(500));
-  ui_next_padded_border(3, nice_green());
-  ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
-  UI_Col()
-  {
-    // Header ui
-    ui_next_width(ui_grow());
-    UI_Row()
-    {
-      for (U64 header_index = 0; header_index < ArrayCount(table_header_data); header_index += 1)
-      {
-        ui_next_width(ui_p_of_p(table_header_data[header_index].p_of_p_header_size));
-        ui_next_height(ui_fit());
-        ui_next_padded_border(1, nice_blue());
-        ui_next_alignment_x(UI_Alignment_x__center);
-        ui_next_layout_x();
-        UI_Parent(ui_box_make_f("Table header %lld", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_index))
-        {
-          ui_label(table_header_data[header_index].header_text);
-
-          ui_spacer(ui_grow());
-
-          if (header_index < ArrayCount(table_header_data) - 1)
-          {
-            ui_next_width(ui_px(5));
-            ui_next_height(ui_grow());
-            ui_next_b_color(orange());
-            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-            UI_Box* header_column_resizer = ui_box_make_f("Resizer for header %lld", UI_Box_flag__has_background, header_index);
-            
-            UI_Actions resizer_actions = ui_actions_from_box(header_column_resizer);
-            if (resizer_actions.is_down)
-            {
-              did_resizer_get_dragged = true;
-              column_index_whos_resizer_got_dragged = header_index;
-              drag_delta = ui_get_mouse_pos().x - ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down.x;
-            }
-          }
-
-        }
-      }
-    }
-
-    static struct {
-      const char* col1;
-      const char* col2;
-      const char* col3;
-    } data_rows[] = {
-      { "More text here", "2", "3" },
-      { "1", "2", "Some text" },
-      { "1", "Here we are", "3" },
-    };
-
-    // Rows ui
-    for EachIndex(i, ArrayCount(data_rows))
-    {
-      ui_next_width(ui_p_of_p(1));
-      ui_next_height(ui_fit());
-      UI_Row()
-      {
-        ui_next_width(ui_p_of_p(table_header_data[0].p_of_p_header_size));
-        ui_next_height(ui_fit());
-        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
-        {
-          ui_label_f("%s", data_rows[i].col1);
-        }
-
-        ui_next_width(ui_px(5));
-        ui_next_height(ui_grow());
-        ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
-        ui_box_make({}, UI_Box_flag__has_background);
-
-        ui_next_width(ui_p_of_p(table_header_data[1].p_of_p_header_size));
-        ui_next_height(ui_fit());
-        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
-        {
-          ui_label_f("%s", data_rows[i].col1);
-        }
-
-        ui_next_width(ui_px(5));
-        ui_next_height(ui_grow());
-        ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
-        ui_box_make({}, UI_Box_flag__has_background);
-
-        ui_next_width(ui_p_of_p(table_header_data[2].p_of_p_header_size));
-        ui_next_height(ui_fit());
-        UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
-        {
-          ui_label_f("%s", data_rows[i].col1);
-        }
-
-      }
-    }
-  }
-
-  // Table inputs and resizing
-  if (did_resizer_get_dragged)
-  {
-    // todo: Here you have to chnage the whole row of the p of p %s to have the table render in different size
-    B32 all_headers_found = true;
-    Rect rects_for_each_header[ArrayCount(table_header_data)] = {};
-    for EachIndex(header_index, ArrayCount(table_header_data))
-    {
-      Scratch scratch = get_scratch(0, 0);
-      Str8 header_id = str8_fmt(scratch.arena, "Table header %lld", header_index);
-      UI_Box_data header_box_data = ui_box_data_from_id(header_id);
-      if (!header_box_data.is_found) {
-        all_headers_found = false;
-      } else {
-        rects_for_each_header[header_index] = header_box_data.rect;
-      }
-      end_scratch(&scratch);
-    }
-
-    if (all_headers_found)
-    {
-      V2F32 initial_mouse_pos = ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down;
-      V2F32 mouse_pos         = ui_get_mouse_pos();
-      V2F32 prev_mouse_pos    = ui_get_prev_mouse_pos();
-
-      // todo: Compare the mouse pos to the box rect
-
-      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
-      F32 mouse_relative_to_header = mouse_pos.x - rect_for_header_that_got_dragged.x;
-      // todo: Width should be there
-
-      F32 total_rects_width = 0.0f;
-      for EachIndex(i, ArrayCount(rects_for_each_header))
-      {
-        total_rects_width += rects_for_each_header[i].width;
-      }
-
-      for EachIndex(i, ArrayCount(rects_for_each_header))
-      {
-        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
-      }
-
-      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
-      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
-
-      F32 prev_dragged_rect_width = dragged_rect->width;
-      dragged_rect->width = mouse_relative_to_header;
-      rect_after_dragged_rect->width -= (dragged_rect->width - prev_dragged_rect_width);
-    
-      for EachIndex(i, ArrayCount(rects_for_each_header))
-      {
-        Rect rect = rects_for_each_header[i];
-        F32 p_of_p = rect.width / total_rects_width;
-        table_header_data[i].p_of_p_header_size = p_of_p;
-      }
-    }
-  }
-
-  ui_end_build();
-}
-
-///////////////////////////////////////////////////////////
-// - Extracting table api like you saw casey do 
-//
 struct Table_header_col_data {
   Str8 str;
   F32 percentage_of_the_table_content_size;
@@ -858,6 +675,244 @@ void table_extraction_test(Table_state* table_state, FP_Font font)
       }
     }
   }
+
+  ui_end_build();
+}
+
+///////////////////////////////////////////////////////////
+// - Extracting table api like you saw casey do 
+//
+struct UI_Table_config {
+  F32 header_sizes_p_of_p[64]; // TODO: Dont have it be capped like that
+  U64 header_sizes_p_of_p_count;
+
+  F32 row_size_in_pixels;
+
+  V4F32 border_color;
+  F32 border_around_width;
+};
+
+struct UI_Table_row {
+  UI_Box** row_entries;
+  U64 count;
+};
+
+void table_ui_step_1(
+  // Input
+  UI_Table_config* table_conf, 
+  F32 width, 
+  F32 height,
+  U64 n_rows, 
+  
+  // Output
+  Arena* arena_for_out_boxes, 
+  UI_Box*** out_array_of_header_boxes, U64* out_array_of_header_boxes_size,
+  UI_Table_row** out_array_of_rows, U64* out_array_of_rows_size
+) {
+  // Table ui build
+  B32 did_resizer_get_dragged = false;
+  U64 column_index_whos_resizer_got_dragged = 0;
+  F32 drag_delta = 0;
+  //
+  ui_next_width(ui_px(width));
+  ui_next_height(ui_px(height));
+  ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
+  ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding|UI_Box_flag__clip);
+  UI_Col()
+  {
+    U64 number_of_headers = table_conf->header_sizes_p_of_p_count;
+    UI_Box** arr_of_header_boxes = ArenaPushArr(arena_for_out_boxes, UI_Box*, number_of_headers);
+
+    // Header ui
+    ui_next_width(ui_grow());
+    UI_Row()
+    {
+      for EachIndex(header_index, table_conf->header_sizes_p_of_p_count)
+      {
+        ui_next_width(ui_p_of_p(table_conf->header_sizes_p_of_p[header_index]));
+        ui_next_height(ui_px(table_conf->row_size_in_pixels)); 
+        UI_Row()
+        {
+          ui_next_width(ui_grow());
+          ui_next_height(ui_grow());
+          ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
+          ui_next_alignment_x(UI_Alignment_x__center);
+          ui_next_layout_x();
+          UI_Box* header_box = ui_box_make_f("Table header %lld", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_index);
+
+          arr_of_header_boxes[header_index] = header_box;
+          
+          if (header_index != (table_conf->header_sizes_p_of_p_count - 1))
+          {
+            ui_next_width(ui_px(5));
+            ui_next_height(ui_px(table_conf->row_size_in_pixels));
+            ui_next_b_color(magenta());
+            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+            UI_Box* resizer = ui_box_make_f("Resizer %lld", UI_Box_flag__has_background, header_index);
+  
+            UI_Actions resizer_actions = ui_actions_from_box(resizer);
+            if (resizer_actions.is_down)
+            {
+              did_resizer_get_dragged = true;
+              column_index_whos_resizer_got_dragged = header_index;
+              drag_delta = ui_get_mouse_pos().x - resizer_actions.mouse_pos_when_went_down.x;
+            }
+          }
+
+        }
+      }
+    }
+
+    *out_array_of_header_boxes = arr_of_header_boxes; // This here is kind of code repetition
+    *out_array_of_header_boxes_size = number_of_headers; // This here is kind of code repetition
+
+    // todo: These allocation here might be made better and more in order, but thats fine for now
+    UI_Table_row* array_of_rows = ArenaPushArr(arena_for_out_boxes, UI_Table_row, n_rows);
+
+    for EachIndex(row_index, n_rows)
+    {
+      UI_Table_row* row = array_of_rows + row_index;
+      row->count = table_conf->header_sizes_p_of_p_count;
+      row->row_entries = ArenaPushArr(arena_for_out_boxes, UI_Box*, row->count);
+    }
+
+    // Rows ui
+    for EachIndex(row_index, n_rows)
+    {
+      UI_Table_row* row = array_of_rows + row_index;
+
+      ui_next_width(ui_p_of_p(1));
+      ui_next_height(ui_px(table_conf->row_size_in_pixels));
+      UI_Row()
+      {
+        for EachIndex(header_index, table_conf->header_sizes_p_of_p_count)
+        {
+          ui_next_width(ui_p_of_p(table_conf->header_sizes_p_of_p[header_index]));
+          ui_next_height(ui_px(table_conf->row_size_in_pixels));
+          ui_next_layout_x();
+          ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
+          UI_Box* row_entry_box = ui_box_make({}, UI_Box_flag__clip|UI_Box_flag__has_borders|UI_Box_flag__has_padding);
+          
+          row->row_entries[header_index] = row_entry_box;
+        }
+      }
+    }
+    
+    *out_array_of_rows = array_of_rows;
+    *out_array_of_rows_size = n_rows;
+  }
+
+  // Table resizing
+  if (did_resizer_get_dragged) ScratchLoop(scratch, 0, 0)
+  {
+    B32 all_headers_found = true;
+    U64 header_count = table_conf->header_sizes_p_of_p_count;
+    Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
+    
+    for EachIndex(header_index, header_count)
+    {
+      Str8 header_id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+      UI_Box_data header_box_data = ui_box_data_from_id(header_id);
+      if (!header_box_data.is_found) {
+        all_headers_found = false;
+      } else {
+        rects_for_each_header[header_index] = header_box_data.rect;
+      }
+    }
+
+    if (all_headers_found)
+    {
+      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
+      F32 mouse_relative_to_header = ui_get_mouse_pos().x - rect_for_header_that_got_dragged.x;
+
+      F32 total_rects_width = 0.0f;
+      for EachIndex(i, header_count)
+      {
+        total_rects_width += rects_for_each_header[i].width;
+      }
+
+      for EachIndex(i, header_count)
+      {
+        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
+      }
+
+      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
+      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
+
+      F32 mouse_move_perncentage_in_total_space = abs_f32(mouse_relative_to_header) / total_rects_width;
+      F32 prev_p_of_p = table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged];
+      table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged] = mouse_move_perncentage_in_total_space;
+      table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged + 1] += (prev_p_of_p - mouse_move_perncentage_in_total_space);
+    }
+  }
+
+}
+
+void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32 height)
+{
+  static struct {
+    R_Handle texture;
+    Str8 name;
+    Str8 usage_word;
+  } process_data_arr[3] = {};
+
+  process_data_arr[0] = { r_load_texture_from_file(Str8FromC("../data/icons/house.png")), Str8FromC("Discord"), Str8FromC("Low") };
+  process_data_arr[1] = { r_load_texture_from_file(Str8FromC("../data/icons/house.png")), Str8FromC("Telegram"), Str8FromC("Low") };
+  process_data_arr[2] = { r_load_texture_from_file(Str8FromC("../data/icons/house.png")), Str8FromC("Minecraft"), Str8FromC("Low") };
+
+  ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+  ui_push_font_size(24);
+
+  Scratch scratch = get_scratch(0, 0);
+
+  UI_Box** array_of_header_boxes = 0;
+  U64 number_of_header_boxes     = 0;
+  UI_Table_row* array_of_rows    = 0;
+  U64 number_of_rows             = 0;
+  table_ui_step_1(
+    table_conf, width, height, ArrayCount(process_data_arr), 
+    scratch.arena, &array_of_header_boxes, &number_of_header_boxes, &array_of_rows, &number_of_rows
+  );
+
+  UI_Col()
+  {
+    for EachIndex(header_box_index, number_of_header_boxes)
+    {
+      UI_Parent(array_of_header_boxes[header_box_index])
+      {
+        if (0) {}
+        else if (header_box_index == 0) { ui_text_f("Icon"); }
+        else if (header_box_index == 1) { ui_text_f("Name"); }
+        else if (header_box_index == 2) { ui_text_f("Usage"); }
+      }
+    }
+
+    for EachIndex(row_index, number_of_rows)
+    {
+      UI_Table_row row = array_of_rows[row_index];
+      for EachIndex(row_data_entry_index, row.count)
+      {
+        UI_Box* data_entry_box = row.row_entries[row_data_entry_index];
+        UI_Parent(data_entry_box)
+        {
+          if (0) {}
+          else if (row_data_entry_index == 0) { 
+            ui_image(process_data_arr[row_index].texture, ui_top_font_size(), ui_top_font_size());
+          }
+          else if (row_data_entry_index == 1) { 
+            ui_text(process_data_arr[row_index].name);
+          }
+          else if (row_data_entry_index == 2) { 
+            ui_text(process_data_arr[row_index].usage_word);
+          }
+        }
+
+      }
+    }
+
+  }
+
+  end_scratch(&scratch);
 
   ui_end_build();
 }

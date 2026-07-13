@@ -62,23 +62,37 @@ enum UI_Alignment_y : U32 {
   UI_Alignment_y__COUNT,
 };
 
-// // Controls the alignment along the y axis (vertical) of child elements.
-// typedef CLAY_PACKED_ENUM {
-//     // (Default) Aligns child elements to the top of this element, offset by padding.width.top
-//     CLAY_ALIGN_Y_TOP,
-//     // Aligns child elements to the bottom of this element, offset by padding.width.bottom
-//     CLAY_ALIGN_Y_BOTTOM,
-//     // Aligns child elements vertically to the center of this element
-//     CLAY_ALIGN_Y_CENTER,
-// } Clay_LayoutAlignmentY;
+struct UI_Box; // TODO: Move this to a better place
+struct UI_Provided_data_for_custom_draw {
+  UI_Box* box;
+  
+  // Damian: These are provided by clay directly 
+  Rect final_box_rect;
+  V4F32 background_color;
+  V4F32 corner_radii;
+};
+#define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data)
+typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_pointer_type);
 
-// TODO: Here will be all the box data that we need that will then be used in the clay thing
+UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func); 
+
 struct UI_Box {
   Clay_ElementDeclaration clay_element_config;
   B32 has_been_updated_this_frame;
 
   B32 has_hover_cursor;
   OS_Cursor hover_cursor;
+
+  struct {
+    UI_Box_custom_draw_func_pointer_type* draw_func; 
+    void* data_for_draw_func;
+  } custom_draw_extension;
+
+  struct {
+    Str8 text;
+    F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
+    FP_Font font;
+  } text_extension;
 
   UI_Box* first_child;
   UI_Box* last_child;
@@ -95,6 +109,15 @@ struct UI_Box {
   {}, \
   {}, \
   {}, \
+  { \
+    __ui_custom_draw_stub_func, \
+    {}, \
+  }, \
+  { \
+    {}, \
+    {}, \
+    {}, \
+  }, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
   &__ui_g_null_box, \
@@ -120,6 +143,9 @@ struct UI_Actions {
   B32 is_clicked; // These are composed, so we need cross frame state and id
   B32 went_down;  // These are composed, so we need cross frame state and id
   B32 went_up;    // These are composed, so we need cross frame state and id
+
+  // TODO: This is new data, so putting this here for now
+  V2F32 mouse_pos_when_went_down;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -214,25 +240,20 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
 // Str8 __ui_get_id_part_from_str8(Str8 str);
 // Str8 __ui_get_text_part_from_str8(Str8 str);
 
-// - Box custom draw extention
-struct UI_Provided_data_for_custom_draw {
-  Rect final_box_rect;
-  V4F32 background_color;
-  V4F32 corner_radii;
-};
-#define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data, void* custom_data)
-typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_type);
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data);
+// - Box extension
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
+void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
 // - Box data queries
 UI_Box_data ui_box_data_from_id(Str8 id);
 UI_Box_data ui_box_data_from_box(UI_Box* box);
-//
 UI_Actions ui_actions_from_box(UI_Box* box);
-// 
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 
-// - Size makers
+// - Box setters // TODO: This is new, might not be used later
+void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
+
+// - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
 UI_Size ui_px(F32 value);                 
 UI_Size ui_rem(F32 scale);                 

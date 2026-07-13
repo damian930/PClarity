@@ -183,6 +183,16 @@ S32 abs_s32(S32 x) { S32 result = x; if (result < 0) { result *= -1; } return re
 S64 abs_s64(S64 x) { S64 result = x; if (result < 0) { result *= -1; } return result; }
 
 ///////////////////////////////////////////////////////////
+// - Sign
+//
+F32 sign_f32(F32 x) { return (x < 0.0f ? -1.0f : 1.0f); }
+F64 sign_f64(F64 x) { return (x < 0.0  ? -1.0  : 1.0 ); }
+S8  sign_s8 (S8 x)  { return (x < 0    ? -1    : 1   ); }
+S16 sign_s16(S16 x) { return (x < 0    ? -1    : 1   ); }
+S32 sign_s32(S32 x) { return (x < 0    ? -1    : 1   ); }
+S64 sign_s64(S64 x) { return (x < 0    ? -1    : 1   ); }
+
+///////////////////////////////////////////////////////////
 // - Clamp
 //
 F32 clamp_f32(F32 value, F32 min, F32 max) { F32 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }

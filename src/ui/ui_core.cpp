@@ -27,6 +27,15 @@ void __ui_error_handler_for_clay(Clay_ErrorData errorText)
   BreakPoint();
 }
 
+UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
+{
+  BreakPoint(
+    "Hey big fella."
+    "I guess some went wrong since you are here,"
+    "but dont worry, I believe in you."
+  );
+}
+
 ///////////////////////////////////////////////////////////
 // - State
 //
@@ -161,9 +170,41 @@ UI_Box* ui_find_box_by_id(Clay_ElementId id)
 
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 {
+  if (ui_box_is_null(root)) { return; }
+
   UI_State* state = ui_get_state();
   
   Clay__OpenElement();
+  
+  /* Damian, TODO: Look into this:
+  When you started to wrap clay you decided to have all the clay config be set
+  when the box gets created in ui_box_make with data from all the stacks in the 
+  ui_state. But now that you have custom draw that is an extension and therefore has 
+  a separate codepath and is different from default stacks since its more a neche thing
+  and hence is an extension. 
+
+  But that means that the called of the api might extend the box with custom draw
+  after making the box, this means that you now have to pass that data to the clay config
+  here. This makes the clay config setting happend from different places.
+
+  Overall its fine, but it is more impl detail, i dont know right now if its an issue,
+  but just know that if there comes a time where you have more stuff here, it might be 
+  a good idea to think about where and when you set clay config with data.
+
+  Easiest way to do this is to have state in the box for all the config and then 
+  set it all in the box_make and then here when making the clay from our own tree
+  you will just copy the data. I dont want to rush it and do it now.
+  
+  **
+    Most importantly, how you doing dude, hope you are great, havent been skipping on those gyms
+    sessions you planned for summer.
+  **
+  */
+  if (root->custom_draw_extension.draw_func != 0 && root->custom_draw_extension.draw_func != __ui_custom_draw_stub_func) // Damian: No flag yet for that, just staight up pointer value checking
+  {
+    root->clay_element_config.custom.customData = root;
+  }
+
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
   if (Clay_Hovered())
@@ -218,6 +259,9 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   }
 
   __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
+
+  new_box->text_extension.font      = ui_top_font();
+  new_box->text_extension.font_size = ui_top_font_size();
 
   // TODO: If this ends up beeing used more than just here, then have this be a func in the macro file for stacks
   if (state->stacks.stack_hover_cursor.count > 0 || state->stacks.stack_hover_cursor.is_single_use_value_set) // Only having a cursor if there is one, disregard the default cursor
@@ -354,25 +398,21 @@ Str8 __ui_get_text_part_from_str8(Str8 str)
 }
 
 ///////////////////////////////////////////////////////////
-// - Box custom draw extention
+// - Box extension
 //
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_type* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
 {
-  box->clay_element_config.custom.customData = (void*)custom_draw;
-  box->clay_element_config.userData          = data;
+  box->custom_draw_extension.draw_func          = custom_draw;
+  box->custom_draw_extension.data_for_draw_func = (void*)data;
 }
 
-void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
+void ui_extend_box_with_text(UI_Box* box, Str8 str)
 {
-  box->clay_element_config.clip.childOffset.x = clip_offset;
+  box->text_extension.text      = str8_copy(ui_get_build_arena(), str);
 
-
-  // Damian: The code below doesnt work, i am not sure why, it has to do with the order in which we call clay stuff
-  // Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
-  // if (clay_scroll_data.found)
-  // {
-  //   clay_scroll_data.scrollPosition->x = clip_offset;
-  // }
+  // Damian: These are already in the `text_extension`. 
+  // box->text_extension.font_size = ui_top_font_size();
+  // box->text_extension.font      = ui_top_font();
 }
 
 ///////////////////////////////////////////////////////////
@@ -403,12 +443,13 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   UI_State* state = ui_get_state();
 
   // Data to get
-  B32 is_hovered              = false;
-  B32 is_down                 = false;
-  B32 was_down                = false;
-  B32 left_box_while_was_down = false;
-  B32 is_active               = false;
-  B32 is_navigated            = false;
+  B32 is_hovered                 = false;
+  B32 is_down                    = false;
+  B32 was_down                   = false;
+  B32 left_box_while_was_down    = false;
+  B32 is_active                  = false;
+  B32 is_navigated               = false;
+  V2F32 mouse_pos_when_went_down = {};
 
   is_hovered = Clay_PointerOver(box->clay_element_config.id); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
 
@@ -456,6 +497,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
         Assert(state->interacted_with_box_data.clay_id.id == 0);
 
         is_down = true;
+        mouse_pos_when_went_down = ui_get_mouse_pos();
         state->interacted_with_box_data.is_mouse_down                      = true;
         state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
         state->interacted_with_box_data.clay_id                            = box->clay_element_config.id;
@@ -503,14 +545,14 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   // is_active    = str8_match(ctx->active_box_id, this_frames_box->id, 0);
 
   UI_Actions result_actions = {};
-
-  result_actions.is_hovered              = is_hovered;            
-  result_actions.is_down                 = is_down;               
-  result_actions.was_down                = was_down;              
-  result_actions.left_box_while_was_down = left_box_while_was_down;
-  result_actions.is_clicked              = was_down && !is_down && !left_box_while_was_down;
-  result_actions.went_down               = !was_down && is_down;
-  result_actions.went_up                 = was_down && !is_down;  
+  result_actions.is_hovered               = is_hovered;            
+  result_actions.is_down                  = is_down;               
+  result_actions.was_down                 = was_down;              
+  result_actions.left_box_while_was_down  = left_box_while_was_down;
+  result_actions.is_clicked               = was_down && !is_down && !left_box_while_was_down;
+  result_actions.went_down                = !was_down && is_down;
+  result_actions.went_up                  = was_down && !is_down;  
+  result_actions.mouse_pos_when_went_down = mouse_pos_when_went_down;
 
   return result_actions;
 }
@@ -520,6 +562,21 @@ V2F32 ui_clip_offset_from_box(UI_Box* box)
   Clay_ScrollContainerData scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
   V2F32 offset = { scroll_data.scrollPosition->x, scroll_data.scrollPosition->y };
   return offset;
+}
+
+///////////////////////////////////////////////////////////
+// - Box setters
+//
+void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
+{
+  box->clay_element_config.clip.childOffset.x = clip_offset;
+
+  // Damian: The code below doesnt work, i am not sure why, it has to do with the order in which we call clay stuff
+  // Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
+  // if (clay_scroll_data.found)
+  // {
+  //   clay_scroll_data.scrollPosition->x = clip_offset;
+  // }
 }
 
 ///////////////////////////////////////////////////////////
@@ -618,20 +675,24 @@ void ui_draw()
         V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
         V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
         
-        UI_Box_custom_draw_func_type* custom_draw_func = (UI_Box_custom_draw_func_type*)command.renderData.custom.customData;
-        UI_Provided_data_for_custom_draw provided_data = {};
-        provided_data.final_box_rect   = rect;
-        provided_data.background_color = b_color;
-        provided_data.corner_radii     = clay_corner_r;
-        
-        custom_draw_func(provided_data, command.userData);
+        UI_Box* box_to_custom_draw = (UI_Box*)command.renderData.custom.customData;
+        Assert(box_to_custom_draw->custom_draw_extension.draw_func);
+        if (box_to_custom_draw->custom_draw_extension.draw_func)
+        {
+          UI_Provided_data_for_custom_draw provided_data = {};
+          provided_data.box              = box_to_custom_draw;
+          provided_data.final_box_rect   = rect;
+          provided_data.background_color = b_color;
+          provided_data.corner_radii     = clay_corner_r;
+          
+          box_to_custom_draw->custom_draw_extension.draw_func(provided_data);
+        }
       } break;
     }
   }
 
   d_pop_scissor_rect();
 }
-
 
 ///////////////////////////////////////////////////////////
 // - Size makers
