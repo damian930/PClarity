@@ -683,8 +683,8 @@ void table_extraction_test(Table_state* table_state, FP_Font font)
 // - Extracting table api like you saw casey do 
 //
 struct UI_Table_config {
-  F32 header_sizes_p_of_p[64]; // TODO: Dont have it be capped like that
-  U64 header_sizes_p_of_p_count;
+  F32 flex_values_for_headers[64]; // TODO: Dont have it be capped like that
+  U64 flex_values_for_headers_count;
 
   F32 row_size_in_pixels;
 
@@ -712,7 +712,6 @@ void table_ui_step_1(
   // Table ui build
   B32 did_resizer_get_dragged = false;
   U64 column_index_whos_resizer_got_dragged = 0;
-  F32 drag_delta = 0;
   //
   ui_next_width(ui_px(width));
   ui_next_height(ui_px(height));
@@ -720,16 +719,24 @@ void table_ui_step_1(
   ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding|UI_Box_flag__clip);
   UI_Col()
   {
-    U64 number_of_headers = table_conf->header_sizes_p_of_p_count;
+    U64 number_of_headers = table_conf->flex_values_for_headers_count;
     UI_Box** arr_of_header_boxes = ArenaPushArr(arena_for_out_boxes, UI_Box*, number_of_headers);
 
     // Header ui
     ui_next_width(ui_grow());
     UI_Row()
     {
-      for EachIndex(header_index, table_conf->header_sizes_p_of_p_count)
+      F32 total_flex_value = 0.0f;
+      for EachIndex(header_index, table_conf->flex_values_for_headers_count)
       {
-        ui_next_width(ui_p_of_p(table_conf->header_sizes_p_of_p[header_index]));
+        total_flex_value += table_conf->flex_values_for_headers[header_index];
+      }
+
+      for EachIndex(header_index, table_conf->flex_values_for_headers_count)
+      {
+        F32 flex_percentage = table_conf->flex_values_for_headers[header_index] / total_flex_value;
+
+        ui_next_width(ui_p_of_p(flex_percentage));
         ui_next_height(ui_px(table_conf->row_size_in_pixels)); 
         UI_Row()
         {
@@ -742,9 +749,9 @@ void table_ui_step_1(
 
           arr_of_header_boxes[header_index] = header_box;
           
-          if (header_index != (table_conf->header_sizes_p_of_p_count - 1))
+          if (header_index != (table_conf->flex_values_for_headers_count - 1))
           {
-            ui_next_width(ui_px(5));
+            ui_next_width(ui_px(1));
             ui_next_height(ui_px(table_conf->row_size_in_pixels));
             ui_next_b_color(magenta());
             ui_next_hover_cursor(OS_Cursor__horizontal_resize);
@@ -755,7 +762,6 @@ void table_ui_step_1(
             {
               did_resizer_get_dragged = true;
               column_index_whos_resizer_got_dragged = header_index;
-              drag_delta = ui_get_mouse_pos().x - resizer_actions.mouse_pos_when_went_down.x;
             }
           }
 
@@ -772,7 +778,7 @@ void table_ui_step_1(
     for EachIndex(row_index, n_rows)
     {
       UI_Table_row* row = array_of_rows + row_index;
-      row->count = table_conf->header_sizes_p_of_p_count;
+      row->count = table_conf->flex_values_for_headers_count;
       row->row_entries = ArenaPushArr(arena_for_out_boxes, UI_Box*, row->count);
     }
 
@@ -785,9 +791,18 @@ void table_ui_step_1(
       ui_next_height(ui_px(table_conf->row_size_in_pixels));
       UI_Row()
       {
-        for EachIndex(header_index, table_conf->header_sizes_p_of_p_count)
+        // TODO: This is already above, this is duplicated code
+        F32 total_flex_value = 0.0f;
+        for EachIndex(header_index, table_conf->flex_values_for_headers_count)
         {
-          ui_next_width(ui_p_of_p(table_conf->header_sizes_p_of_p[header_index]));
+          total_flex_value += table_conf->flex_values_for_headers[header_index];
+        }
+        
+        for EachIndex(header_index, table_conf->flex_values_for_headers_count)
+        {
+          F32 flex_percentage = table_conf->flex_values_for_headers[header_index] / total_flex_value;
+
+          ui_next_width(ui_p_of_p(flex_percentage));
           ui_next_height(ui_px(table_conf->row_size_in_pixels));
           ui_next_layout_x();
           ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
@@ -806,7 +821,7 @@ void table_ui_step_1(
   if (did_resizer_get_dragged) ScratchLoop(scratch, 0, 0)
   {
     B32 all_headers_found = true;
-    U64 header_count = table_conf->header_sizes_p_of_p_count;
+    U64 header_count = table_conf->flex_values_for_headers_count;
     Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
     
     for EachIndex(header_index, header_count)
@@ -823,29 +838,43 @@ void table_ui_step_1(
     if (all_headers_found)
     {
       Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
-      F32 mouse_relative_to_header = ui_get_mouse_pos().x - rect_for_header_that_got_dragged.x;
+      
+      // This is drag delta from prev frame, so frame based drag
+      F32 mouse_relative_to_header = ui_get_prev_mouse_pos().x - rect_for_header_that_got_dragged.x;
 
-      F32 total_rects_width = 0.0f;
-      for EachIndex(i, header_count)
+      if (mouse_relative_to_header > 0.0f)
       {
-        total_rects_width += rects_for_each_header[i].width;
+        // Adjusting the dragged header
+        F32 px_space_diff = mouse_relative_to_header - rect_for_header_that_got_dragged.width; // TODO, this is stupid, Damian: 5 is the size of the resizer,
+        {
+          F32 px_space_diff_in_percents = px_space_diff / rect_for_header_that_got_dragged.width;
+          
+          F32* flex_value = &table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged];
+          F32 flex_value_diff = (*flex_value * px_space_diff_in_percents);
+
+          *flex_value += flex_value_diff;
+        }
+
+        // Adjusting the header after dragged
+        {
+          Rect rect = rects_for_each_header[column_index_whos_resizer_got_dragged + 1];
+          F32 px_diff_in_percents = px_space_diff / rect.width;
+
+          F32* flex_value = &table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1];
+          F32 flex_value_diff = (*flex_value * px_diff_in_percents);
+
+          *flex_value -= flex_value_diff;
+        }
+        
+        // todo: 
+        // [x] - get relative mouse pos to the header origin in x,
+        // [x] - get the diff in pixel space and make the width of the dragged header smaller acordingly
+        // [x] - get flex value for dragged element, find out how much diff is in %s of the header and adjest flex value acordingly
+        // [x] - get the size of the header after dragged and change its width acordingly
+        // [x] - adjust flex value acordingly
       }
-
-      for EachIndex(i, header_count)
-      {
-        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
-      }
-
-      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
-      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
-
-      F32 mouse_move_perncentage_in_total_space = abs_f32(mouse_relative_to_header) / total_rects_width;
-      F32 prev_p_of_p = table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged];
-      table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged] = mouse_move_perncentage_in_total_space;
-      table_conf->header_sizes_p_of_p[column_index_whos_resizer_got_dragged + 1] += (prev_p_of_p - mouse_move_perncentage_in_total_space);
     }
   }
-
 }
 
 void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32 height)

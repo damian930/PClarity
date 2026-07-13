@@ -108,16 +108,18 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   UI_Table_config table_conf = {};
   {
     table_conf.row_size_in_pixels        = 100;
-    table_conf.header_sizes_p_of_p[0]    = 0.25f;
-    table_conf.header_sizes_p_of_p[1]    = 0.5f;
-    table_conf.header_sizes_p_of_p[2]    = 0.25f;
-    table_conf.header_sizes_p_of_p_count = 3;
+    table_conf.flex_values_for_headers[0]    = 1;
+    table_conf.flex_values_for_headers[1]    = 2;
+    table_conf.flex_values_for_headers[2]    = 1;
+    table_conf.flex_values_for_headers_count = 3;
     table_conf.border_color              = green();
     table_conf.border_around_width       = 2;
   }
 
   for (;!os_window_should_close();)
   {
+    F64 frame_start_time_sec = os_get_time_for_timing_sec();
+    
     os_frame_begin();
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
@@ -158,6 +160,12 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_present(window_frame_buffer_target, false);
   
     os_frame_end();
+
+    F64 frame_end_time_sec = os_get_time_for_timing_sec();
+
+    OutputDebugStringF("Frame time sec: %f\n", frame_end_time_sec - frame_start_time_sec);
+    OutputDebugStringF("FPS:            %f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec));
+    OutputDebugStringF("\n");
   }
 
   // Not releasing anything since who cares, the system will release all the stuff

@@ -24,6 +24,21 @@
   [x] - Root font size selector
 [x] - Add a slider in settings for root font size in the app 
 
+[ ] - See the frame rate, it seems to be really low
+[ ] - Make api for elipssed labels better, right now you have to suply the size from the outside in a not really intuitive way
+[ ] - Fix the bug with elipssed labels where when there is not enought space for even ... the whole label gets drawn
+
+[ ] - Make table api better
+  [ ] - The whole idea with *** and array or boxes that are given to the caller is fine, but i would like something more immediate, something that would allow for better understanding of the ui in code. Right now its kind of deffered for later fill up by the user. 
+  [ ] - Fix bugs with resizers
+    [ ] - Twitching
+    [ ] - Out of bounds
+    [ ] - Then mouse if pressed on a resizer there is a little change in the floating value of p_of_p, this moves the table a bit, this should not happend
+  [ ] - Add min size to headers
+  [ ] - Add a way for the called to specify where to have the resizers. Best case the resizers are just table specific ways to change the sizes, but the user also can change them themselvs.
+  [ ] - Add styling to the table skeleton
+    [ ] - Border styling
+
 
 
 

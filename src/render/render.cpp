@@ -444,6 +444,8 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
       scissor_rect.top    = (S32)batch->scissor_rect.y;
       scissor_rect.right  = (S32)batch->scissor_rect.x + (S32)batch->scissor_rect.width;
       scissor_rect.bottom = (S32)batch->scissor_rect.y + (S32)batch->scissor_rect.height;
+      if (scissor_rect.left > scissor_rect.right) { scissor_rect.left = scissor_rect.right; /*BreakPoint();*/ }
+      if (scissor_rect.top > scissor_rect.bottom) { scissor_rect.top = scissor_rect.bottom; /*BreakPoint();*/ }
       d3d->context->RSSetScissorRects(1, &scissor_rect); 
     }
 
