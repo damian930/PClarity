@@ -29,6 +29,7 @@ void ui_text_f(const char* fmt, ...);
 
 // - Ellipsed labels
 void ui_label_ellipsed(Str8 str);
+void ui_text_ellipsed(Str8 str);
 
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);
@@ -561,7 +562,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
   UI_Actions edit_box_actions  = ui_actions_from_box(edit_box);
   
   Str8 str_before_cursor           = str8_substring(text_buffer_str, 0, cursor_pos);
-  F32 str_before_cursor_size_in_px = fp_measure_text(str_before_cursor, font).x;
+  F32 str_before_cursor_size_in_px = fp_measure_text(str_before_cursor, font, font_height).x;
 
   // Figuring out clip offset for this frames edit box
   F32 new_clip_offset = 0.0f;
@@ -582,7 +583,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
         for (U64 i = str_before_cursor.count; i > 0 ; i -= 1)
         {
           Str8 char_sub_str     = str8_substring(str_before_cursor, i - 1, i);
-          F32 char_sub_str_size = fp_measure_text(char_sub_str, font).x;
+          F32 char_sub_str_size = fp_measure_text(char_sub_str, font, font_height).x;
           total_size += char_sub_str_size;
           if (total_size > prev_edit_box_width) { break; }
           str_range_that_fits.min -= 1;
@@ -592,7 +593,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
       if (rangeU64_count(str_range_that_fits) > 0)
       {
         Str8 cursor_str_that_fits           = str8_substring_range(str_before_cursor, str_range_that_fits);
-        F32 cursor_str_that_fits_size_in_px = fp_measure_text(cursor_str_that_fits, font).x;
+        F32 cursor_str_that_fits_size_in_px = fp_measure_text(cursor_str_that_fits, font, font_height).x;
         Assert(cursor_str_that_fits_size_in_px <= prev_edit_box_width);
         F32 extra_space               = prev_edit_box_width - cursor_str_that_fits_size_in_px;
         F32 offset_till_str_that_fits = str_before_cursor_size_in_px - cursor_str_that_fits_size_in_px;
@@ -628,9 +629,9 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
       Str8 str_inside_section       = str8_substring(text_buffer_str, section_start, section_end);
       Str8 str_after_section_end    = str8_substring(text_buffer_str, section_end, text_buffer_str.count);
 
-      F32 space_before_section_start = fp_measure_text(str_before_section_start, font).x; 
-      F32 space_inside_section       = fp_measure_text(str_inside_section, font).x; 
-      F32 space_after_section_end    = fp_measure_text(str_after_section_end, font).x; 
+      F32 space_before_section_start = fp_measure_text(str_before_section_start, font, font_height).x; 
+      F32 space_inside_section       = fp_measure_text(str_inside_section, font, font_height).x; 
+      F32 space_after_section_end    = fp_measure_text(str_after_section_end, font, font_height).x; 
 
       ui_spacer(ui_px(space_before_section_start));
       
@@ -677,7 +678,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
           F32 accumulated_offset = 0.0f;
           for EachIndex(i, text_buffer_str.count)
           {
-            F32 char_width       = fp_measure_text(str8_substring(text_buffer_str, i, i + 1), font).x;
+            F32 char_width       = fp_measure_text(str8_substring(text_buffer_str, i, i + 1), font, font_height).x;
             RangeF32 char_range  = rangeF32(accumulated_offset, accumulated_offset + char_width);
             accumulated_offset += char_width;
             if (rangeF32_within(char_range, new_cursor_pos_in_px_in_text))

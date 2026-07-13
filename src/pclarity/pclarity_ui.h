@@ -881,9 +881,13 @@ void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32
       UI_Parent(array_of_header_boxes[header_box_index])
       {
         if (0) {}
-        else if (header_box_index == 0) { ui_text_f("Icon"); }
-        else if (header_box_index == 1) { ui_text_f("Name"); }
-        else if (header_box_index == 2) { ui_text_f("Usage"); }
+        else if (header_box_index == 0) { ui_text_ellipsed(Str8FromC("Icon")); }
+        else if (header_box_index == 1) { ui_text_ellipsed(Str8FromC("Name")); }
+        else if (header_box_index == 2) { 
+          ui_next_width(ui_grow());
+          ui_next_height(ui_grow());
+          ui_text_ellipsed(Str8FromC("Usage")); 
+        }
       }
     }
 
@@ -900,10 +904,10 @@ void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32
             ui_image(process_data_arr[row_index].texture, ui_top_font_size(), ui_top_font_size());
           }
           else if (row_data_entry_index == 1) { 
-            ui_text(process_data_arr[row_index].name);
+            ui_text_ellipsed(process_data_arr[row_index].name);
           }
           else if (row_data_entry_index == 2) { 
-            ui_text(process_data_arr[row_index].usage_word);
+            ui_text_ellipsed(process_data_arr[row_index].usage_word);
           }
         }
 

@@ -274,11 +274,12 @@ void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color)
 
   #if DEBUG_MODE
   { // Making sure that the x here is the same as in fp to make sure that that we dont do any stupid mistackes
-    V2F32 fp_text_dims = fp_measure_text(text, font);
-    Assert(0.001f > abs_f32(x_offset - fp_text_dims.x * scale_factor));
+    V2F32 fp_text_dims = fp_measure_text(text, font, font_size);
+    Assert(0.001f > abs_f32(x_offset - fp_text_dims.x));
   }
   #endif
 
+  // TODO: This should be the a draw layout contant that will decide weather to draw these in debug mode or not
   // These are some debug drawings for baseline and stuff
   #if DEBUG_MODE
   {

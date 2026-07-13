@@ -126,27 +126,29 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     // pcl_do_ui(font, &pcl);
     // test_table_ui(font);
     // test_code_for_table_api(font);
-    // table_do_ui_build(&table_conf, font, 500, 500);
+    table_do_ui_build(&table_conf, font, 500, 500);
 
-    ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
-    ui_push_font_size(24);
-    {
-      static F32 box_width = 100;
-      ui_next_width(ui_px(200));
-      ui_next_height(ui_px(50));
-      box_width = pcl_ui_slider(box_width, rangeF32(10, 200), Str8FromC("Slider id"));
+    // ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+    // ui_push_font_size(24);
+    // {
+    //   static F32 box_width = 100;
+    //   ui_next_width(ui_px(200));
+    //   ui_next_height(ui_px(50));
+    //   box_width = pcl_ui_slider(box_width, rangeF32(10, 200), Str8FromC("Slider id"));
 
-      ui_next_width(ui_px(box_width));
-      ui_next_height(ui_fit());
-      ui_next_b_color(nice_blue());
-      ui_next_extra_flags(UI_Box_flag__has_background);
-      UI_Wrapper()
-      {
-        ui_label(Str8FromC("fsdlfjsdklfsdklfsdjlfksdf"));
-      }
+    //   ui_next_width(ui_px(box_width));
+    //   ui_next_height(ui_fit());
+    //   ui_next_b_color(nice_blue());
+    //   ui_next_extra_flags(UI_Box_flag__has_background);
+    //   UI_Wrapper()
+    //   {
+    //     ui_next_width(ui_grow());
+    //     ui_next_height(ui_px(50));
+    //     ui_label_ellipsed(Str8FromC("fsdlfjsdklfsdklfsdjlfksdf"));
+    //   }
 
-    }
-    ui_end_build();
+    // }
+    // ui_end_build();
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();

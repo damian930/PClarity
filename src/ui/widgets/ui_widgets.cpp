@@ -64,7 +64,7 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func);
 void ui_label(Str8 outer_str)
 {
   FP_Font font  = ui_top_font();
-  V2F32 str_dims = fp_measure_text(outer_str, font);
+  V2F32 str_dims = fp_measure_text(outer_str, font, ui_top_font_size());
   
   ui_next_width(ui_px(str_dims.x));
   ui_next_height(ui_px(str_dims.y));
@@ -130,19 +130,53 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func)
 //
 UI_CUSTOM_DRAW_BOX_DEF(__ui_label_ellipsed_draw_func)
 {
+  Scratch scratch = get_scratch(0, 0);
 
+  UI_Box* box = provided_data.box;  
+  Rect rect   = provided_data.final_box_rect;
+
+  Str8 final_str_to_draw = box->text_extension.text;
+
+  V2F32 text_dims = fp_measure_text(box->text_extension.text, box->text_extension.font, box->text_extension.font_size);
+  if (text_dims.x > rect.width)
+  {
+    Str8 ellipsis = Str8FromC("...");
+    V2F32 ellissis_dims = fp_measure_text(ellipsis, box->text_extension.font, box->text_extension.font_size);
+
+    F32 text_width_after_ellissing = rect.width - ellissis_dims.x;
+    if (text_width_after_ellissing < 0)
+    {
+      // TODO: Handle this as well
+    }
+    else 
+    {
+      // TODO: This doesnt yet work with the font size
+      RangeU64 range_that_fits = fp_get_text_range_that_fits(box->text_extension.text, text_width_after_ellissing, box->text_extension.font, box->text_extension.font_size);
+      Str8 visible_part = str8_substring_range(box->text_extension.text, range_that_fits);
+
+      Str8_list list = {};
+      str8_list_append_view(scratch.arena, &list, visible_part);
+      str8_list_append_view(scratch.arena, &list, ellipsis);
+      final_str_to_draw = str8_from_list(scratch.arena, &list);
+    }
+  }
+
+  d_draw_text(final_str_to_draw, box->text_extension.font, box->text_extension.font_size, rect.origin, white());
+
+  end_scratch(&scratch);
 }
 
 void ui_label_ellipsed(Str8 str)
 {
-//   struct Custom_data {
-//     F32 font_size;
-//     F32 
+  // Damian: Ellipsed label is not sized to fit the text, size commes from the outside
+  UI_Box* box = ui_box_make({}, UI_Box_flag__NONE);
+  ui_extend_box_with_text(box, str);
+  ui_extend_box_with_custom_draw_function(box, __ui_label_ellipsed_draw_func, Null);
+}
 
-//   };
-
-//   UI_Box* box = ui_box_make({}, UI_Box_flag__NONE);
-//   ui_extend_box_with_custom_draw_function(box, __ui_label_ellipsed_draw_func, Null);
+void ui_text_ellipsed(Str8 str)
+{
+  ui_label_ellipsed(str);
 }
 
 ///////////////////////////////////////////////////////////

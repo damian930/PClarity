@@ -61,9 +61,10 @@ void fp_release();
 FP_Font fp_load_font(Str8 ttf_file_path, F32 font_size, RangeU64 unicode_range_to_load);
 FP_Codepoint_data fp_get_glyph_data(FP_Font font, U64 unicode_codepoint);
 FP_Kerning_entry fp_get_kerning(FP_Font font, U64 unicode_codepoint_1, U64 unicode_codepoint_2);
-V2F32 fp_measure_text(Str8 str, FP_Font font);
+V2F32 fp_measure_text(Str8 str, FP_Font font, F32 font_size);
 F32 fp_font_height(FP_Font font);
 F32 fp_font_line_gap(FP_Font font);
+RangeU64 fp_get_text_range_that_fits(Str8 text, F32 width_to_fit, FP_Font font, F32 font_size);
 
 B32 __fp_try_to_generate_grey_scale_font_atlas_image(
   stbtt_packedchar* packed_char_data_arr,

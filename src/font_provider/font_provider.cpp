@@ -266,23 +266,28 @@ FP_Kerning_entry fp_get_kerning(FP_Font font, U64 unicode_codepoint_1, U64 unico
 
 // todo: This shoud be in synch with the draw text function
 // TODO: This is a bad name for things, cause this just does a single line measurement
-V2F32 fp_measure_text(Str8 str, FP_Font font)
+V2F32 fp_measure_text(Str8 str, FP_Font font, F32 font_size)
 {
-  V2F32 dims = {};
-  dims.y = fp_font_height(font); 
+  V2F32 dims = v2f32(0.0f, fp_font_height(font));
   for (U64 ch_index = 0; ch_index < str.count; ch_index += 1)
   {
     U8 ch = str.data[ch_index];
     FP_Codepoint_data glyph_data = fp_get_glyph_data(font, ch); 
 
-    F32 advance = glyph_data.advance;
+    F32 advance = (glyph_data.advance);
     if (ch_index < str.count - 1)
     {
       FP_Kerning_entry entry = fp_get_kerning(font, ch, str.data[ch_index + 1]);
-      advance += entry.advance;  
+      advance += (entry.advance);  
     } 
     dims.x += advance;
   }
+
+  // Damian: Scalling to the font_size since we dont yet support legit font sizes
+  F32 scale_factor = font_size / font.size;
+  dims.x *= scale_factor;
+  dims.y *= scale_factor;
+
   return dims;
 }
 
@@ -297,6 +302,24 @@ F32 fp_font_line_gap(FP_Font font)
   return 0.0f;
 }
 
+RangeU64 fp_get_text_range_that_fits(Str8 text, F32 width_to_fit, FP_Font font, F32 font_size)
+{
+  // for (U64 ch_index = 0; ch_index < text.count; ch_index += 1)
+  F32 accumulated_width = 0.0f;
+  U64 range_end_index = 0;
+  for (range_end_index; range_end_index < text.count; range_end_index += 1)
+  {
+    Str8 ch_as_str = str8_substring(text, range_end_index, range_end_index + 1);
+    F32 ch_as_str_width = fp_measure_text(ch_as_str, font, font_size).x;
+    accumulated_width += ch_as_str_width;
+    if (accumulated_width > width_to_fit)
+    {
+      break;
+    }
+  }
 
+  RangeU64 range = rangeU64(0, range_end_index);
+  return range;
+}
 
 #endif
