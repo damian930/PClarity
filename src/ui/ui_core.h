@@ -76,9 +76,24 @@ typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_pointer_type);
 
 UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func); 
 
+struct UI_Actions {
+  // Lower level actions
+  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
+  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
+  //
+  // Composed for quick use
+  B32 is_clicked; // These are composed, so we need cross frame state and id
+  B32 went_down;  // These are composed, so we need cross frame state and id
+  B32 went_up;    // These are composed, so we need cross frame state and id
+
+  // TODO: This is new data, so putting this here for now
+  V2F32 mouse_pos_when_went_down;
+};
+
 struct UI_Box {
   Clay_ElementDeclaration clay_element_config;
-  B32 has_been_updated_this_frame;
 
   B32 has_hover_cursor;
   OS_Cursor hover_cursor;
@@ -100,12 +115,19 @@ struct UI_Box {
   UI_Box* prev_sibling;
   UI_Box* parent;
   U64 children_count;
+
+  // Damian: These are not used on the immediate box, but rather used for the future 
+  //         representation of this box 
+  //         (future representation is this same box in the next build)
+  B32 is_updated_actions_for_this_in_the_future;
+  UI_Actions actions_for_this_in_the_future;
+
+  U64 generation;
 };
 
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
 #define __UI_NULL_BOX_VALUE { \
-  {}, \
   {}, \
   {}, \
   {}, \
@@ -124,28 +146,16 @@ struct UI_Box {
   &__ui_g_null_box, \
   &__ui_g_null_box, \
   {}, \
+  \
+  {}, \
+  {}, \
+  {}, \
 }
 global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
 struct UI_Box_data {
   B32 is_found;
   Rect rect;
-};
-
-struct UI_Actions {
-  // Lower level actions
-  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
-  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
-  //
-  // Composed for quick use
-  B32 is_clicked; // These are composed, so we need cross frame state and id
-  B32 went_down;  // These are composed, so we need cross frame state and id
-  B32 went_up;    // These are composed, so we need cross frame state and id
-
-  // TODO: This is new data, so putting this here for now
-  V2F32 mouse_pos_when_went_down;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -160,19 +170,26 @@ __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 struct UI_State {
   // TODO: Add a counter for boxes made last build
   // TODO: Add a build counter just for debug purposes if we need to
-
+  
   Arena* state_arena;
-  Arena* arena_for_clay; // This is clay internal memory
 
-  Arena* build_arena;
+  // Memory for our own box tree for prev build and the current build
+  U64 build_generation;
+  Arena* build_arenas[2];
+
+  // This is arena for clay internal memory
+  Arena* arena_for_clay; 
+
+  // Result of ui build
   Clay_RenderCommandArray render_commands_as_result_of_ui_build;
-
   UI_Box* final_hover_box;
 
-  U64 build_generation;
+  // Always available data
+  V2F32 mouse_pos_for_this_build;
+  V2F32 window_dims_for_this_build;
+  V2F32 mouse_pos_for_prev_build;
 
-  // TODO: This might not be needed, take a look
-  UI_Box* next_new_elements_parent_box;
+  UI_Box* next_new_elements_parent_box; // Damian, TODO: What the fuck is this even
 
   struct {
     Clay_ElementId clay_id;
@@ -181,13 +198,9 @@ struct UI_State {
     V2F32 pos_when_mouse_went_down;
   } interacted_with_box_data;
 
-  UI_Box* root_box;
-  V2F32 mouse_pos_for_this_build;
-  V2F32 window_dims_for_this_build;
-
-  V2F32 mouse_pos_for_prev_build;
-
-  // Locking them under a struct so ui_state is easier to view in the debugger
+  UI_Box* current_build_root_box; // This is allocated on the current build arena 
+  UI_Box* prev_build_root_box;    // This is allocated on the previous build arena
+  
   struct {
     #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
     __UI_STACK_DATA_TABLE_EXPANSION(EXPANSION)
@@ -195,8 +208,7 @@ struct UI_State {
   } stacks;
 };
 
-// // - Context variables
-struct UI_State;
+// - Context variables
 extern UI_State* __ui_g_state;
 
 // - State 
@@ -205,40 +217,21 @@ void ui_set_state(UI_State* context);
 void ui_init();
 void ui_release();
 
-// TODO: Move these out of here
-// - Simple getters
-// Arena* ui_get_build_arena();
-// F32 ui_get_mouse_x();
-// F32 ui_get_mouse_y();
-// V2F32 ui_get_mouse_pos();
-
-// // - IDs
-// Str8 ui_get_text_part_from_str8(Str8 id_and_text);
-
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
-// =========
-// TODO: Move this somwhere if ends up beeeing used
-UI_Box* __ui_find_box_by_id_helper(UI_Box* root, Clay_ElementId id);
-UI_Box* ui_find_box_by_id(Clay_ElementId id);
-// =========
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
-#define UI_Build(window_dims, mouse_pos) DeferLoop(ui_begin_build(window_dims, mouse_pos), ui_end_build())
+#define UI_Build(window_dims, mouse_pos, default_font) DeferLoop(ui_begin_build(window_dims, mouse_pos, default_font), ui_end_build())
 
 // - UI drawing
 void ui_draw();
 
 // - Box making
-B32 ui_box_is_null(UI_Box* box);
+B32 ui_is_null_box(UI_Box* box);
 UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
 void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
-//
-// TODO: This is new, so just putting it here for now
-// Str8 __ui_get_id_part_from_str8(Str8 str);
-// Str8 __ui_get_text_part_from_str8(Str8 str);
 
 // - Box extension
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
@@ -265,11 +258,14 @@ UI_Size ui_grow();
 UI_Size ui_p_of_p(F32 p);                 
 
 // - Other
+U64 ui_get_build_generation();
 Arena* ui_get_build_arena();
 V2F32 ui_get_mouse_pos();
 V2F32 ui_get_prev_mouse_pos();
 UI_Box* ui_get_current_parent();
-UI_Box* ui_get_root();
+UI_Box* ui_get_root(); // TODO: This might need a better name that specifies weather this is from the prev build or the new build
+UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id);
+UI_Box* ui_find_prev_build_box_by_id(Str8 id);
 
 // - Stack functions and helper
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)

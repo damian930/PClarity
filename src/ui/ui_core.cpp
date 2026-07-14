@@ -55,20 +55,29 @@ void ui_init()
   __ui_g_state = ArenaPush(state_arena, UI_State);
   __ui_g_state->state_arena = state_arena;
 
-  U64 mem_size_for_clay    = Clay_MinMemorySize();
-  Arena* arena_for_clay    = arena_alloc(mem_size_for_clay);
-  U8* bytes_for_clay_arena = ArenaPushArr(arena_for_clay, U8, mem_size_for_clay);
-  Clay_Arena arena         = Clay_CreateArenaWithCapacityAndMemory(mem_size_for_clay, bytes_for_clay_arena);
-  Clay_Initialize(arena, Clay_Dimensions{ 100, 100 }, Clay_ErrorHandler{ __ui_error_handler_for_clay, 0 });
-  __ui_g_state->arena_for_clay = arena_for_clay;
+  { // Clay arena 
+    U64 mem_size_for_clay    = Clay_MinMemorySize();
+    Arena* arena_for_clay    = arena_alloc(mem_size_for_clay);
+    U8* bytes_for_clay_arena = ArenaPushArr(arena_for_clay, U8, mem_size_for_clay);
+    Clay_Arena arena         = Clay_CreateArenaWithCapacityAndMemory(mem_size_for_clay, bytes_for_clay_arena);
+    Clay_Initialize(arena, Clay_Dimensions{ 100, 100 }, Clay_ErrorHandler{ __ui_error_handler_for_clay, 0 });
+    __ui_g_state->arena_for_clay = arena_for_clay;
+  }
 
-  // TODO: This is test code
-  // TODO: Release this in the ui_release func
-  __ui_g_state->build_arena = arena_alloc(Megabytes(4));
+  StaticAssert(ArrayCount(__ui_g_state->build_arenas) == 2);
+  __ui_g_state->build_arenas[0] = arena_alloc(Megabytes(4));
+  __ui_g_state->build_arenas[1] = arena_alloc(Megabytes(4));
+
+  __ui_g_state->current_build_root_box = ui_null_box();
+  __ui_g_state->prev_build_root_box    = ui_null_box();
 }
 
 void ui_release()
 {
+  StaticAssert(ArrayCount(__ui_g_state->build_arenas) == 2);
+  arena_release(&__ui_g_state->build_arenas[0]);
+  arena_release(&__ui_g_state->build_arenas[1]);
+
   arena_release(&__ui_g_state->arena_for_clay);
   arena_release(&__ui_g_state->state_arena);
   __ui_g_state = 0;
@@ -84,14 +93,14 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
     B32 comp = {};
     UI_Box valid_null_box = __UI_NULL_BOX_VALUE;
     MemCompareSafe(__ui_g_null_box, valid_null_box, &comp);
+    
+    // TODO: Have this code execute
     #if 0 // Commented it out for now
     Assert(comp);
     #endif
   }
   
   UI_State* state = ui_get_state();
-
-  state->build_generation += 1;
 
   // Resetting all the stacks
   #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
@@ -102,21 +111,25 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 
   state->final_hover_box = ui_null_box();
 
-  arena_clear(state->build_arena);
+  state->build_generation += 1;
+  arena_clear(ui_get_build_arena());
+  state->prev_build_root_box = state->current_build_root_box;
+  state->current_build_root_box = ui_null_box();
+
   state->render_commands_as_result_of_ui_build = {};
 
   ui_push_font(default_font);
 
   ui_next_width(ui_px(window_dims.x));
   ui_next_height(ui_px(window_dims.y));
-  state->root_box = ui_box_make(Str8FromC("__UI_ROOT_BOX__"), UI_Box_flag__NONE);
+  state->current_build_root_box = ui_box_make(Str8FromC("__UI_ROOT_BOX__"), UI_Box_flag__NONE);
 
   state->mouse_pos_for_prev_build = state->mouse_pos_for_this_build;
 
   state->mouse_pos_for_this_build   = mouse_pos;
   state->window_dims_for_this_build = window_dims;
 
-  ui_push_parent(state->root_box);
+  ui_push_parent(state->current_build_root_box);
 }
 
 void ui_end_build()
@@ -132,45 +145,21 @@ void ui_end_build()
   // Building the whole clay ui tree from our own ui tree
   {
     Clay_BeginLayout();
-    __ui_build_clay_element_tree_from_box_tree(state->root_box);
+    __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
     Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
     state->render_commands_as_result_of_ui_build = clay_render_commands; 
   }
 
-  if (!ui_box_is_null(state->final_hover_box))
+  if (!ui_is_null_box(state->final_hover_box))
   {
     os_set_cursor(state->final_hover_box->hover_cursor);
   }
 
 }
 
-// TODO: Move this somwhere if ends up beeeing used
-UI_Box* __ui_find_box_by_id_helper(UI_Box* root, Clay_ElementId id)
-{
-  UI_Box* found_box = ui_null_box();
-  if (ui_box_is_null(root)) { return found_box; }
-  else if (root->clay_element_config.id.id == id.id) { found_box = root; }
-  else 
-  {
-    for (UI_Box* child = root->first_child; !ui_box_is_null(child); child = child->next_sibling)
-    {
-      found_box = __ui_find_box_by_id_helper(child, id);
-      if (!ui_box_is_null(found_box)) { break; }
-    }
-  }
-  return found_box;
-}
-
-UI_Box* ui_find_box_by_id(Clay_ElementId id)
-{
-  UI_State* state = ui_get_state();
-  UI_Box* box = __ui_find_box_by_id_helper(state->root_box, id);
-  return box;
-}
-
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 {
-  if (ui_box_is_null(root)) { return; }
+  if (ui_is_null_box(root)) { return; }
 
   UI_State* state = ui_get_state();
   
@@ -217,7 +206,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
     }
   }
 
-  for (UI_Box* child = root->first_child; !ui_box_is_null(child); child = child->next_sibling)
+  for (UI_Box* child = root->first_child; !ui_is_null_box(child); child = child->next_sibling)
   {
     __ui_build_clay_element_tree_from_box_tree(child);
   }
@@ -228,7 +217,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
 ///////////////////////////////////////////////////////////
 // - Box making
 //
-B32 ui_box_is_null(UI_Box* box)
+B32 ui_is_null_box(UI_Box* box)
 {
   return (box == 0) || (box == &__ui_g_null_box);
 }
@@ -248,14 +237,16 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 {
   UI_State* state = ui_get_state();
   
-  UI_Box* new_box = ArenaPush(state->build_arena, UI_Box);
+  UI_Box* new_box = ArenaPush(ui_get_build_arena(), UI_Box);
   *new_box = __ui_g_null_box;
+  
+  new_box->generation = ui_get_build_generation();
 
   // Allocating the id and creating a hash for the box
   Clay_ElementId clay_id = {};
   if (id.count != 0)
   {
-    Str8 box_id = str8_copy(state->build_arena, id);
+    Str8 box_id = str8_copy(ui_get_build_arena(), id);
     Clay_String clay_string_for_clay_id = __ui_clay_string_from_str8(box_id);
     clay_id = Clay__HashString(clay_string_for_clay_id, 0, 0);
   }
@@ -277,9 +268,9 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 
   state->next_new_elements_parent_box = ui_top_parent();
   new_box->parent = state->next_new_elements_parent_box;
-  if (!ui_box_is_null(new_box->parent))
+  if (!ui_is_null_box(new_box->parent))
   {
-    DllPushBack_Name_NullFunc(new_box->parent, new_box, first_child, last_child, next_sibling, prev_sibling, ui_box_is_null);
+    DllPushBack_Name_NullFunc(new_box->parent, new_box, first_child, last_child, next_sibling, prev_sibling, ui_is_null_box);
     new_box->parent->children_count += 1;
   }
 
@@ -441,19 +432,34 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
   return data;
 }
 
+/*
+UI_Actions ui_actions_from_box_prev_build(UI_Box* box)
+{
+  if (ui_box_is_null(box)) { return {}; }
+
+
+
+  // todo: Here you should get the box from prev build if you have it
+  //       
+}
+*/
+
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
+  Assert(box->generation == ui_get_build_generation(), "If this asserted, that means that you are using a box that is from prev build, dont do that. Why do you have a box from prev build, what id going on there by dude?");
+  Str8 id = __ui_str8_from_clay_string(box->clay_element_config.id.stringId);
+  UI_Actions actions = ui_actions_from_id(id);
+  return actions;
+}
 
-
-  // TODO: What about using he internal clay heash func to get the data from the thing and then get the userData from there
-
-  // TODO:
-  //       so this would have to get the id and then the id func will have to ask for the box again. 
-  //       or the id box will just ask for the box and the box will here get updated
-
-  if (box->has_been_updated_this_frame) { NotImplemented(); return {}; } 
-
+UI_Actions ui_actions_from_id(Str8 id)
+{
   UI_State* state = ui_get_state();
+  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
+  
+  if (ui_is_null_box(prev_build_box)) { return {}; }
+  if (prev_build_box->is_updated_actions_for_this_in_the_future) { return prev_build_box->actions_for_this_in_the_future; }
+  // Damian: After this we know that we have to create actions for the box from the prev build
 
   // Data to get
   B32 is_hovered                 = false;
@@ -464,14 +470,15 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 is_navigated               = false;
   V2F32 mouse_pos_when_went_down = {};
 
-  is_hovered = Clay_PointerOver(box->clay_element_config.id); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
+  is_hovered = Clay_PointerOver(prev_build_box->clay_element_config.id); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
 
   B32 some_other_box_is_being_interacted_with = (
     state->interacted_with_box_data.clay_id.id != 0 
     &&
-    state->interacted_with_box_data.clay_id.id != box->clay_element_config.id.id
+    state->interacted_with_box_data.clay_id.id != prev_build_box->clay_element_config.id.id
   );
 
+  // Damian:
   // Either there is no active box or we are the active box
   // Since interacted box data is retained across frame boundary, 
   // we just load the retained state and possibly update it here.
@@ -513,7 +520,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
         mouse_pos_when_went_down = ui_get_mouse_pos();
         state->interacted_with_box_data.is_mouse_down                      = true;
         state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
-        state->interacted_with_box_data.clay_id                            = box->clay_element_config.id;
+        state->interacted_with_box_data.clay_id                            = prev_build_box->clay_element_config.id;
         state->interacted_with_box_data.pos_when_mouse_went_down           = ui_get_mouse_pos();
       }
     }
@@ -555,7 +562,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     }
   }
 
-  // is_active    = str8_match(ctx->active_box_id, this_frames_box->id, 0);
+  // is_active = str8_match(ctx->active_box_id, this_frames_box->id, 0);
 
   UI_Actions result_actions = {};
   result_actions.is_hovered               = is_hovered;            
@@ -567,17 +574,10 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   result_actions.went_up                  = was_down && !is_down;  
   result_actions.mouse_pos_when_went_down = mouse_pos_when_went_down;
 
+  prev_build_box->is_updated_actions_for_this_in_the_future = true;
+  prev_build_box->actions_for_this_in_the_future            = result_actions;
+
   return result_actions;
-}
-
-UI_Actions ui_actions_from_id(Str8 id)
-{
-  // Data that i need for actions is inside my own ui tree
-  // i cant use clay to get access to it
-
-
-  // TODO
-  return {};
 }
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)
@@ -746,9 +746,16 @@ UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent
 ///////////////////////////////////////////////////////////
 // - Other
 //
+U64 ui_get_build_generation()
+{
+  return ui_get_state()->build_generation;
+}
+
 Arena* ui_get_build_arena()
 {
-  return ui_get_state()->build_arena;
+  U64 index = ui_get_state()->build_generation % 2;
+  Arena* arena = ui_get_state()->build_arenas[index];
+  return arena;
 }
 
 V2F32 ui_get_mouse_pos()
@@ -768,7 +775,35 @@ UI_Box* ui_get_current_parent()
 
 UI_Box* ui_get_root()
 {
-  return ui_get_state()->root_box;
+  return ui_get_state()->current_build_root_box;
+}
+
+UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id)
+{
+  if (ui_is_null_box(root)) { return ui_null_box(); }
+  
+  Clay_ElementId clay_id = root->clay_element_config.id;
+  Str8 root_id           = __ui_str8_from_clay_string(clay_id.stringId);
+
+  if (str8_match(root_id, id, 0)) { return root; }
+
+  UI_Box* found_box = ui_null_box();
+  for (UI_Box* child = root->first_child; !ui_is_null_box(child); child = child->next_sibling)
+  {
+    found_box = ui_find_box_in_tree_by_id(child, id);
+    if (!ui_is_null_box(found_box))
+    {
+      break;
+    }
+  }
+  return found_box;
+}
+
+UI_Box* ui_find_prev_build_box_by_id(Str8 id)
+{
+  if (id.count == 0) { return ui_null_box(); }
+  UI_Box* found_box = ui_find_box_in_tree_by_id(ui_get_state()->prev_build_root_box, id);
+  return found_box;
 }
 
 ///////////////////////////////////////////////////////////
