@@ -79,19 +79,14 @@ void ui_label(Str8 outer_str)
 
 void ui_label_f(const char* fmt, ...)
 {
-  va_list argptr;
-  va_start(argptr, fmt);
-  Scratch scratch = get_scratch(0, 0);
-  U64 buffer_count = 128;
-  U8* buffer = ArenaPushArr(scratch.arena, U8, buffer_count);
-  int err = vsnprintf((char*)buffer, buffer_count, fmt, argptr);
-  if (err < 0) { Assert(0); }
-  else if (err >= buffer_count) { Assert(0); }
-  else if (err < buffer_count) { /* All good */ }
-  va_end(argptr);
-  Str8 str = str8_manual_view(buffer, (U64)err);
-  ui_label(str);
-  end_scratch(&scratch);
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 str = str8_valist(scratch.arena, fmt, argptr);
+    ui_label(str);
+    va_end(argptr);
+  }
 }
 
 void ui_text(Str8 str) 
@@ -101,19 +96,14 @@ void ui_text(Str8 str)
 
 void ui_text_f(const char* fmt, ...) 
 { 
-  va_list argptr;
-  va_start(argptr, fmt);
-  Scratch scratch = get_scratch(0, 0);
-  U64 buffer_count = 128;
-  U8* buffer = ArenaPushArr(scratch.arena, U8, buffer_count);
-  int err = vsnprintf((char*)buffer, buffer_count, fmt, argptr);
-  if (err < 0) { Assert(0); }
-  else if (err >= buffer_count) { Assert(0); }
-  else if (err < buffer_count) { /* All good */ }
-  va_end(argptr);
-  Str8 str = str8_manual_view(buffer, (U64)err);
-  ui_label(str);
-  end_scratch(&scratch);
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 str = str8_valist(scratch.arena, fmt, argptr);
+    ui_text(str);
+    va_end(argptr);
+  }
 }
 
 UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func)

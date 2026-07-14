@@ -242,6 +242,7 @@ UI_Box_data ui_box_data_from_id(Str8 id);
 UI_Box_data ui_box_data_from_box(UI_Box* box);
 UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
+UI_Actions ui_actions_from_id_f(const char* fmt, ...);
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 
 // - Box setters // TODO: This is new, might not be used later

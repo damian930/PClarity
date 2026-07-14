@@ -432,18 +432,6 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
   return data;
 }
 
-/*
-UI_Actions ui_actions_from_box_prev_build(UI_Box* box)
-{
-  if (ui_box_is_null(box)) { return {}; }
-
-
-
-  // todo: Here you should get the box from prev build if you have it
-  //       
-}
-*/
-
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
   Assert(box->generation == ui_get_build_generation(), "If this asserted, that means that you are using a box that is from prev build, dont do that. Why do you have a box from prev build, what id going on there by dude?");
@@ -578,6 +566,20 @@ UI_Actions ui_actions_from_id(Str8 id)
   prev_build_box->actions_for_this_in_the_future            = result_actions;
 
   return result_actions;
+}
+
+UI_Actions ui_actions_from_id_f(const char* fmt, ...)
+{
+  UI_Actions actions = {};
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 id = str8_valist(scratch.arena, fmt, argptr);
+    va_end(argptr);
+    actions = ui_actions_from_id(id);
+  }
+  return actions;
 }
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)

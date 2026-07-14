@@ -128,65 +128,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     // pcl_do_ui(font, &pcl);
     // test_table_ui(font);
     // test_code_for_table_api(font);
-    // table_do_ui_build(&table_conf, font, 500, 500);
-
-    ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
-    {
-      B32 is_clicked = ui_actions_from_id(Str8FromC("ID")).is_clicked;
-
-      ui_next_width(ui_px(50));
-      ui_next_height(ui_px(50));
-      ui_next_b_color(red());
-      UI_Box* box = ui_box_make_f("ID", UI_Box_flag__has_background);
-
-      ui_actions_from_box(box);
-      // TODO: Uncomment the next line
-      // ui_actions_from_box(box);
-
-      if (is_clicked)
-      // if (ui_actions_from_id(Str8FromC("ID")).is_clicked)
-      // if (ui_actions_from_box(box).is_clicked)
-      {
-        OutputDebugStringF("\n");
-        OutputDebugStringF("\n");
-        OutputDebugStringF("\n");
-        OutputDebugStringF("Clicked \n");
-        OutputDebugStringF("\n");
-        OutputDebugStringF("\n");
-        OutputDebugStringF("\n");
-      }
-
-      // The new build box pointer for the box to use
-      // Maybe this should just find the box fro mthe prev frame internally
-      // UI_Actions actions = ui_actions_from_box(box);
-      // Have a pointer inside a box to itself from the prev frame
-      // and there have a value called Already_used_for_update and a 
-      // comment that says that this data is used 1 frame in the future
-
-      // This fill find the box internally and have it be upated
-      // How do we know if we then update the box twice if we here get the actions 
-      // possible when the box that we get hte actions for is not existing
-      
-      // UI_Box* found_box = ui_actions_from_id(Str8FromC("ID"));
-
-      // BP;
-
-      // Clay_LayoutElementHashMapItem* item = Clay__GetHashMapItem(box->clay_element_config.id.id);
-      // if (item->layoutElement)
-      // {
-      //   Clay__ElementConfigArraySlice config_arr = item->layoutElement->elementConfigs;
-      //   for EachIndex(i, config_arr.length)
-      //   {
-      //     Clay_ElementConfig conf = config_arr.internalArray[i];
-      //     if (conf.type == CLAY__ELEMENT_CONFIG_TYPE_SHARED)
-      //     {
-      //       BP;
-      //     }
-      //   }
-      // }
-
-    }
-    ui_end_build();
+    table_do_ui_build(&table_conf, font, 500, 500);
 
     // ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
     // ui_push_font_size(24);

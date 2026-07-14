@@ -454,24 +454,61 @@ void table_ui_step_1(
   UI_Box*** out_array_of_header_boxes, U64* out_array_of_header_boxes_size,
   UI_Table_row** out_array_of_rows, U64* out_array_of_rows_size
 ) {
-  // Table ui build
-  B32 did_resizer_get_dragged = false;
-  U64 column_index_whos_resizer_got_dragged = 0;
+  B32 did_resizer_get_dragged               = false;
+  U64 column_index_whos_resizer_got_dragged = {};
+  for EachIndex(header_index, table_conf->flex_values_for_headers_count)
+  {
+    if (header_index != table_conf->flex_values_for_headers_count - 1)
+    {
+      UI_Actions resizer_actions = ui_actions_from_id_f("Resizer %lld", header_index);
+      if (resizer_actions.is_down)
+      {
+        did_resizer_get_dragged = true;
+        column_index_whos_resizer_got_dragged = header_index;
+        break;
+      }
+    }
+  }
 
-  // TODO: Do resizing here first
-  // "Resizer %lld"
+  // Table resizing
+  if (did_resizer_get_dragged) ScratchLoop(scratch, 0, 0)
+  {
+    B32 all_headers_found = true;
+    U64 header_count = table_conf->flex_values_for_headers_count;
+    Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
+    
+    for EachIndex(header_index, header_count)
+    {
+      Str8 header_id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+      UI_Box_data header_box_data = ui_box_data_from_id(header_id);
+      if (!header_box_data.is_found) {
+        all_headers_found = false;
+      } else {
+        rects_for_each_header[header_index] = header_box_data.rect;
+      }
+    }
 
-  // TODO:
-  // UI_Actions resizer_actions = ui_actions_from_box(resizer);
-  // if (resizer_actions.is_down)
-  // {
-  //   did_resizer_get_dragged = true;
-  //   column_index_whos_resizer_got_dragged = header_index;
-  // }
+    // Damian: Updating the sizes for headers
+    if (all_headers_found)
+    {
+      F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x; // TODO: This should use data from the actions and not just this, but for now its fine
+      OutputDebugStringF("Drag: %f \n", drag);
 
-  // TODO: Have to get actions from the id
+      if (drag != 0.0f)
+      {
+        F32 drag_norm = drag / rects_for_each_header[column_index_whos_resizer_got_dragged].width;
+        
+        F32 dragged_header_flex_norm = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] * drag_norm;
+        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] += dragged_header_flex_norm;
+        
+        F32 header_after_dragged_flex_norm = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] * drag_norm;
+        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] -= header_after_dragged_flex_norm;
+      }
 
-  //
+    }
+  }
+
+  // UI build
   ui_next_width(width_size);
   ui_next_height(height_size);
   ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
@@ -585,49 +622,6 @@ void table_ui_step_1(
     *out_array_of_rows_size = n_rows;
   }
 
-  // Table resizing
-  if (did_resizer_get_dragged) ScratchLoop(scratch, 0, 0)
-  {
-    B32 all_headers_found = true;
-    U64 header_count = table_conf->flex_values_for_headers_count;
-    Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
-    
-    for EachIndex(header_index, header_count)
-    {
-      Str8 header_id = str8_fmt(scratch.arena, "Table header %lld", header_index);
-      UI_Box_data header_box_data = ui_box_data_from_id(header_id);
-      if (!header_box_data.is_found) {
-        all_headers_found = false;
-      } else {
-        rects_for_each_header[header_index] = header_box_data.rect;
-      }
-    }
-
-    // Damian: Updating the sizer for headers
-    if (all_headers_found)
-    {
-      F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x; // TODO: This should use data from the actions and not just this, but for now its fine
-      
-      OutputDebugStringF("Drag: %f \n", drag);
-      if (drag != 0.0f)
-      {
-        // BP;
-        F32 drag_norm = drag / rects_for_each_header[column_index_whos_resizer_got_dragged].width;
-        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] += (table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] * drag_norm);
-        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] -= (table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] * drag_norm);
-
-        // rects_for_each_header[column_index_whos_resizer_got_dragged].width += drag;
-        // rects_for_each_header[column_index_whos_resizer_got_dragged + 1].width -= drag;
-  
-        // Storing back the new flex values
-        // for EachIndex(header_index, header_count)
-        // {
-        //   table_conf->flex_values_for_headers[header_index] = rects_for_each_header[header_index].width;
-        // }
-      }
-
-    }
-  }
 }
 
 // TODO:
