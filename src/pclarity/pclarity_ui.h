@@ -491,20 +491,20 @@ void table_ui_step_1(
     // Damian: Updating the sizes for headers
     if (all_headers_found)
     {
-      F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x; // TODO: This should use data from the actions and not just this, but for now its fine
-      OutputDebugStringF("Drag: %f \n", drag);
+      F32 drag_in_px = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x;
 
-      if (drag != 0.0f)
-      {
-        F32 drag_norm = drag / rects_for_each_header[column_index_whos_resizer_got_dragged].width;
-        
-        F32 dragged_header_flex_norm = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] * drag_norm;
-        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] += dragged_header_flex_norm;
-        
-        F32 header_after_dragged_flex_norm = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] * drag_norm;
-        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] -= header_after_dragged_flex_norm;
-      }
+      F32 old_left_flex = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged];
+      F32 old_right_flex = table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1];
+      
+      F32 old_left_px = rects_for_each_header[column_index_whos_resizer_got_dragged].width;
 
+      F32 flex_change_on_left = old_left_flex * (drag_in_px / old_left_px);
+
+      F32 new_left_flex  = old_left_flex + flex_change_on_left;
+      F32 new_right_flex = old_right_flex - flex_change_on_left;
+
+      table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 0] = new_left_flex;
+      table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] = new_right_flex;
     }
   }
 
