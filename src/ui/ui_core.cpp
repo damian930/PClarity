@@ -204,6 +204,8 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   {
     root->clay_element_config.custom.customData = root;
   }
+  //
+  // Clay_OnHover(Null, (U64)root);
 
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
@@ -441,6 +443,14 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
 
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
+
+
+  // TODO: What about using he internal clay heash func to get the data from the thing and then get the userData from there
+
+  // TODO:
+  //       so this would have to get the id and then the id func will have to ask for the box again. 
+  //       or the id box will just ask for the box and the box will here get updated
+
   if (box->has_been_updated_this_frame) { NotImplemented(); return {}; } 
 
   UI_State* state = ui_get_state();
@@ -567,6 +577,7 @@ UI_Actions ui_actions_from_id(Str8 id)
 
 
   // TODO
+  return {};
 }
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)

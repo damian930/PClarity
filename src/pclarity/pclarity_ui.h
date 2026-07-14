@@ -460,13 +460,14 @@ void table_ui_step_1(
 
   // TODO: Do resizing here first
   // "Resizer %lld"
-  
-  UI_Actions resizer_actions = ui_actions_from_box(resizer);
-  if (resizer_actions.is_down)
-  {
-    did_resizer_get_dragged = true;
-    column_index_whos_resizer_got_dragged = header_index;
-  }
+
+  // TODO:
+  // UI_Actions resizer_actions = ui_actions_from_box(resizer);
+  // if (resizer_actions.is_down)
+  // {
+  //   did_resizer_get_dragged = true;
+  //   column_index_whos_resizer_got_dragged = header_index;
+  // }
 
 
   //

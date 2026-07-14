@@ -128,7 +128,31 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     // pcl_do_ui(font, &pcl);
     // test_table_ui(font);
     // test_code_for_table_api(font);
-    table_do_ui_build(&table_conf, font, 500, 500);
+    // table_do_ui_build(&table_conf, font, 500, 500);
+
+    ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
+    {
+      ui_next_width(ui_px(50));
+      ui_next_height(ui_px(50));
+      ui_next_b_color(red());
+      UI_Box* box = ui_box_make_f("ID", UI_Box_flag__has_background);
+
+      Clay_LayoutElementHashMapItem* item = Clay__GetHashMapItem(box->clay_element_config.id.id);
+      if (item->layoutElement)
+      {
+        Clay__ElementConfigArraySlice config_arr = item->layoutElement->elementConfigs;
+        for EachIndex(i, config_arr.length)
+        {
+          Clay_ElementConfig conf = config_arr.internalArray[i];
+          if (conf.type == CLAY__ELEMENT_CONFIG_TYPE_SHARED)
+          {
+            BP;
+          }
+        }
+      }
+
+    }
+    ui_end_build();
 
     // ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
     // ui_push_font_size(24);
