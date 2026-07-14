@@ -260,6 +260,9 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 
   __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
 
+  // TODO: if this stays, then have this be passed in to the __ui_get_next_box_clay_element_config to not have this impl detail that this has to be set somewhere else
+  new_box->clay_element_config.userData = new_box;
+
   new_box->text_extension.font      = ui_top_font();
   new_box->text_extension.font_size = ui_top_font_size();
 
@@ -555,6 +558,15 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   result_actions.mouse_pos_when_went_down = mouse_pos_when_went_down;
 
   return result_actions;
+}
+
+UI_Actions ui_actions_from_id(Str8 id)
+{
+  // Data that i need for actions is inside my own ui tree
+  // i cant use clay to get access to it
+
+
+  // TODO
 }
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)

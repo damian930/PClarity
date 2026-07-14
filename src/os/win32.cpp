@@ -487,9 +487,9 @@ void os_frame_begin()
   // Mouse positions
   {
     POINT p = {};
-    BOOL succ = {};
-    succ |= GetCursorPos(&p); Assert(succ); // TODO: This asserted on you once, see why and fix this
-    succ |= ScreenToClient(os_get_state()->window.handle, &p); Assert(succ);
+    BOOL succ = TRUE;
+    succ &= GetCursorPos(&p); Assert(succ); // TODO: This asserted on you once with GetLastError() = 5, have no idea why thought, see why and fix this
+    succ &= ScreenToClient(os_get_state()->window.handle, &p); Assert(succ);
     Handle(succ); 
     os_state->this_frame_mouse_pos = v2f32((F32)p.x, (F32)p.y);
   }

@@ -425,261 +425,6 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
 }
 
 ///////////////////////////////////////////////////////////
-// - Testing how a table for the process data will work, never done this sort of ui before
-//
-struct Table_header_col_data {
-  Str8 str;
-  F32 percentage_of_the_table_content_size;
-};
-
-struct Table_header_col_data_node {
-  Table_header_col_data header_col_data;
-  Table_header_col_data_node* next;
-};
-
-struct Table_header_col_data_list {
-  Table_header_col_data_node* first;
-  Table_header_col_data_node* last;
-  U64 count;
-};
-
-struct Table_row_entry {
-  Str8 str;
-};  
-
-struct Table_row_entry_node {
-  Table_row_entry entry;
-  Table_row_entry_node* next;
-};
-
-struct Table_row_entry_list {
-  Table_row_entry_node* first;
-  Table_row_entry_node* last;
-  U64 count;
-};
-
-struct Table_row_node {
-  Table_row_entry_list entry;
-  Table_row_node* next;
-  Table_row_node* prev;
-};
-
-struct Table_row_list {
-  Table_row_node* first;
-  Table_row_node* last;
-  U64 count;
-};
-
-struct Table_state {
-  Table_header_col_data_list header_col_data_list;
-  Table_row_list row_list;
-};
-
-void table_add_header(Arena* arena, Table_state* table_state, F32 p, Str8 str)
-{
-  Table_header_col_data_node* header_node = ArenaPush(arena, Table_header_col_data_node);
-  Table_header_col_data* header_col_data = &header_node->header_col_data;
-  header_col_data->percentage_of_the_table_content_size = p;
-  header_col_data->str = str8_copy(arena, str);
-
-  QueuePushBack(&table_state->header_col_data_list, header_node);
-  table_state->header_col_data_list.count += 1;
-}
-
-Table_row_entry_list* table_add_row(Arena* arena, Table_state* table_state)
-{
-  Table_row_node* row = ArenaPush(arena, Table_row_node);
-  DllPushBack(&table_state->row_list, row);
-  table_state->row_list.count += 1;
-  return &row->entry;
-}
-
-void table_add_col_data_to_row(Arena* arena, Table_row_entry_list* row_entry_list, Str8 str_to_add)
-{
-  Table_row_entry_node* new_entry = ArenaPush(arena, Table_row_entry_node);
-  new_entry->entry.str = str8_copy(arena, str_to_add);
-
-  QueuePushBack(row_entry_list, new_entry);
-  row_entry_list->count += 1;
-}
-
-void table_extraction_test(Table_state* table_state, FP_Font font)
-{
-  ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
-  ui_push_font_size(24);
-
-  // Table ui build
-  B32 did_resizer_get_dragged = false;
-  U64 column_index_whos_resizer_got_dragged = 0;
-  F32 drag_delta = 0;
-  //
-  ui_next_width(ui_px(500));
-  ui_next_height(ui_px(500));
-  ui_next_padded_border(1, nice_green());
-  ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
-  UI_Col()
-  {
-    // Header ui
-    ui_next_width(ui_grow());
-    UI_Row()
-    {
-      U64 header_node_index = 0;
-      for (
-        Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
-        header_node != 0;
-        header_node = header_node->next
-      ) {
-        Table_header_col_data header_data = header_node->header_col_data;
-
-        ui_next_width(ui_p_of_p(header_data.percentage_of_the_table_content_size));
-        ui_next_height(ui_fit());
-        ui_next_padded_border(1, nice_blue());
-        ui_next_alignment_x(UI_Alignment_x__center);
-        ui_next_layout_x();
-        UI_Parent(ui_box_make_f("Table header %p", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_node))
-        {
-          ui_label(header_data.str);
-
-          ui_spacer(ui_grow());
-
-          if (header_node != table_state->header_col_data_list.last)
-          {
-            ui_next_width(ui_px(5));
-            ui_next_height(ui_grow());
-            ui_next_b_color(orange());
-            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-            UI_Box* header_column_resizer = ui_box_make_f("Resizer for header %p", UI_Box_flag__has_background, header_node);
-            
-            UI_Actions resizer_actions = ui_actions_from_box(header_column_resizer);
-            if (resizer_actions.is_down)
-            {
-              did_resizer_get_dragged = true;
-              column_index_whos_resizer_got_dragged = header_node_index;
-              drag_delta = ui_get_mouse_pos().x - ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down.x;
-            }
-          }
-
-          header_node_index += 1;
-        }
-      }
-    }
-
-    // Rows ui
-    for (
-      Table_row_node* row_node = table_state->row_list.first;
-      row_node != 0;
-      row_node = row_node->next
-    ) {
-      ui_next_width(ui_p_of_p(1));
-      ui_next_height(ui_fit());
-      UI_Row()
-      {
-        Table_header_col_data_node* header_col_node = table_state->header_col_data_list.first;
-        for (
-          Table_row_entry_node* row_enty_node = row_node->entry.first;
-          row_enty_node != 0;
-          row_enty_node = row_enty_node->next
-        ) {
-          Table_row_entry row_data = row_enty_node->entry;
-
-          ui_next_width(ui_p_of_p(header_col_node->header_col_data.percentage_of_the_table_content_size));
-          ui_next_height(ui_fit());
-          ui_next_layout_x();
-          UI_Parent(ui_box_make({}, UI_Box_flag__clip)) 
-          {
-            ui_next_width(ui_fit());
-            ui_next_height(ui_fit());
-            ui_next_b_color(green());
-            ui_next_extra_flags(UI_Box_flag__has_background);
-            UI_Col()
-            {
-              ui_label(row_enty_node->entry.str);
-            }
-          
-            ui_spacer(ui_grow());
-            
-            if (row_enty_node != row_node->entry.last)
-            {
-              ui_next_width(ui_px(5));
-              ui_next_height(ui_grow());
-              ui_next_b_color(did_resizer_get_dragged && column_index_whos_resizer_got_dragged == 0 ? blue() : orange());
-              ui_box_make({}, UI_Box_flag__has_background);
-            }
-          }
-
-          header_col_node = header_col_node->next;
-        }
-      }
-    }
-  }
-
-  // Table inputs and resizing
-  if (did_resizer_get_dragged)
-  {
-    Scratch scratch = get_scratch(0, 0);
-
-    // todo: Here you have to chnage the whole row of the p of p %s to have the table render in different size
-    B32 all_headers_found = true;
-    U64 header_count = table_state->header_col_data_list.count;
-    Rect* rects_for_each_header = ArenaPushArr(scratch.arena, Rect, header_count);
-    
-    {
-      Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
-      for EachIndex(header_index, header_count)
-      {
-        Str8 header_id = str8_fmt(scratch.arena, "Table header %p", header_node );
-        UI_Box_data header_box_data = ui_box_data_from_id(header_id);
-        if (!header_box_data.is_found) {
-          all_headers_found = false;
-        } else {
-          rects_for_each_header[header_index] = header_box_data.rect;
-        }
-        header_node = header_node->next;
-      }
-    }
-
-    if (all_headers_found)
-    {
-      V2F32 initial_mouse_pos = ui_get_state()->interacted_with_box_data.pos_when_mouse_went_down;
-      V2F32 mouse_pos         = ui_get_mouse_pos();
-      V2F32 prev_mouse_pos    = ui_get_prev_mouse_pos();
-
-      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
-      F32 mouse_relative_to_header = mouse_pos.x - rect_for_header_that_got_dragged.x;
-
-      F32 total_rects_width = 0.0f;
-      for EachIndex(i, header_count)
-      {
-        total_rects_width += rects_for_each_header[i].width;
-      }
-
-      for EachIndex(i, header_count)
-      {
-        F32 p_of_p = rects_for_each_header[i].width / total_rects_width;
-      }
-
-      Rect* dragged_rect            = rects_for_each_header + column_index_whos_resizer_got_dragged;
-      Rect* rect_after_dragged_rect = rects_for_each_header + column_index_whos_resizer_got_dragged + 1;
-
-      F32 prev_dragged_rect_width = dragged_rect->width;
-      dragged_rect->width = mouse_relative_to_header;
-      rect_after_dragged_rect->width -= (dragged_rect->width - prev_dragged_rect_width);
-    
-      Table_header_col_data_node* header_node = table_state->header_col_data_list.first;
-      for EachIndex(i, header_count)
-      {
-        Rect rect = rects_for_each_header[i];
-        F32 p_of_p = rect.width / total_rects_width;
-        header_node->header_col_data.percentage_of_the_table_content_size = p_of_p;
-        header_node = header_node->next;
-      }
-    }
-  }
-
-  ui_end_build();
-}
-
-///////////////////////////////////////////////////////////
 // - Extracting table api like you saw casey do 
 //
 struct UI_Table_config {
@@ -700,8 +445,8 @@ struct UI_Table_row {
 void table_ui_step_1(
   // Input
   UI_Table_config* table_conf, 
-  F32 width, 
-  F32 height,
+  UI_Size width_size, 
+  UI_Size height_size,
   U64 n_rows, 
   
   // Output
@@ -712,9 +457,21 @@ void table_ui_step_1(
   // Table ui build
   B32 did_resizer_get_dragged = false;
   U64 column_index_whos_resizer_got_dragged = 0;
+
+  // TODO: Do resizing here first
+  // "Resizer %lld"
+  
+  UI_Actions resizer_actions = ui_actions_from_box(resizer);
+  if (resizer_actions.is_down)
+  {
+    did_resizer_get_dragged = true;
+    column_index_whos_resizer_got_dragged = header_index;
+  }
+
+
   //
-  ui_next_width(ui_px(width));
-  ui_next_height(ui_px(height));
+  ui_next_width(width_size);
+  ui_next_height(height_size);
   ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
   ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding|UI_Box_flag__clip);
   UI_Col()
@@ -732,40 +489,49 @@ void table_ui_step_1(
         total_flex_value += table_conf->flex_values_for_headers[header_index];
       }
 
+      // TODO: This might be customisable or some like that, not sure
+      Assert(table_conf->flex_values_for_headers_count > 0);
+      F32 px_size_for_resizer = 3.0f;
+      F32 extra_size_for_resizers = px_size_for_resizer * (table_conf->flex_values_for_headers_count - 1);
+      total_flex_value += extra_size_for_resizers;
+
       for EachIndex(header_index, table_conf->flex_values_for_headers_count)
       {
         F32 flex_percentage = table_conf->flex_values_for_headers[header_index] / total_flex_value;
 
+        // == OLD CODE ==
         ui_next_width(ui_p_of_p(flex_percentage));
         ui_next_height(ui_px(table_conf->row_size_in_pixels)); 
-        UI_Row()
+        ui_next_layout_x();
+        UI_Box* header_box = ui_box_make_f("Table header %lld", 0, header_index);
+        UI_Parent(header_box)
         {
           ui_next_width(ui_grow());
           ui_next_height(ui_grow());
           ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
           ui_next_alignment_x(UI_Alignment_x__center);
-          ui_next_layout_x();
-          UI_Box* header_box = ui_box_make_f("Table header %lld", UI_Box_flag__has_borders|UI_Box_flag__has_padding, header_index);
+          UI_Box* box_for_user = ui_box_make({}, UI_Box_flag__has_borders|UI_Box_flag__has_padding);
 
-          arr_of_header_boxes[header_index] = header_box;
-          
-          if (header_index != (table_conf->flex_values_for_headers_count - 1))
+          arr_of_header_boxes[header_index] = box_for_user;
+        }
+
+        if (header_index != (table_conf->flex_values_for_headers_count - 1))
+        {
+          ui_next_width(ui_px(px_size_for_resizer));
+          ui_next_height(ui_px(table_conf->row_size_in_pixels));
+          ui_next_b_color(magenta());
+          ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+          UI_Box* resizer = ui_box_make_f("Resizer %lld", UI_Box_flag__has_background, header_index);
+
+          UI_Actions resizer_actions = ui_actions_from_box(resizer);
+          if (resizer_actions.is_down)
           {
-            ui_next_width(ui_px(1));
-            ui_next_height(ui_px(table_conf->row_size_in_pixels));
-            ui_next_b_color(magenta());
-            ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-            UI_Box* resizer = ui_box_make_f("Resizer %lld", UI_Box_flag__has_background, header_index);
-  
-            UI_Actions resizer_actions = ui_actions_from_box(resizer);
-            if (resizer_actions.is_down)
-            {
-              did_resizer_get_dragged = true;
-              column_index_whos_resizer_got_dragged = header_index;
-            }
+            did_resizer_get_dragged = true;
+            column_index_whos_resizer_got_dragged = header_index;
           }
 
         }
+
       }
     }
 
@@ -797,7 +563,7 @@ void table_ui_step_1(
         {
           total_flex_value += table_conf->flex_values_for_headers[header_index];
         }
-        
+
         for EachIndex(header_index, table_conf->flex_values_for_headers_count)
         {
           F32 flex_percentage = table_conf->flex_values_for_headers[header_index] / total_flex_value;
@@ -835,48 +601,36 @@ void table_ui_step_1(
       }
     }
 
+    // Damian: Updating the sizer for headers
     if (all_headers_found)
     {
-      Rect rect_for_header_that_got_dragged = rects_for_each_header[column_index_whos_resizer_got_dragged];
+      F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x; // TODO: This should use data from the actions and not just this, but for now its fine
       
-      // This is drag delta from prev frame, so frame based drag
-      F32 mouse_relative_to_header = ui_get_prev_mouse_pos().x - rect_for_header_that_got_dragged.x;
-
-      if (mouse_relative_to_header > 0.0f)
+      OutputDebugStringF("Drag: %f \n", drag);
+      if (drag != 0.0f)
       {
-        // Adjusting the dragged header
-        F32 px_space_diff = mouse_relative_to_header - rect_for_header_that_got_dragged.width; // TODO, this is stupid, Damian: 5 is the size of the resizer,
-        {
-          F32 px_space_diff_in_percents = px_space_diff / rect_for_header_that_got_dragged.width;
-          
-          F32* flex_value = &table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged];
-          F32 flex_value_diff = (*flex_value * px_space_diff_in_percents);
+        // BP;
+        F32 drag_norm = drag / rects_for_each_header[column_index_whos_resizer_got_dragged].width;
+        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] += (table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged] * drag_norm);
+        table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] -= (table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1] * drag_norm);
 
-          *flex_value += flex_value_diff;
-        }
-
-        // Adjusting the header after dragged
-        {
-          Rect rect = rects_for_each_header[column_index_whos_resizer_got_dragged + 1];
-          F32 px_diff_in_percents = px_space_diff / rect.width;
-
-          F32* flex_value = &table_conf->flex_values_for_headers[column_index_whos_resizer_got_dragged + 1];
-          F32 flex_value_diff = (*flex_value * px_diff_in_percents);
-
-          *flex_value -= flex_value_diff;
-        }
-        
-        // todo: 
-        // [x] - get relative mouse pos to the header origin in x,
-        // [x] - get the diff in pixel space and make the width of the dragged header smaller acordingly
-        // [x] - get flex value for dragged element, find out how much diff is in %s of the header and adjest flex value acordingly
-        // [x] - get the size of the header after dragged and change its width acordingly
-        // [x] - adjust flex value acordingly
+        // rects_for_each_header[column_index_whos_resizer_got_dragged].width += drag;
+        // rects_for_each_header[column_index_whos_resizer_got_dragged + 1].width -= drag;
+  
+        // Storing back the new flex values
+        // for EachIndex(header_index, header_count)
+        // {
+        //   table_conf->flex_values_for_headers[header_index] = rects_for_each_header[header_index].width;
+        // }
       }
+
     }
   }
 }
 
+// TODO:
+// Seems like the resizers should not be part of the box that is then has the box that we give out to the user
+// it would make more sense to just have it be in between the user boxes.
 void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32 height)
 {
   static struct {
@@ -891,15 +645,18 @@ void table_do_ui_build(UI_Table_config* table_conf, FP_Font font, F32 width, F32
 
   ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
   ui_push_font_size(24);
+  ui_push_font_size(font.size);
+
 
   Scratch scratch = get_scratch(0, 0);
 
+  // Damian: This is the current api for the table, will have to make it better, for now its fine
   UI_Box** array_of_header_boxes = 0;
   U64 number_of_header_boxes     = 0;
   UI_Table_row* array_of_rows    = 0;
   U64 number_of_rows             = 0;
   table_ui_step_1(
-    table_conf, width, height, ArrayCount(process_data_arr), 
+    table_conf, ui_px(500), ui_px(500), ArrayCount(process_data_arr), 
     scratch.arena, &array_of_header_boxes, &number_of_header_boxes, &array_of_rows, &number_of_rows
   );
 

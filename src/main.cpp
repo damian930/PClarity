@@ -108,9 +108,9 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   UI_Table_config table_conf = {};
   {
     table_conf.row_size_in_pixels        = 100;
-    table_conf.flex_values_for_headers[0]    = 1;
-    table_conf.flex_values_for_headers[1]    = 2;
-    table_conf.flex_values_for_headers[2]    = 1;
+    table_conf.flex_values_for_headers[0]    = 150;
+    table_conf.flex_values_for_headers[1]    = 250;
+    table_conf.flex_values_for_headers[2]    = 100;
     table_conf.flex_values_for_headers_count = 3;
     table_conf.border_color              = green();
     table_conf.border_around_width       = 2;

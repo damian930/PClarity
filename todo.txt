@@ -24,7 +24,9 @@
   [x] - Root font size selector
 [x] - Add a slider in settings for root font size in the app 
 
-[ ] - See the frame rate, it seems to be really low
+[x] - See the frame rate, it seems to be really low
+[ ] - Take a look at thow texture and therefore text is drawn and batched, fps is probably low cause of that
+
 [ ] - Make api for elipssed labels better, right now you have to suply the size from the outside in a not really intuitive way
 [ ] - Fix the bug with elipssed labels where when there is not enought space for even ... the whole label gets drawn
 

@@ -146,7 +146,8 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_ellipsed_draw_func)
     F32 text_width_after_ellissing = rect.width - ellissis_dims.x;
     if (text_width_after_ellissing < 0)
     {
-      BP;
+      // TODO:
+      // BP;
       // CSS Either doesnt show anything or just clips the view for the box that has the text and then only 
       // draws the .. in there, which results in only a part of the .. beeing drawn
 
