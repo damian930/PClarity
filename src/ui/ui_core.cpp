@@ -154,7 +154,6 @@ void ui_end_build()
   {
     os_set_cursor(state->final_hover_box->hover_cursor);
   }
-
 }
 
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
@@ -193,8 +192,6 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   {
     root->clay_element_config.custom.customData = root;
   }
-  //
-  // Clay_OnHover(Null, (U64)root);
 
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
@@ -346,7 +343,6 @@ void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, 
   
   // TODO: Deal with the fact that clay doesnt allow for single axis float, Assert for now
   if (!(flags & UI_Box_flag__floating) && ((flags & UI_Box_flag__floating_x) || (flags & UI_Box_flag__floating_y))) { InvalidCodePath(); }
-  
   if (flags & UI_Box_flag__floating)
   {
     config->floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
@@ -366,6 +362,7 @@ void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, 
   config->image       = {}; // TODO: 
 }
 
+// TODO: This is not used right now
 Str8 __ui_get_id_part_from_str8(Str8 str)
 {
   RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
@@ -380,6 +377,7 @@ Str8 __ui_get_id_part_from_str8(Str8 str)
   return id_part;
 }
 
+// TODO: This is not used right now
 Str8 __ui_get_text_part_from_str8(Str8 str)
 {
   RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
@@ -622,16 +620,22 @@ void ui_draw()
 
   d_push_scissor_rect(rect_make(0.0f, 0.0f, state->window_dims_for_this_build.x, state->window_dims_for_this_build.y));
 
-  for EachIndex(commands_index, render_commands.length)
-  {
-    // Damian: Common data 
-    Clay_RenderCommand command = render_commands.internalArray[commands_index];
-    UI_Box* box_to_draw        = (UI_Box*)command.userData;
-    if (ui_is_null_box(box_to_draw)) { Assert(ui_is_null_box(box_to_draw)); }
-    if (ui_is_null_box(box_to_draw)) { continue; }
-    
-    Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
+  B32 got_green_border = false;
 
+  for EachIndex(command_index, render_commands.length)
+  {
+    // DD, TODO: Check if command.boundingBox is set in all the command types
+    // DD: There is a weird case in clay where there is shared data inside render command
+    //     type, you would expect then to always be set to valid data. Docs for .userData
+    //     say this "A pointer transparently passed through from the original element declaration.".
+    //     This would mean that .userData is set all the time to what i set it to. So if i 
+    //     set it to X then it should always be X when i get it from the renderCommand type.
+    //     But this is not the case. For CLAY_RENDER_COMMAND_TYPE_SCISSOR_START and
+    //     CLAY_RENDER_COMMAND_TYPE_SCISSOR_END they are set to 0. Which to me seems missleading.
+
+    Clay_RenderCommand command = render_commands.internalArray[command_index];
+    Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
+    
     switch (command.commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_NONE:
@@ -651,7 +655,7 @@ void ui_draw()
         V4F32 border_color = __ui_v4f32_from_clay_color(command.renderData.border.color);
         V4F32 corner_rs    = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
         V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
-        
+
         F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
         
         if (border_width.v[RectEdge__left] > 0) 
@@ -708,10 +712,13 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
-        V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
-        V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
+        // Damian: Just making sure
+        Assert((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData);
         
+        V4F32 b_color              = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
+        V4F32 clay_corner_r        = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
         UI_Box* box_to_custom_draw = (UI_Box*)command.renderData.custom.customData;
+
         Assert(box_to_custom_draw->custom_draw_extension.draw_func);
         if (box_to_custom_draw->custom_draw_extension.draw_func)
         {

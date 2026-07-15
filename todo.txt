@@ -2,6 +2,10 @@ Current:
 
 
 
+[ ] - Gotta have a way to add data to add columns to tables and then have them set up to do whatever
+
+[ ] - set up reloading dll for ui stuff for the app when there is more data in the app that you have a legit header file for it
+
 [ ] - dont allow the headers or rows to overdraw the box that they are in
 [ ] - Fix that dont_overdraw_children only uses scissor rect for the box and not the whole nested tree of the box
 [ ] - Test if no overdraw in ui box works when you have them nested

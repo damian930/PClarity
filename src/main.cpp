@@ -21,7 +21,8 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "ui/widgets/ui_widgets.h"
 #include "ui/widgets/ui_widgets.cpp"
 
-#include "pclarity/pclarity_ui.h"
+#include "pclarity/pclarity.h"
+#include "pclarity/pclarity.cpp"
 
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
