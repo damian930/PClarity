@@ -33,6 +33,8 @@ Current:
   [x] - Root font size selector
 [x] - Add a slider in settings for root font size in the app 
 
+[ ] - add min size in px to the table in the main menu
+
 [x] - See the frame rate, it seems to be really low
 [ ] - Take a look at thow texture and therefore text is drawn and batched, fps is probably low cause of that
 
