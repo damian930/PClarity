@@ -130,6 +130,13 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->window_dims_for_this_build = window_dims;
 
   ui_push_parent(state->current_build_root_box);
+
+  // TODO: Need a better comment here
+  // TODO: Testing this here to see if the clay would work
+  Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
+  Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
+  Clay_UpdateScrollContainers(false, {}, {}); 
+  Clay_BeginLayout();
 }
 
 void ui_end_build()
@@ -138,13 +145,14 @@ void ui_end_build()
   
   UI_State* state = ui_get_state();
   
-  bool pointerDown = false; // TODO: Implement this if needed, this is a todo just so when you see this code you remember about this even if you still dont have to implement this
-  Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, pointerDown);
-  Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
+  // bool pointerDown = false; // TODO: Implement this if needed, this is a todo just so when you see this code you remember about this even if you still dont have to implement this
+  // Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, pointerDown);
+  // Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
+  // Clay_UpdateScrollContainers(false, {}, {}); 
 
   // Building the whole clay ui tree from our own ui tree
   {
-    Clay_BeginLayout();
+    // Clay_BeginLayout();
     __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
     Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
     state->render_commands_as_result_of_ui_build = clay_render_commands; 
@@ -192,6 +200,9 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   {
     root->clay_element_config.custom.customData = root;
   }
+
+  root->clay_element_config.clip.childOffset.x = root->clip_offset.x;
+  root->clay_element_config.clip.childOffset.y = root->clip_offset.y;
 
   Clay__ConfigureOpenElementPtr(&root->clay_element_config);
 
@@ -587,24 +598,31 @@ UI_Actions ui_actions_from_id_f(const char* fmt, ...)
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)
 {
-  Clay_ScrollContainerData scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
-  V2F32 offset = { scroll_data.scrollPosition->x, scroll_data.scrollPosition->y };
+  V2F32 offset = {};
+  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(__ui_str8_from_clay_string(box->clay_element_config.id.stringId));
+  if (!ui_is_null_box(prev_build_box))
+  {
+    offset = prev_build_box->clip_offset;
+  }
   return offset;
 }
 
 ///////////////////////////////////////////////////////////
 // - Box setters
 //
+void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
+{
+  box->clip_offset.v[axis] = clip_offset;
+}
+
 void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
 {
-  box->clay_element_config.clip.childOffset.x = clip_offset;
+  ui_box_set_clip_offset_for_axis(box, clip_offset, Axis2__x);
+}
 
-  // Damian: The code below doesnt work, i am not sure why, it has to do with the order in which we call clay stuff
-  // Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(box->clay_element_config.id);
-  // if (clay_scroll_data.found)
-  // {
-  //   clay_scroll_data.scrollPosition->x = clip_offset;
-  // }
+void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset)
+{
+  ui_box_set_clip_offset_for_axis(box, clip_offset, Axis2__y);
 }
 
 ///////////////////////////////////////////////////////////

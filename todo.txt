@@ -1,5 +1,5 @@
 Current:
-
+[ ] - Have a way to scroll the table with the scroll wheel
 
 
 [ ] - Gotta have a way to add data to add columns to tables and then have them set up to do whatever

@@ -104,6 +104,8 @@ struct UI_Box {
   B32 has_hover_cursor;
   OS_Cursor hover_cursor;
 
+  V2F32 clip_offset;
+
   struct {
     UI_Box_custom_draw_func_pointer_type* draw_func; 
     void* data_for_draw_func;
@@ -135,6 +137,7 @@ struct UI_Box {
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
 #define __UI_NULL_BOX_VALUE { \
+  {}, \
   {}, \
   {}, \
   {}, \
@@ -254,7 +257,9 @@ UI_Actions ui_actions_from_id_f(const char* fmt, ...);
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 
 // - Box setters // TODO: This is new, might not be used later
+void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
+void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset);
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);

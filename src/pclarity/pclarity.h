@@ -365,15 +365,32 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
               //       ask for the size of this from the prev frame, lets try from the prev frame
 
               // TODO: Clay fucked up auto generated ids here, need to introduce custom id scopes
-              // ui_next_width(ui_grow());
-              // ui_next_height(ui_grow());
-              ui_next_width(ui_px(50));
-              ui_next_height(ui_px(50));
+              ui_next_width(ui_grow());
+              ui_next_height(ui_grow());
               ui_next_layout_y();
               ui_next_b_color(black());
-              UI_Box* table_box = ui_box_make_f("table_boxflkdfjlsdk", UI_Box_flag__clip|UI_Box_flag__has_background); // TODO: Change the name here
+              UI_Box* table_box = ui_box_make_f("table_boxflkdfjlsdk", UI_Box_flag__clip); // TODO: Change the name here
 
-              /*
+              if (ui_actions_from_box(table_box).is_hovered)
+              {
+                // TODO: Add shift modifier here to be able to scroll to the right and back
+                F32 table_scroll_this_frame = 0.0f;
+                for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+                {
+                  if (ev->kind == OS_Event_kind__wheel)
+                  {
+                    table_scroll_this_frame = ev->wheel_event.scroll_data;
+                    os_consume_frame_event(ev);
+                    break;
+                  }
+                }
+
+                F32 current_clip_offset = ui_clip_offset_from_box(table_box).y;
+                current_clip_offset += table_scroll_this_frame;
+                OutputDebugStringF("Scroll: %f \n", current_clip_offset);
+                ui_box_set_clip_offset_y(table_box, current_clip_offset);
+              }
+
               UI_Box_data table_box_data = ui_box_data_from_box(table_box);
               if (table_box_data.is_found)
               {
@@ -508,6 +525,8 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                     ) {
                       ui_next_width(ui_grow());
                       ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
+                      ui_next_padded_border(1, black());
+                      ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
                       UI_Row()
                       {
                         for EachIndex(header_index, PCL->table_header_flex_value_count)
@@ -553,8 +572,9 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                   
                 }
               }
-              */
             }
+
+            ui_spacer(ui_rem(0.25f));
 
             ui_next_width(ui_rem(2));
             ui_next_height(ui_grow());
