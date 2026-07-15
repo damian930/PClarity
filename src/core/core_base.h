@@ -193,6 +193,16 @@ typedef double F64;
 //
 // Dll is a list with "first" and "last" node pointers.
 // Nodes store the "next" and "prev" node pointers.
+
+// // TODO: Test this in sample and make sure that this works and have this as the building block for the old stuff
+// #define StackPush_Named_Explicit(top_node_p, new_node_p, name_for_next_in_node) \
+// 	if (top_node_p == 0) {     \
+// 		top_node_p = new_node; \
+// 	} else {                                     \
+// 		(new_node)->name_for_next_in_node = top_node_p; \
+// 		top_node_p = new_node;                        \
+// 	}
+
 #define StackPush_Name(list, new_node, name_for_first_in_list, name_for_next_in_node) \
 	if ((list)->name_for_first_in_list == 0) {     \
 			(list)->name_for_first_in_list = new_node; \
@@ -839,8 +849,6 @@ typedef U64 Time; // This is used as just a value from Readable_time, it has to 
 
 tu_specific Time time_from_readable_time(Readable_time* r_time);
 tu_specific Readable_time readable_time_from_time(Time time);
-
-// TODO: This might be stupid, but if this is, then just have this be 
 
 #endif
 

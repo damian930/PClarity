@@ -108,11 +108,12 @@ void ui_text_f(const char* fmt, ...)
 
 UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func)
 {
-  UI_Box* box   = provided_data.box;
-  Str8 text     = box->text_extension.text;
-  FP_Font font  = box->text_extension.font;
-  F32 font_size = box->text_extension.font_size;
-  d_draw_text(text, font, font_size, provided_data.final_box_rect.origin, white());
+  UI_Box* box      = provided_data.box;
+  Str8 text        = box->text_extension.text;
+  FP_Font font     = box->text_extension.font;
+  F32 font_size    = box->text_extension.font_size;
+  V4F32 font_color = box->text_extension.font_color;
+  d_draw_text(text, font, font_size, provided_data.final_box_rect.origin, font_color);
 }
 
 ///////////////////////////////////////////////////////////
@@ -136,16 +137,10 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_ellipsed_draw_func)
     F32 text_width_after_ellissing = rect.width - ellissis_dims.x;
     if (text_width_after_ellissing < 0)
     {
-      // TODO:
-      // BP;
-      // CSS Either doesnt show anything or just clips the view for the box that has the text and then only 
-      // draws the .. in there, which results in only a part of the .. beeing drawn
-
-      // TODO: Handle this as well
+      final_str_to_draw = {};
     }
     else 
     {
-      // TODO: This doesnt yet work with the font size
       RangeU64 range_that_fits = fp_get_text_range_that_fits(box->text_extension.text, text_width_after_ellissing, box->text_extension.font, box->text_extension.font_size);
       Str8 visible_part = str8_substring_range(box->text_extension.text, range_that_fits);
 
@@ -169,39 +164,55 @@ void ui_label_ellipsed(Str8 str)
   ui_extend_box_with_custom_draw_function(box, __ui_label_ellipsed_draw_func, Null);
 }
 
+void ui_label_ellipsed_f(const char* fmt, ...)
+{
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 str = str8_valist(scratch.arena, fmt, argptr);
+    ui_label_ellipsed(str);
+    va_end(argptr);
+  }
+}
+
 void ui_text_ellipsed(Str8 str)
 {
   ui_label_ellipsed(str);
 }
 
+void ui_text_ellipsed_f(const char* fmt, ...)
+{
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 str = str8_valist(scratch.arena, fmt, argptr);
+    ui_text_ellipsed(str);
+    va_end(argptr);
+  }
+}
+
 ///////////////////////////////////////////////////////////
 // - Images
 //
-#define UI_CUSTOM_DATA_FOR_IMAGE(var_name) \
-struct var_name { \
-  R_Handle texture; \
-};
 UI_CUSTOM_DRAW_BOX_DEF(__ui_image_draw_func)
 {
-  // UI_CUSTOM_DATA_FOR_IMAGE(Custom_data);
-  // Custom_data* data = (Custom_data*)custom_data;
-
-  // Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(data->texture));
-  // d_draw_texture_pro(data->texture, provided_data.final_box_rect, texture_rect, white());
+  R_Handle texture = *((R_Handle*)provided_data.box->custom_draw_extension.data_for_draw_func);
+  Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
+  d_draw_texture_pro(texture, provided_data.final_box_rect, texture_rect, white());
 }
 void ui_image(R_Handle texture, F32 width_px, F32 height_px)
 {
-  // V2F32 dims = r_get_handle_dims(texture);
+  V2F32 dims = r_get_handle_dims(texture);
+  ui_next_width(ui_px(width_px));
+  ui_next_height(ui_px(height_px));
+  UI_Box* box = ui_box_make({}, 0);
 
-  // ui_next_width(ui_px(width_px));
-  // ui_next_height(ui_px(height_px));
-  // UI_Box* box = ui_box_make({}, 0);
-
-  // UI_CUSTOM_DATA_FOR_IMAGE(Custom_data);
-  // Custom_data* custom_data = ArenaPush(ui_get_build_arena(), Custom_data);
-  // custom_data->texture = texture;
-
-  // ui_extend_box_with_custom_draw_function(box, __ui_image_draw_func, (void*)custom_data);
+  R_Handle* handle = ArenaPush(ui_get_build_arena(), R_Handle);
+  *handle = texture;
+  
+  ui_extend_box_with_custom_draw_function(box, __ui_image_draw_func, (void*)handle);
 }
 #undef UI_CUSTOM_DATA_FOR_IMAGE
 

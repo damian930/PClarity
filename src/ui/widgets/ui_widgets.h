@@ -29,7 +29,9 @@ void ui_text_f(const char* fmt, ...);
 
 // - Ellipsed labels
 void ui_label_ellipsed(Str8 str);
+void ui_label_ellipsed_f(const char* fmt, ...);
 void ui_text_ellipsed(Str8 str);
+void ui_text_ellipsed_f(const char* fmt, ...);
 
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);

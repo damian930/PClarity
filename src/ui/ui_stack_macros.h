@@ -37,7 +37,7 @@
   \
   EXPANSION(__UI_Font_stack,      FP_Font, stack_font,      FP_Font{}, ui_push_font,      ui_next_font,      ui_pop_font,      ui_auto_pop_font,      ui_top_font,      64, UI_Font) \
   EXPANSION(__UI_Font_size_stack, F32,     stack_font_size, 16.0f,     ui_push_font_size, ui_next_font_size, ui_pop_font_size, ui_auto_pop_font_size, ui_top_font_size, 64, UI_Font_Size) \
-  EXPANSION(__UI_Text_color_stack, V4F32,     stack_text_color, white(),     ui_push_text_color, ui_next_text_color, ui_pop_text_color, ui_auto_pop_text_color, ui_top_text_color, 64, UI_TextColor) \
+  EXPANSION(__UI_Font_color_stack, V4F32,  stack_font_color, white(),  ui_push_font_color, ui_next_font_color, ui_pop_font_color, ui_auto_pop_font_color, ui_top_font_color, 64, UI_FontColor) \
   \
   EXPANSION(__UI_Alignment_x_stack, UI_Alignment_x, stack_alignment_x, UI_Alignment_x__left, ui_push_alignment_x, ui_next_alignment_x, ui_pop_alignment_x, ui_auto_pop_alignment_x, ui_top_alignment_x, 64, UI_AlignmentX) \
   EXPANSION(__UI_Alignment_y_stack, UI_Alignment_y, stack_alignment_y, UI_Alignment_y__top, ui_push_alignment_y, ui_next_alignment_y, ui_pop_alignment_y, ui_auto_pop_alignment_y, ui_top_alignment_y, 64, UI_AlignmentY) \
@@ -55,10 +55,13 @@
     inner_data_type default_value; \
   };
 
+///////////////////////////////////////////////////////////
+// Damian: Stack fucntion declaration
+//
 #define __UI_STACK_DECLARE_PUSH_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, dfer_push_pop_macro_name) \
   void push_func_name(inner_data_type v);
 
-#define __UI_STACK_DECLARE_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+  #define __UI_STACK_DECLARE_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   inner_data_type pop_func_name();
 
 #define __UI_STACK_DECLARE_AUTO_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
@@ -67,6 +70,9 @@
 #define __UI_STACK_DECLARE_GET_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   inner_data_type get_top_func_name();
 
+///////////////////////////////////////////////////////////
+// Damian: Stack fucntion definitions
+//
 #define __UI_STACK_DEFINE_PUSH_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   void push_func_name(inner_data_type v) { \
     if (ui_get_state()->stacks.var_name_inside_state.count < ArrayCount(ui_get_state()->stacks.var_name_inside_state.arr)) { \
@@ -127,11 +133,6 @@
     } \
     return return_top_value; \
   }
-
-
-
-
-
 
 
 

@@ -251,13 +251,14 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
     clay_id = Clay__HashString(clay_string_for_clay_id, 0, 0);
   }
 
-  __ui_get_next_box_clay_element_config(&new_box->clay_element_config, clay_id, flags);
+  __ui_get_next_box_clay_element_config(new_box, clay_id, flags);
 
   // TODO: if this stays, then have this be passed in to the __ui_get_next_box_clay_element_config to not have this impl detail that this has to be set somewhere else
   new_box->clay_element_config.userData = new_box;
 
-  new_box->text_extension.font      = ui_top_font();
-  new_box->text_extension.font_size = ui_top_font_size();
+  new_box->text_extension.font       = ui_top_font();
+  new_box->text_extension.font_size  = ui_top_font_size();
+  new_box->text_extension.font_color = ui_top_font_color();
 
   // TODO: If this ends up beeing used more than just here, then have this be a func in the macro file for stacks
   if (state->stacks.stack_hover_cursor.count > 0 || state->stacks.stack_hover_cursor.is_single_use_value_set) // Only having a cursor if there is one, disregard the default cursor
@@ -283,6 +284,12 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   return new_box;
 }
 
+// Damian: Testing reverse param order 
+UI_Box* ui_box_make_n(UI_Box_flags flags, Str8 id)
+{
+  return ui_box_make(id, flags);
+}
+
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
 {
   Scratch scratch = get_scratch(0, 0);
@@ -295,10 +302,13 @@ UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
   return box;
 }
 
-void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags)
+void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, UI_Box_flags flags)
 {
   flags |= ui_top_extra_flags();
-  
+  box->flags = flags;
+
+  Clay_ElementDeclaration* config = &box->clay_element_config;
+
   config->id = clay_id;
 
   config->layout.sizing.width    = __ui_clay_sizing_axis_from_ui_size(ui_top_size_x());
@@ -354,11 +364,6 @@ void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay
 
   config->aspectRatio = {}; // TODO: 
   config->image       = {}; // TODO: 
-
-  // Damian: Not touching clay_config->userData and clay_config->custom here, 
-  //         its for custom stuff, stuff like cutstom drawing
-  // config->custom = {}; 
-  // config->userData = {}; 
 }
 
 Str8 __ui_get_id_part_from_str8(Str8 str)
@@ -404,7 +409,7 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
 
 void ui_extend_box_with_text(UI_Box* box, Str8 str)
 {
-  box->text_extension.text      = str8_copy(ui_get_build_arena(), str);
+  box->text_extension.text = str8_copy(ui_get_build_arena(), str);
 
   // Damian: These are already in the `text_extension`. 
   // box->text_extension.font_size = ui_top_font_size();
@@ -609,6 +614,9 @@ void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
 //
 void ui_draw()
 {
+  // TODO: Find a way to reliably have scissor rect pushing and popping for boxes
+  //       that have no_overdraw flag set
+
   UI_State* state = ui_get_state();
   Clay_RenderCommandArray render_commands = state->render_commands_as_result_of_ui_build;
 
@@ -616,7 +624,14 @@ void ui_draw()
 
   for EachIndex(commands_index, render_commands.length)
   {
+    // Damian: Common data 
     Clay_RenderCommand command = render_commands.internalArray[commands_index];
+    UI_Box* box_to_draw        = (UI_Box*)command.userData;
+    if (ui_is_null_box(box_to_draw)) { Assert(ui_is_null_box(box_to_draw)); }
+    if (ui_is_null_box(box_to_draw)) { continue; }
+    
+    Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
+
     switch (command.commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_NONE:
@@ -624,7 +639,6 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
-        Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
         V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
 
@@ -634,7 +648,6 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
-        Rect rect          = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 border_color = __ui_v4f32_from_clay_color(command.renderData.border.color);
         V4F32 corner_rs    = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
         V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
@@ -681,7 +694,6 @@ void ui_draw()
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
       {
         B32 is_axis_clipped[Axis2__COUNT] = { command.renderData.clip.horizontal, command.renderData.clip.vertical };
-        Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
         
         Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
         if (is_axis_clipped[Axis2__x]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, rect, Axis2__x); }
@@ -696,7 +708,6 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
-        Rect rect           = __ui_rect_from_clay_bounding_box(command.boundingBox);
         V4F32 b_color       = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
         V4F32 clay_corner_r = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
         

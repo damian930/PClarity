@@ -1,3 +1,12 @@
+Current:
+
+
+
+[ ] - dont allow the headers or rows to overdraw the box that they are in
+[ ] - Fix that dont_overdraw_children only uses scissor rect for the box and not the whole nested tree of the box
+[ ] - Test if no overdraw in ui box works when you have them nested
+      Think abou this, maybe even with who, or claude
+
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
 [x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
@@ -28,21 +37,12 @@
 [ ] - Take a look at thow texture and therefore text is drawn and batched, fps is probably low cause of that
 
 [ ] - Make api for elipssed labels better, right now you have to suply the size from the outside in a not really intuitive way
-[ ] - Fix the bug with elipssed labels where when there is not enought space for even ... the whole label gets drawn
 
-[ ] - Make table api better
-  [ ] - The whole idea with *** and array or boxes that are given to the caller is fine, but i would like something more immediate, something that would allow for better understanding of the ui in code. Right now its kind of deffered for later fill up by the user. 
-  [ ] - Fix bugs with resizers
-    [ ] - Twitching
-    [ ] - Out of bounds
-    [ ] - Then mouse if pressed on a resizer there is a little change in the floating value of p_of_p, this moves the table a bit, this should not happend
-  [ ] - Add min size to headers
-  [ ] - Add a way for the called to specify where to have the resizers. Best case the resizers are just table specific ways to change the sizes, but the user also can change them themselvs.
-  [ ] - Add styling to the table skeleton
-    [ ] - Border styling
-
-
-
+[ ] - Better os event list api
+[ ] - Have the app be rendred when the window gets resized
+[ ] - DPI support
+[ ] - Call Dll pop DllRemove
+[ ] - .rs for the app with a custom icon
 
 
  

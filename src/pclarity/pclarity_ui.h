@@ -53,6 +53,23 @@ struct PCL_State {
 
   Arena* frame_arena;
   PCL_Command_list defered_commands_to_start_of_next_frame;
+
+  // Table data
+  F32 table_header_flex_values[64];
+  U64 table_header_flex_value_count;
+
+  // todo: Here should be a list of table header_width
+
+  // F32 flex_values_for_headers[64]; // TODO: Dont have it be capped like that
+  // U64 flex_values_for_headers_count;
+  // F32 row_size_in_pixels;
+  // V4F32 border_color;
+  // F32 border_around_width;
+  //
+  // UI_Table_config* table_conf, 
+  // UI_Size width_size, 
+  // UI_Size height_size,
+  // U64 n_rows, 
 };
 
 void pcl_defer_command_to_start_of_next_frame(PCL_State* PCL, PCL_Command command)
@@ -141,6 +158,11 @@ PCL_State pcl_init()
   state.current_menu   = PCL_Menu__home;
   state.main_font_size = 20;
   state.frame_arena = arena_alloc(Megabytes(64));
+
+  // Icon, exe_name, start_up_time
+  state.table_header_flex_values[state.table_header_flex_value_count++] = 1.0f;
+  state.table_header_flex_values[state.table_header_flex_value_count++] = 0.5f;
+  state.table_header_flex_values[state.table_header_flex_value_count++] = 0.5f;
 
   return state;
 }
@@ -269,63 +291,238 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
     ui_next_b_color(magenta());
     ui_box_make_f("Navigation rail and main page separator", UI_Box_flag__has_background);
   
-    if (PCL->current_menu == PCL_Menu__settings)
+    // Menu box
+    ui_next_width(ui_grow());
+    ui_next_height(ui_grow());
+    ui_next_b_color(pcl_color_from_name(PCL_Color_name__main_background));
+    ui_next_extra_flags(UI_Box_flag__has_background|UI_Box_flag__has_padding);
+    ui_next_padding(ui_top_font_size()); // todo: Use a scale here
+    UI_Col()
     {
-      ui_next_padding(50);
-      ui_next_extra_flags(UI_Box_flag__has_padding);
-      ui_next_width(ui_px(500));
-      ui_next_height(ui_px(500));
-      UI_Col()
+      if (PCL->current_menu == PCL_Menu__settings)
       {
         ui_next_width(ui_grow());
         ui_next_height(ui_rem(1));
         F32 new_font_size = pcl_ui_slider(PCL->main_font_size, rangeF32(4, 64), Str8FromC("Test slider id"));
+        
         pcl_defer_command_to_start_of_next_frame(PCL, PCL_Command__new_main_font_size);
         PCL->new_font_size = new_font_size;
+  
+        ui_next_font_size(64);
+        ui_label_f("Settings menu here");
       }
+      else if (PCL->current_menu == PCL_Menu__home)
+      {
+        ui_next_font_size(32);
+        ui_next_font_color(magenta());
+        ui_text_f("Application data");
 
-      ui_next_font_size(64);
-      ui_label_f("Settings menu here");
-    }
-    else if (PCL->current_menu == PCL_Menu__home)
-    {
-       ui_next_width(ui_grow());
-       ui_next_height(ui_grow());
-       ui_next_padding_diff(20, 20, 10, 10);
-       ui_next_extra_flags(UI_Box_flag__has_padding);
-       UI_Col()
-       {
-         // todo: have a text edit field in there
-   
-         // TODO: Have this width here not be static all the time
-         ui_next_width(ui_px(300));
-         ui_next_height(ui_fit());
-         ui_next_padded_border(2, pcl_color_from_name(PCL_Color_name__item_selected));
-         ui_next_extra_flags(UI_Box_flag__has_borders);
-         ui_next_alignment_y(UI_Alignment_y__center);
-         UI_Row()
-         {
-           ui_image(pcl_icon_magnifying_glass, icon_size, icon_size);
-           
-           ui_spacer(ui_px(15)); // TODO: This shoud be relative to font size or some like that 
-           
-           // TODO: Here will be the seach bar later
-           ui_label_f("Search programs...");
-         }
-         
-         ui_spacer(ui_px(20));
-   
-         ui_next_font_size(32);
-         ui_next_text_color(white());
-         ui_label_f("App statistics");
-   
-   
-   
-         // TODO: Here will be the thing that displayed the whole list of apps and other data related to it
-       }
-    }
-    else {
-      InvalidCodePath();
+        ui_next_width(ui_grow());
+        ui_next_height(ui_grow());
+        ui_next_padding_diff(20, 20, 10, 10);
+        ui_next_extra_flags(UI_Box_flag__has_padding);
+        UI_Col()
+        {
+          {
+          #define ROW_HEIGHT_SCALER 3 // TODO: This should be its own thing in the state for the thing
+          #define TABLE_WIDTH 500
+          #define TABLE_HEIGHT 500
+          #define RESIZER_VISIBLE_WIDTH 3
+  
+          ui_next_width(ui_px(TABLE_WIDTH));
+          ui_next_height(ui_px(TABLE_HEIGHT));
+          ui_next_layout_y();
+          UI_Box* top_table_box = ui_box_make({}, UI_Box_flag__clip);
+          
+          if (PCL->table_header_flex_value_count != 0) UI_Parent(top_table_box)
+          {
+            U64 n_resizers_per_row = PCL->table_header_flex_value_count - 1;
+  
+            // TODO: This might cause some weird looking bugs since in clay padding adds to the size of things
+            //       where just border doesnt
+            // This here doesnt account for any border or anything like that, this should
+            F32 space_for_headers = (F32)(TABLE_WIDTH - (n_resizers_per_row * RESIZER_VISIBLE_WIDTH));
+  
+            F32 headers_total_flex_value = 0.0f;
+            for EachIndex(header_index, PCL->table_header_flex_value_count)
+            {
+              headers_total_flex_value += PCL->table_header_flex_values[header_index];
+            }
+  
+            // Floating resizers
+            {
+              B32 is_pending_resizer_drag = false;
+              U64 pending_resizer_index   = 0;
+              F32 pending_resizer_drag    = 0.0;
+              
+              F32 offset_x = 0.0f;
+              for EachIndex(header_index, PCL->table_header_flex_value_count)
+              {
+                if (header_index == PCL->table_header_flex_value_count - 1) { continue; }
+  
+                F32 flex_norm = PCL->table_header_flex_values[header_index] / headers_total_flex_value;
+                offset_x += space_for_headers * flex_norm;
+                offset_x += RESIZER_VISIBLE_WIDTH; 
+  
+                #define RESIZER_INVISIBLE_WIDTH 6
+                ui_next_width(ui_px(RESIZER_INVISIBLE_WIDTH));
+                ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
+                ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+                ui_next_b_color(transparent());
+                UI_Box* resizer = ui_box_make_f("Data table resizer %lld", UI_Box_flag__has_background|UI_Box_flag__floating, header_index);
+                resizer->clay_element_config.floating.offset.x = offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2); 
+  
+                // TODO: There i a bug here, when the left resizer gets dragged, the right one moves as well
+                //       This is also what is causing the separator to look smaller sometimes for a couple of pixels
+                UI_Actions resizer_actions = ui_actions_from_box(resizer);
+                if (resizer_actions.is_down)
+                {
+                  F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x;
+  
+                  is_pending_resizer_drag = true;
+                  pending_resizer_index   = header_index;
+                  pending_resizer_drag    = drag;
+                }
+              }
+  
+              if (is_pending_resizer_drag)
+              {
+                F32 old_left_flex  = PCL->table_header_flex_values[pending_resizer_index + 0];
+                F32 old_right_flex = PCL->table_header_flex_values[pending_resizer_index + 1];
+                
+                F32 old_left_px = (old_left_flex / headers_total_flex_value) * space_for_headers;
+  
+                F32 flex_change_on_left = old_left_flex * (pending_resizer_drag / old_left_px);
+  
+                F32 new_left_flex  = old_left_flex + flex_change_on_left;
+                F32 new_right_flex = old_right_flex - flex_change_on_left;
+  
+                if (new_left_flex > 0.0f && new_right_flex > 0.0f) 
+                {
+                  PCL->table_header_flex_values[pending_resizer_index + 0] = new_left_flex;
+                  PCL->table_header_flex_values[pending_resizer_index + 1] = new_right_flex;
+                }
+              }
+            }
+  
+            // TODO: Assert that the flex value from before is the same as now
+  
+            // Damian: Building table headers
+            ui_next_size_x(ui_grow());
+            ui_next_size_y(ui_rem(ROW_HEIGHT_SCALER));
+            UI_Row()
+            {
+              for EachIndex(header_index, PCL->table_header_flex_value_count)
+              {
+                F32 flex_norm = PCL->table_header_flex_values[header_index] / headers_total_flex_value;
+  
+                ui_next_width(ui_px(flex_norm * space_for_headers));
+                ui_next_height(ui_grow()); 
+                if (header_index == 1)
+                ui_next_b_color(red());
+                UI_Box* header_box = ui_box_make_f("Table header %lld", UI_Box_flag__dont_draw_overflow|UI_Box_flag__has_background, header_index);
+                UI_Parent(header_box)
+                {
+                  // Damian: This is for the ui_text_ellipsed to work, this api is not great yet, but it works
+                  UI_Height(ui_rem(1)) 
+                  UI_Width(ui_grow())
+                  UI_FontSize(48)
+                  {
+                    if (0) {}
+                    else if (header_index == 0)  { ui_text_ellipsed_f("Icon"); } 
+                    else if (header_index == 1)  { ui_text_ellipsed_f("Exe Name"); } 
+                    else if (header_index == 2)  { ui_text_ellipsed_f("Start Time"); } 
+                  }
+                }
+  
+                if (header_index != PCL->table_header_flex_value_count - 1)
+                {
+                  ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                  ui_next_height(ui_grow());
+                  ui_next_b_color(nice_blue());
+                  ui_box_make({}, UI_Box_flag__has_background);
+                }
+              }
+            }
+  
+            // Horizontal separator between the headers and the table body or rows
+            { 
+              ui_next_width(ui_p_of_p(1));
+              ui_next_height(ui_px(1));
+              ui_next_b_color(orange());
+              UI_Box* _box = ui_box_make_n(UI_Box_flag__has_background, {});
+            }
+  
+              // Damian: Building table rows
+              // TODO: This is where the customization will come in
+              
+              // Damian: Row data
+              struct Process_data {
+                R_Handle icon_texture;
+                Str8 exe_name;
+                U64 start_up_time;
+              } process_data_arr[] = {
+                { pcl_icon_home, Str8FromC("Telegram.exe"), 0 },
+                { pcl_icon_home, Str8FromC("Discord.exe"), 0 },
+                { pcl_icon_home, Str8FromC("Minecraft.exe"), 0 },
+                { pcl_icon_home, Str8FromC("Fortnite.exe"), 0 },
+              };
+  
+              for EachIndex(row_index, ArrayCount(process_data_arr))
+              {
+                ui_next_width(ui_p_of_p(1));
+                ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
+                UI_Row()
+                {
+                  Process_data process_data = process_data_arr[row_index];
+                  for EachIndex(header_index, PCL->table_header_flex_value_count)
+                  {
+                    F32 flex_norm = PCL->table_header_flex_values[header_index] / headers_total_flex_value;
+  
+                    ui_next_width(ui_px(flex_norm * space_for_headers));
+                    ui_next_height(ui_grow()); 
+                    UI_Parent(ui_box_make({}, UI_Box_flag__dont_draw_overflow))
+                    {
+                      switch(header_index)
+                      {
+                        default: { InvalidCodePath(); } break;
+  
+                        case 0: 
+                        {
+                          ui_image(process_data.icon_texture, 50, 50);
+                        } break;
+                        
+                        case 1:
+                        {
+                          ui_text(process_data.exe_name);
+                        }
+                        
+                        case 2: 
+                        {
+                          ui_text_f("%lld", process_data.start_up_time);
+                        } break;
+                      }
+                    }
+  
+                    if (header_index != PCL->table_header_flex_value_count - 1)
+                    {
+                      ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                      ui_next_height(ui_grow());
+                      ui_next_b_color(nice_blue());
+                      ui_box_make({}, UI_Box_flag__has_background);
+                    }
+  
+                  }
+                }
+              }
+  
+            }
+          }
+        }
+      }
+      else {
+        InvalidCodePath();
+      }
     }
 
     // Spawning the command window on top of everything else 
@@ -418,7 +615,6 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         }
       }
     }
-
   }
 
   ui_end_build();
@@ -454,6 +650,17 @@ void table_ui_step_1(
   UI_Box*** out_array_of_header_boxes, U64* out_array_of_header_boxes_size,
   UI_Table_row** out_array_of_rows, U64* out_array_of_rows_size
 ) {
+
+
+
+
+
+  // todo:
+  // - Make the table box
+  // - Make the resizers be floating in the box
+  // - Resize the box based on the the actions from the resizers
+  // - Make the table inself
+
   B32 did_resizer_get_dragged               = false;
   U64 column_index_whos_resizer_got_dragged = {};
   for EachIndex(header_index, table_conf->flex_values_for_headers_count)
@@ -508,7 +715,7 @@ void table_ui_step_1(
     }
   }
 
-  // UI build
+  // Damian: Building the top table box
   ui_next_width(width_size);
   ui_next_height(height_size);
   ui_next_padded_border(table_conf->border_around_width, table_conf->border_color);
@@ -534,11 +741,12 @@ void table_ui_step_1(
       F32 extra_size_for_resizers = px_size_for_resizer * (table_conf->flex_values_for_headers_count - 1);
       total_flex_value += extra_size_for_resizers;
 
+
+
       for EachIndex(header_index, table_conf->flex_values_for_headers_count)
       {
         F32 flex_percentage = table_conf->flex_values_for_headers[header_index] / total_flex_value;
 
-        // == OLD CODE ==
         ui_next_width(ui_p_of_p(flex_percentage));
         ui_next_height(ui_px(table_conf->row_size_in_pixels)); 
         ui_next_layout_x();
@@ -556,18 +764,18 @@ void table_ui_step_1(
 
         if (header_index != (table_conf->flex_values_for_headers_count - 1))
         {
-          ui_next_width(ui_px(px_size_for_resizer));
-          ui_next_height(ui_px(table_conf->row_size_in_pixels));
-          ui_next_b_color(magenta());
-          ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-          UI_Box* resizer = ui_box_make_f("Resizer %lld", UI_Box_flag__has_background, header_index);
+          // ui_next_width(ui_px(px_size_for_resizer));
+          // ui_next_height(ui_px(table_conf->row_size_in_pixels));
+          // ui_next_b_color(magenta());
+          // ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+          // UI_Box* resizer = ui_box_make_f("Resizer %lld", UI_Box_flag__has_background, header_index);
 
-          UI_Actions resizer_actions = ui_actions_from_box(resizer);
-          if (resizer_actions.is_down)
-          {
-            did_resizer_get_dragged = true;
-            column_index_whos_resizer_got_dragged = header_index;
-          }
+          // UI_Actions resizer_actions = ui_actions_from_box(resizer);
+          // if (resizer_actions.is_down)
+          // {
+          //   did_resizer_get_dragged = true;
+          //   column_index_whos_resizer_got_dragged = header_index;
+          // }
 
         }
 

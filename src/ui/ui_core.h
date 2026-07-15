@@ -43,6 +43,8 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__clip_x = (1 << 9), 
   UI_Box_flag__clip_y = (1 << 10), 
 
+  UI_Box_flag__dont_draw_overflow = (1 << 11),  
+
   UI_Box_flag__floating           = UI_Box_flag__floating_x|UI_Box_flag__floating_y, 
   UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
 };
@@ -93,6 +95,10 @@ struct UI_Actions {
 };
 
 struct UI_Box {
+  // Our own config
+  UI_Box_flags flags;
+
+  // Clay config
   Clay_ElementDeclaration clay_element_config;
 
   B32 has_hover_cursor;
@@ -107,6 +113,7 @@ struct UI_Box {
     Str8 text;
     F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
     FP_Font font;
+    V4F32 font_color;
   } text_extension;
 
   UI_Box* first_child;
@@ -128,6 +135,7 @@ struct UI_Box {
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
 #define __UI_NULL_BOX_VALUE { \
+  {}, \
   {}, \
   {}, \
   {}, \
@@ -231,7 +239,7 @@ B32 ui_is_null_box(UI_Box* box);
 UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
-void __ui_get_next_box_clay_element_config(Clay_ElementDeclaration* config, Clay_ElementId clay_id, UI_Box_flags flags);
+void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, UI_Box_flags flags);
 
 // - Box extension
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
