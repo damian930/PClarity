@@ -45,6 +45,7 @@ enum UI_Box_flag : U32 {
 
   UI_Box_flag__dont_draw_overflow = (1 << 11),  
 
+  UI_Box_flag__padded_border      = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
   UI_Box_flag__floating           = UI_Box_flag__floating_x|UI_Box_flag__floating_y, 
   UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
 };
@@ -99,6 +100,8 @@ struct UI_Box {
   UI_Box_flags flags;
 
   // Clay config
+  // TODO: Dont store this, just store your own data for ui box, then when making clay boxes use this. 
+  //       It will make it make more sense and the bridge between ui and clay_ui way cleaner.
   Clay_ElementDeclaration clay_element_config;
 
   B32 has_hover_cursor;
@@ -167,6 +170,7 @@ global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 struct UI_Box_data {
   B32 is_found;
   Rect rect;
+  Rect inner_rect;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -262,6 +266,7 @@ V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box);
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
 void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset);
+void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset);
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
@@ -350,6 +355,7 @@ void ui_set_box_b_color(UI_Box* box, V4F32 color);
 //
 Clay_SizingAxis   __ui_clay_sizing_axis_from_ui_size (UI_Size ui_size);
 Clay_Padding      __ui_clay_padding_from_v4f32       (V4F32 padding);
+V4F32             __ui_v4f32_from_clay_padding       (Clay_Padding clay_padding);
 Clay_Color        __ui_clay_color_from_v4f32         (V4F32 color);
 V4F32             __ui_v4f32_from_clay_color         (Clay_Color clay_color);
 Clay_BorderWidth  __ui_clay_border_width_from_v4f32  (V4F32 border);
@@ -360,188 +366,6 @@ Rect              __ui_rect_from_clay_bounding_box   (Clay_BoundingBox bbox);
 Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
 V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
 Clay_CornerRadius __ui_clay_corner_radius_from_v2f32 (V4F32 vec);
-
-// // - Default box settings stacks
-
-// void         ui_push_flags(UI_Box_flags v);       
-// void         ui_pop_flags(); 
-// void         ui_set_next_flags(UI_Box_flags v);       
-// void         ui_pop_single_usage_flags();
-// UI_Box_flags ui_get_flags();
-// //
-// void  ui_push_layout_axis(Axis2 v);       
-// void  ui_pop_layout_axis(); 
-// void  ui_set_next_layout_axis(Axis2 v);       
-// void  ui_pop_single_usage_layout_axis();
-// Axis2 ui_get_layout_axis();
-// //
-// void    ui_push_size_x(UI_Size v);          
-// void    ui_pop_size_x();      
-// void    ui_set_next_size_x(UI_Size v);          
-// void    ui_pop_single_usage_size_x();
-// UI_Size ui_get_size_x();
-// //
-// void    ui_push_size_y(UI_Size v);          
-// void    ui_pop_size_y();      
-// void    ui_set_next_size_y(UI_Size v);          
-// void    ui_pop_single_usage_size_y();
-// UI_Size ui_get_size_y();
-// //
-// void ui_push_border_width(F32 v);          
-// void ui_pop_border_width();      
-// void ui_set_next_border_width(F32 v);          
-// void ui_pop_single_usage_border_width();
-// F32  ui_get_border_width();
-// //
-// void  ui_push_border_color(V4F32 v);          
-// void  ui_pop_border_color();      
-// void  ui_set_next_border_color(V4F32 v);          
-// void  ui_pop_single_usage_border_color();
-// V4F32 ui_get_border_color();
-// //
-// void ui_push_padding(F32 v);          
-// void ui_pop_padding();      
-// void ui_set_next_padding(F32 v);          
-// void ui_pop_single_usage_padding();
-// F32  ui_get_padding();
-// //
-// void ui_push_child_gap(F32 v);          
-// void ui_pop_child_gap();      
-// void ui_set_next_child_gap(F32 v);          
-// void ui_pop_single_usage_child_gap();
-// F32  ui_get_child_gap();
-
-// #define UI_LayoutAxis(axis2)  DeferLoop(ui_push_layout_axis(axis2),       ui_pop_layout_axis())
-// #define UI_SizeX(ui_size)     DeferLoop(ui_push_semantic_size_x(ui_size), ui_pop_semantic_size_x())
-// #define UI_SizeY(ui_size)     DeferLoop(ui_push_semantic_size_y(ui_size), ui_pop_semantic_size_y())
-// // #define UI_Padding(padding)   DeferLoop(ui_push_padding(padding),         ui_pop_padding())
-
-// // - Style box settings stacks
-// void  ui_push_b_color_uv(UV uv, V4F32 v);     
-// void  ui_pop_b_color_uv(UV uv);               
-// void  ui_set_next_b_color_uv(UV uv, V4F32 v); 
-// void  ui_pop_single_usage_b_color_uv(UV uv);
-// V4F32 ui_get_b_color_uv(UV uv);               
-
-// void ui_push_b_color(V4F32 v);
-// void ui_pop_b_color();
-// void ui_set_next_b_color(V4F32 v);
-// void ui_pop_single_usage_b_color();
-
-// void  ui_push_corner_r(V4F32 v);
-// void  ui_pop_corner_r();
-// void  ui_set_next_corner_r(V4F32 v);
-// void  ui_pop_single_usage_corner_r();
-// V4F32 ui_get_corner_r();
-
-// void ui_push_softness(F32 softness);
-// void ui_pop_softness();
-// void ui_set_next_softness(F32 softness);
-// void ui_pop_single_usage_softness();
-// F32  ui_get_softness();
-
-// #define UI_BColor(v)            DeferLoop(ui_push_b_color(v),           ui_pop_b_color())
-// #define UI_Border(width, color) DeferLoop(ui_push_border(width, color), ui_pop_border())
-// #define UI_CornerR(v)           DeferLoop(ui_push_corner_r(v), ui_pop_corner_r())
-// #define UI_Softness(v)          DeferLoop(ui_push_softness(v), ui_pop_softness())
-
-// // - Style stack operations for text
-// // void ui_push_text_color(V4F32 v);
-// // void ui_pop_text_color();
-// // void ui_set_next_text_color(V4F32 v);
-// // V4F32 ui_get_text_color();
-
-// void    ui_push_font(FP_Font v);
-// void    ui_pop_font();
-// void    ui_set_next_font(FP_Font v);
-// void    ui_pop_single_usage_font();
-// FP_Font ui_get_font();
-
-// #define UI_TextColor(color) DeferLoop(ui_push_text_color(color), ui_pop_text_color())
-// #define UI_Font(font)       DeferLoop(ui_push_font(font),        ui_pop_font())
-
-// ====================
-// ====================
-// ====================
-// ====================
-// ====================
-/* List of things i think i have to be able to do with this ui for it to be ok --> 
-    UI SYSTEM — COMPLEXITY LADDER
-    ==============================
-
-    TIER 1 — STATIC PRIMITIVES
-    ---------------------------
-    01. [x] - Text / Typography      Font scale, weight, color tokens. Headings, body, captions, code spans.
-    02. [x] - Color Swatch           A box that is purely a color. The atom of your theme system.
-    03. [x] - Divider                Horizontal/vertical rule. May carry a label.
-    04. [x] - Spacer                 Invisible box that enforces spacing units.
-    05. [x] - Icon                   SVG  glyph at a fixed size. Inherits color.
-    06. [x] - Avatar                 Image or initials in a circle/square. Fixed sizes.
-    07. [x] - Badge / Tag            Small pill with text and optional color variant.
-    08. [x] - Spinner / Loader       Animated indicator of indeterminate progress.
-    09. [ ] - Skeleton               Placeholder shape while content loads.
-    10. [ ] - Image / Media Box      Constrained image with aspect ratio and object-fit.
-
-
-    TIER 2 — INTERACTIVE ATOMS
-    ---------------------------
-    11. [x] - Button                 Primary, secondary, ghost, destructive. Disabled state. Icon slot.
-    12. [ ] - Icon Button            Square button with only an icon. Needs tooltip.
-    13. [ ] - Link                   Inline or standalone. Underline, hover, visited states.
-    14. [x] - Checkbox               Checked, unchecked, indeterminate. Label slot.
-    15. [x] - Radio                  Single selection from a group. Label slot.
-    16. [ ] - Toggle / Switch        Binary on/off. Animated thumb.
-    17. [ ] - Text Input             Single-line. Placeholder, label, helper, error states.
-    18. [ ] - Textarea               Multi-line input. Auto-resize variant.
-    19. [ ] - Select / Dropdown      Native or custom. Option list, placeholder, disabled.
-    20. [x] - Slider                 Range input. Single handle, optional value tooltip.
-
-
-    TIER 3 — STATEFUL COMPONENTS
-    -----------------------------
-    21. Tooltip                Appears on hover/focus. Positioned relative to trigger.
-    22. Popover                Floating panel anchored to a trigger. Dismissable.
-    23. Accordion              Expand/collapse a section. Animated height.
-    24. Tabs                   Switch between panels. Active indicator. Keyboard nav.
-    25. Progress Bar           Determinate fill. Value, label, color variants.
-    26. Alert / Banner         Info, success, warning, error. Dismissable.
-    27. Toast / Snackbar       Timed notification. Stacking, dismiss, action.
-    28. Modal / Dialog         Overlay with focus trap. Header, body, footer.
-    29. Drawer / Sheet         Slides in from edge. Top, right, bottom, left.
-    30. Chip / Tag Input       Add and remove tags inline within an input.
-    31. File Upload            Drop zone + file list. Progress per file.
-    32. Color Picker           Hue/saturation canvas + hex input.
-
-
-    TIER 4 — COMPOSITE PATTERNS
-    ----------------------------
-    33. Card                   Surface with header, body, footer, media slot and actions.
-    34. List / List Item       Virtualisable list. Icon, text, meta, action per row.
-    35. Menu / Context Menu    Triggered list of actions. Groups, separators, icons.
-    36. Command Palette        Search-driven action launcher. Keyboard-first.
-    37. Combobox / Autocomplete  Input + filterable dropdown. Multi-select variant.
-    38. Date Picker            Calendar grid + input. Range selection variant.
-    39. Breadcrumb             Hierarchical path nav. Collapse on overflow.
-    40. Pagination             Page controls with prev/next and jump-to.
-    41. Table                  Sort, filter, row selection, sticky columns/header.
-    42. Tree View              Nested hierarchy. Expand/collapse, selection.
-    43. Stepper / Wizard       Multi-step flow. Linear or branching progress.
-    44. Notification Center    List of past notifications. Read/unread state.
-
-
-    TIER 5 — FULL SURFACES
-    -----------------------
-    45. Navigation Bar         Top or side. Logo, links, actions, mobile hamburger.
-    46. Sidebar / Nav Rail     Collapsible. Active state, nested groups, icons + labels.
-    47. Data Grid              Editable cells, column resize, row grouping, virtual scroll.
-    48. Kanban Board           Drag-and-drop columns and cards. Add/edit inline.
-    49. Rich Text Editor       Toolbar + editable area. Formatting, links, embeds.
-    50. Form Builder           Dynamic form with validation, field groups, submit.
-    51. Dashboard Layout       Grid of resizable, draggable widget tiles.
-    52. Chat / Message Feed    Bubbles, timestamps, reactions, scroll-to-bottom.
-    53. Calendar View          Month/week/day grid. Event placement, drag to reschedule.
-    54. Settings Page          Sectioned form. Sidebar nav, save state, confirmation.
-*/
 
 #endif
 

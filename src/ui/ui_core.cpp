@@ -435,20 +435,26 @@ void ui_extend_box_with_text(UI_Box* box, Str8 str)
 //
 UI_Box_data ui_box_data_from_id(Str8 id)
 {
-  Clay_String clay_string            = __ui_clay_string_from_str8(id);
-  Clay_ElementId clay_id             = Clay__HashString(clay_string, 0, 0);
-  Clay_ElementData clay_element_data = Clay_GetElementData(clay_id);
-  UI_Box_data result_data = {};
-  result_data.is_found    = clay_element_data.found;
-  result_data.rect        = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
-  return result_data;
+  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
+  UI_Box_data data = ui_box_data_from_box(prev_build_box);
+  return data;
 }
 
 UI_Box_data ui_box_data_from_box(UI_Box* box)
 {
-  Str8 id = __ui_str8_from_clay_string(box->clay_element_config.id.stringId);
-  UI_Box_data data = ui_box_data_from_id(id);
-  return data;
+  // TODO: Figure out what happends in clay if you give it negative padding 
+  V4F32 padding = __ui_v4f32_from_clay_padding(box->clay_element_config.layout.padding);
+  padding.x *= -1;
+  padding.y *= -1;
+  padding.z *= -1;
+  padding.w *= -1;
+  Clay_ElementData clay_element_data = Clay_GetElementData(box->clay_element_config.id);
+  UI_Box_data result_data = {};
+  result_data.is_found           = clay_element_data.found;
+  result_data.rect               = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
+  result_data.inner_rect = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
+  result_data.inner_rect = rect_padded_ex(result_data.rect, padding);
+  return result_data;
 }
 
 UI_Actions ui_actions_from_box(UI_Box* box)
@@ -654,6 +660,12 @@ void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
 void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset)
 {
   ui_box_set_clip_offset_for_axis(box, clip_offset, Axis2__y);
+}
+
+void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset)
+{
+  ui_box_set_clip_offset_x(box, clip_offset.x);
+  ui_box_set_clip_offset_y(box, clip_offset.y);
 }
 
 ///////////////////////////////////////////////////////////
@@ -1019,6 +1031,16 @@ Clay_Padding __ui_clay_padding_from_v4f32(V4F32 padding)
   clay_padding.top    = (U16)padding.v[2];
   clay_padding.bottom = (U16)padding.v[3];
   return clay_padding;
+}
+
+V4F32 __ui_v4f32_from_clay_padding(Clay_Padding clay_padding)
+{
+  V4F32 padding = {};
+  padding.v[RectEdge__left]   = (F32)clay_padding.left;
+  padding.v[RectEdge__right]  = (F32)clay_padding.right;
+  padding.v[RectEdge__top]    = (F32)clay_padding.top;
+  padding.v[RectEdge__bottom] = (F32)clay_padding.bottom;
+  return padding;
 }
 
 Clay_Color __ui_clay_color_from_v4f32(V4F32 color)

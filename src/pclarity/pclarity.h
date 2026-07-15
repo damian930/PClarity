@@ -239,6 +239,60 @@ void pcl_frame_update(PCL_State* PCL)
   PCL->gathered_process_data_this_frame = Win32QueryProcessList(PCL->frame_arena);
 }
 
+// TODO: Finish this code here for edge cases and use it for the table in the pcl code
+void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Str8 id, F32 outer_vp_size, F32 outer_content_size, F32 outer_vp_offset, F32* out_new_scroll, B32* is_new_offset)
+{
+  ui_next_width(size_x);
+  ui_next_height(size_y);
+  ui_next_b_color(nice_blue());
+  ui_next_padding(3);
+  UI_Box* scroll_bar = ui_box_make(id, UI_Box_flag__has_background|UI_Box_flag__has_padding);
+  
+  // NOTE(Damian):
+  // Since logically all the vp and context sizes will be from the last frame,
+  // we then can just get actions based on the last frame, update the offsets
+  // then produce fresh scroll bar ui and then give the value to the called
+  // and he then builds fresh offset in for his ui
+  
+  UI_Box_data scroll_bar_data = ui_box_data_from_box(scroll_bar);
+  if (scroll_bar_data.is_found)
+  {
+    F32 scroll_bar_height = scroll_bar_data.rect.height;
+    F32 inner_height = scroll_bar_data.inner_rect.height;
+
+    F32 max_thumb_size = inner_height;
+    
+    #define THUMB_MIN_SIZE 25
+    F32 thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
+    if (thumb_size > inner_height) { Handle(0); }
+    if (thumb_size < THUMB_MIN_SIZE) { thumb_size = THUMB_MIN_SIZE; }
+
+    F32 max_vp_offset = outer_content_size - outer_vp_size;
+    F32 max_thumb_offset = inner_height - thumb_size;
+    
+    F32 thumb_offset = (outer_vp_offset / max_vp_offset) * max_thumb_offset;
+
+    UI_Actions actions = ui_actions_from_box(scroll_bar);
+    if (actions.is_down)
+    {
+      thumb_offset = ui_get_mouse_pos().y - scroll_bar_data.inner_rect.y;
+
+      *is_new_offset  = true;
+      *out_new_scroll = (thumb_offset / max_thumb_offset) * max_vp_offset;
+    }
+
+    UI_Parent(scroll_bar)
+    {
+      ui_spacer(ui_px(thumb_offset));
+
+      ui_next_width(ui_grow());
+      ui_next_height(ui_px(thumb_size));
+      ui_next_b_color(magenta());
+      UI_Box* thumb = ui_box_make({}, UI_Box_flag__has_background);
+    }
+  }
+}
+
 void pcl_do_ui(FP_Font font, PCL_State* PCL)
 {
   Assert(IsZeroStruct(PCL->defered_commands_to_start_of_next_frame)); 
@@ -343,7 +397,8 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         ui_next_width(ui_grow());
         ui_next_height(ui_grow());
         ui_next_padding_diff(20, 20, 10, 10);
-        ui_next_padded_border(5, green());
+        ui_next_padded_border(1, green());
+        ui_next_padding(5);
         ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders);
         UI_Col()
         {
@@ -353,17 +408,12 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
           {
             ui_next_width(ui_grow());
             ui_next_height(ui_grow());
-            ui_next_b_color(blue());
-            UI_Parent(ui_box_make({}, UI_Box_flag__has_background))
+            UI_Parent(ui_box_make({}, 0))
             {
               // TODO: Move these out, this is here for now
               #define ROW_HEIGHT_SCALER 3 
               #define RESIZER_VISIBLE_WIDTH 3
       
-              // todo: We either then have to have the pixel size for this here manually at this point 
-              //       to then size with pixels or have to 
-              //       ask for the size of this from the prev frame, lets try from the prev frame
-
               // TODO: Clay fucked up auto generated ids here, need to introduce custom id scopes
               ui_next_width(ui_grow());
               ui_next_height(ui_grow());
@@ -371,37 +421,39 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
               ui_next_b_color(black());
               UI_Box* table_box = ui_box_make_f("table_boxflkdfjlsdk", UI_Box_flag__clip); // TODO: Change the name here
 
+              ui_box_set_clip_offset(table_box, ui_get_prev_build_scroll_for_box(table_box));
               if (ui_actions_from_box(table_box).is_hovered)
               {
                 // TODO: Add shift modifier here to be able to scroll to the right and back
                 F32 table_scroll_this_frame = 0.0f;
+                Axis2 scroll_axis = Axis2__y;
                 for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
                 {
                   if (ev->kind == OS_Event_kind__wheel)
                   {
                     table_scroll_this_frame = ev->wheel_event.scroll_data;
+                    if (ev->wheel_event.modifiers & OS_Event_modifier__shift) { scroll_axis = Axis2__x; }
                     os_consume_frame_event(ev);
                     break;
                   }
                 }
 
-                F32 prev_frame_offset = ui_get_prev_build_scroll_for_box(table_box).y;
-                F32 new_frame_offset = prev_frame_offset + (table_scroll_this_frame * 250);
+                F32 prev_frame_offset = ui_get_prev_build_scroll_for_box(table_box).v[scroll_axis];
+                F32 new_frame_offset = prev_frame_offset + (table_scroll_this_frame * 10);
                 
                 // Clamping offset to stay valid 
+                if (scroll_axis != Axis2__x)
                 { 
                   V2F32 inner_dims = ui_get_content_dims_from_box(table_box);
                   V2F32 dims = ui_box_data_from_box(table_box).rect.dims;
 
-                  F32 max_offset = inner_dims.y - dims.y; 
+                  F32 max_offset = inner_dims.v[scroll_axis] - dims.v[scroll_axis]; 
 
                   if (new_frame_offset > 0.0f) { new_frame_offset = 0.0f; }
                   if (new_frame_offset < -max_offset) { new_frame_offset = -max_offset; }
-
-                  OutputDebugStringF("Offset: %f \n", new_frame_offset);
                 }
 
-                ui_box_set_clip_offset_y(table_box, new_frame_offset);
+                ui_box_set_clip_offset_for_axis(table_box, new_frame_offset, scroll_axis);
               }
 
               UI_Box_data table_box_data = ui_box_data_from_box(table_box);
@@ -492,13 +544,11 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         
                       ui_next_width(ui_px(flex_norm * space_for_headers));
                       ui_next_height(ui_grow()); 
-                      if (header_index == 1)
-                      ui_next_b_color(red());
-                      UI_Box* header_box = ui_box_make_f("Table header %lld", UI_Box_flag__dont_draw_overflow|UI_Box_flag__has_background, header_index);
+                      UI_Box* header_box = ui_box_make_f("Table header %lld", UI_Box_flag__dont_draw_overflow, header_index);
                       UI_Parent(header_box)
                       {
                         // Damian: This is for the ui_text_ellipsed to work, this api is not great yet, but it works
-                        UI_Height(ui_rem(1)) 
+                        UI_Height(ui_grow()) 
                         UI_Width(ui_grow())
                         UI_FontSize(48)
                         {
@@ -538,7 +588,6 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                     ) {
                       ui_next_width(ui_grow());
                       ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
-                      ui_next_padded_border(1, black());
                       ui_next_extra_flags(UI_Box_flag__has_borders|UI_Box_flag__has_padding);
                       UI_Row()
                       {
@@ -580,6 +629,11 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                           }
                         }
                       }
+                    
+                      ui_next_width(ui_grow());
+                      ui_next_height(ui_rem(0.1f));
+                      ui_next_b_color(green());
+                      ui_box_make({}, UI_Box_flag__has_background);
                     }
                   }
                   
@@ -589,10 +643,53 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
 
             ui_spacer(ui_rem(0.25f));
 
-            ui_next_width(ui_rem(2));
-            ui_next_height(ui_grow());
-            ui_next_b_color(red());
-            UI_Box* scroll_bar = ui_box_make({}, UI_Box_flag__has_background);
+            // TODO: Make a scroll bar in place here
+            //       Dont forget about single source of truth thought, either aply scroll next frame
+            //       or build the scroll bar here, but do the actions in the beginnn when you do the 
+            //       wheel scroll as well to have a single source of truth untouched
+            {
+              ui_next_width(ui_rem(2));
+              ui_next_height(ui_grow());
+              ui_next_b_color(red());
+              ui_next_padding(3);
+              UI_Box* scroll_bar = ui_box_make_f("Scroll bar", UI_Box_flag__has_background|UI_Box_flag__has_padding);
+              
+              UI_Box_data scroll_bar_data = ui_box_data_from_box(scroll_bar);
+              if (scroll_bar_data.is_found)
+              {
+                F32 scroll_bar_height = scroll_bar_data.rect.height;
+                F32 inner_height = scroll_bar_data.inner_rect.height;
+
+                F32 thumb_size = ui_top_font_size() * 2;
+                if (thumb_size > inner_height) { Handle(0); }
+
+
+
+
+                // Steps:
+                // - Get thumb size
+                // - Then get thumb offset
+                // - Then get the offset for the thing on the outside from thumb offset
+              }
+
+              // todo: Get the data for scroll bar
+
+              // Do the events to have new scroll bar in the frame
+              // Then build the thing
+
+              // TODO: Get the events
+
+              // TODO: For now just give out relative vp offset to the outside
+              UI_Parent(scroll_bar)
+              {
+                
+
+  
+              }
+
+
+            }
+            
           }
 
           // TODO: Horizontal sider at the bottom

@@ -118,11 +118,17 @@ RangeF32 rect_get_range_y     (Rect rect)                           { return rec
 
 Rect rect_padded(Rect rect, F32 padd)
 {
+	Rect result = rect_padded_ex(rect, v4f32_all(padd));
+	return result;
+}
+
+Rect rect_padded_ex(Rect rect, V4F32 padding)
+{
 	Rect result  = rect;
-	result.x    -= padd;
-	result.y    -= padd;
-	result.width  += 2 * padd;
-	result.height += 2 * padd;
+	result.x    -= padding.v[RectEdge__left];
+	result.y    -= padding.v[RectEdge__top];
+	result.width  += (padding.v[RectEdge__left] + padding.v[RectEdge__right]);
+	result.height += (padding.v[RectEdge__top] + padding.v[RectEdge__bottom]);
 	if (result.width  < 0.0f) { result.width  = 0.0f; }
 	if (result.height < 0.0f) { result.height = 0.0f; }
 	return result;

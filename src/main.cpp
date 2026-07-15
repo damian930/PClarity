@@ -91,8 +91,44 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    pcl_frame_update(&pcl);
-    pcl_do_ui(font, &pcl);
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      UI_Col()
+      {
+        ui_next_width(ui_px(250));
+        ui_next_height(ui_px(250));
+        ui_next_padded_border(3, nice_green());
+        UI_Box* clip_box = ui_box_make(Str8FromC("Clip box"), UI_Box_flag__clip|UI_Box_flag__padded_border);
+        
+        UI_Parent(clip_box)
+        {
+          for EachIndex(i, 100)
+          {
+            ui_text_f("Text %lld", i);
+          }
+        }
+
+        UI_Box_data box_data = ui_box_data_from_box(clip_box);
+        if (box_data.is_found)
+        {
+          F32 offset = ui_clip_offset_from_box(clip_box).y;
+          B32 is_new_offset = false;
+          F32 new_offset = 0.0f;
+          pcl_scroll_bar(ui_px(250), ui_px(100), Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).y, offset, &new_offset, &is_new_offset);
+
+          if (is_new_offset)
+          {
+            ui_box_set_clip_offset_y(clip_box, -new_offset);
+          }
+        }
+      }
+
+
+
+    }
+
+    // pcl_frame_update(&pcl);
+    // pcl_do_ui(font, &pcl);
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
