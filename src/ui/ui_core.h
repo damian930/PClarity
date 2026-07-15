@@ -255,6 +255,8 @@ UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
 UI_Actions ui_actions_from_id_f(const char* fmt, ...);
 V2F32 ui_clip_offset_from_box(UI_Box* box);
+V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box);
+
 
 // - Box setters // TODO: This is new, might not be used later
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
@@ -280,6 +282,7 @@ UI_Box* ui_get_current_parent();
 UI_Box* ui_get_root(); // TODO: This might need a better name that specifies weather this is from the prev build or the new build
 UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id);
 UI_Box* ui_find_prev_build_box_by_id(Str8 id);
+UI_Box* ui_find_prev_build_box_by_box(UI_Box* box);
 
 // - Stack functions and helper
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)

@@ -201,6 +201,11 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
     root->clay_element_config.custom.customData = root;
   }
 
+  // if ()
+
+  // UI_Box* prev_frame_box = ui_find_prev_build_box_by_id(__ui_str8_from_clay_string(root->clay_element_config.id.stringId));
+  // root->clip_offset = prev_frame_box->clip_offset;
+
   root->clay_element_config.clip.childOffset.x = root->clip_offset.x;
   root->clay_element_config.clip.childOffset.y = root->clip_offset.y;
 
@@ -607,6 +612,32 @@ V2F32 ui_clip_offset_from_box(UI_Box* box)
   return offset;
 }
 
+V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box)
+{
+  V2F32 prev_offset = {};
+  UI_Box* prev_build_box = ui_find_prev_build_box_by_box(box);
+  if (!ui_is_null_box(prev_build_box))
+  {
+    prev_offset = prev_build_box->clip_offset;
+  }
+  return prev_offset;
+}
+
+V2F32 ui_get_content_dims_from_id(Str8 id)
+{
+  Clay_String clay_string                   = __ui_clay_string_from_str8(id);
+  Clay_ElementId clay_id                    = Clay__HashString(clay_string, 0, 0);
+  Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(clay_id);
+  V2F32 dims = v2f32(clay_scroll_data.contentDimensions.width, clay_scroll_data.contentDimensions.height);
+  return dims;
+}
+
+V2F32 ui_get_content_dims_from_box(UI_Box* box)
+{
+  V2F32 dims = ui_get_content_dims_from_id(__ui_str8_from_clay_string(box->clay_element_config.id.stringId));
+  return dims;
+}
+
 ///////////////////////////////////////////////////////////
 // - Box setters
 //
@@ -842,6 +873,13 @@ UI_Box* ui_find_prev_build_box_by_id(Str8 id)
   if (id.count == 0) { return ui_null_box(); }
   UI_Box* found_box = ui_find_box_in_tree_by_id(ui_get_state()->prev_build_root_box, id);
   return found_box;
+}
+
+UI_Box* ui_find_prev_build_box_by_box(UI_Box* box)
+{
+  Str8 id = __ui_str8_from_clay_string(box->clay_element_config.id.stringId);
+  UI_Box* prev_frame_box = ui_find_prev_build_box_by_id(id);
+  return prev_frame_box;
 }
 
 ///////////////////////////////////////////////////////////

@@ -385,10 +385,23 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                   }
                 }
 
-                F32 current_clip_offset = ui_clip_offset_from_box(table_box).y;
-                current_clip_offset += table_scroll_this_frame;
-                OutputDebugStringF("Scroll: %f \n", current_clip_offset);
-                ui_box_set_clip_offset_y(table_box, current_clip_offset);
+                F32 prev_frame_offset = ui_get_prev_build_scroll_for_box(table_box).y;
+                F32 new_frame_offset = prev_frame_offset + (table_scroll_this_frame * 250);
+                
+                // Clamping offset to stay valid 
+                { 
+                  V2F32 inner_dims = ui_get_content_dims_from_box(table_box);
+                  V2F32 dims = ui_box_data_from_box(table_box).rect.dims;
+
+                  F32 max_offset = inner_dims.y - dims.y; 
+
+                  if (new_frame_offset > 0.0f) { new_frame_offset = 0.0f; }
+                  if (new_frame_offset < -max_offset) { new_frame_offset = -max_offset; }
+
+                  OutputDebugStringF("Offset: %f \n", new_frame_offset);
+                }
+
+                ui_box_set_clip_offset_y(table_box, new_frame_offset);
               }
 
               UI_Box_data table_box_data = ui_box_data_from_box(table_box);
