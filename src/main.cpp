@@ -91,6 +91,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
+    /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
       UI_Col()
@@ -111,24 +112,27 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         UI_Box_data box_data = ui_box_data_from_box(clip_box);
         if (box_data.is_found)
         {
-          F32 offset = ui_clip_offset_from_box(clip_box).y;
+          F32 offset = -ui_clip_offset_from_box(clip_box).y;
+          OutputDebugStringF("Offset : %f \n", offset);
           B32 is_new_offset = false;
           F32 new_offset = 0.0f;
-          pcl_scroll_bar(ui_px(250), ui_px(100), Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).y, offset, &new_offset, &is_new_offset);
+          pcl_scroll_bar(250, 100, Axis2__x, Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).y, offset, &new_offset, &is_new_offset);
 
           if (is_new_offset)
           {
-            ui_box_set_clip_offset_y(clip_box, -new_offset);
+            offset = new_offset;
           }
+          ui_box_set_clip_offset_y(clip_box, -offset);
         }
       }
 
 
 
     }
+    */
 
-    // pcl_frame_update(&pcl);
-    // pcl_do_ui(font, &pcl);
+    pcl_frame_update(&pcl);
+    pcl_do_ui(font, &pcl);
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
@@ -141,9 +145,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
-    // OutputDebugStringF("Frame time sec: %f\n", frame_end_time_sec - frame_start_time_sec);
-    // OutputDebugStringF("FPS:            %f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec));
-    // OutputDebugStringF("\n");
+    OutputDebugStringF("FPS: %.3f, Frame time sec: %.3f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec), (frame_end_time_sec - frame_start_time_sec));
   }
 
   // Not releasing anything since who cares, the system will release all the stuff

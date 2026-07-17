@@ -5,7 +5,11 @@
 #include "os/win32.h"
 #pragma comment (lib, "user32.lib")
 #pragma comment (lib, "oneCore.lib")
-//
+
+// For DwmFlush
+#include "dwmapi.h"
+#pragma comment (lib, "dwmapi.lib")
+
 // Windows version and build getters
 #include "winnt.h"
 #pragma comment (lib, "ntdll.lib")
@@ -1167,31 +1171,16 @@ LRESULT win32_proc(
     {
       result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
-
+    
+    case WM_SIZE:
     case WM_PAINT:
     {
-      static U64 times_wm_paint_has_been_handles = 0;
-
-      { // Handling WM_PAINT
-        HWND hwnd = os_get_state()->window.handle;
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
-        EndPaint(hwnd, &ps);
-      }
-      times_wm_paint_has_been_handles += 1;
-
-      // TODO: This asserted when i maximized the window, test this and change 
-      //       the assert and the comment here 
-      // Assert(times_wm_paint_has_been_handles == 1);
-      // For windows that dont use things like gdi but use d3d 11 and such for rendering 
-      // those apis dont generate wm_paint. But there is still a single time that wm_paint
-      // gets generated. That is when the window is first created to set it up.
-      // That is why i expect the times we handle wm_paint to be == 1.
-      // Assert it to know if i am wrong and it still gets generated in some edge cases.
-      // But it for sure doesnt get generated on submit calls to d3d 11 like DrawInstanced,
-      // nor does it get generated for present calls for d3d like Present for swap chains 
-      // or Commit for dwm IDCompositionDevice 
+      // TODO:
+      HWND hwnd = os_get_state()->window.handle;
+      PAINTSTRUCT ps = {};
+      HDC hdc = BeginPaint(hwnd, &ps);
+      EndPaint(hwnd, &ps);
+      // DwmFlush();
     } break;
 
     case WM_CLOSE: // For regular windows this is send when the close button it pressed 

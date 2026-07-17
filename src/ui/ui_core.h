@@ -26,6 +26,7 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__has_rounded_corners = (1 << 4),
   UI_Box_flag__has_borders         = (1 << 5),
   
+  // TODO: Look into this, i dont thing that this is used right now, i think this is old code that we no longer use type of thing
   UI_Box_flag__has_text_contents   = (1 << 6),
 
   // Floating doesnt add to the size of its parent and is not a part of the normal layout flow
@@ -259,14 +260,23 @@ UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
 UI_Actions ui_actions_from_id_f(const char* fmt, ...);
 V2F32 ui_clip_offset_from_box(UI_Box* box);
+V2F32 ui_clip_offset_from_id(Str8 id);
 V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box);
 
-
 // - Box setters // TODO: This is new, might not be used later
+// TODO: These need better names, i have to look them up all the time, this is not great
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
 void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset);
 void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset);
+void ui_id_set_clip_offset_for_axis(Str8 id, F32 clip_offset, Axis2 axis);
+void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset);
+void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset);
+void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset);
+
+// - ID stuff
+// TODO: Add dear_imgui like ## id thing
+// TODO: Add dear_imgui like ### id thing
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
@@ -289,27 +299,55 @@ UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id);
 UI_Box* ui_find_prev_build_box_by_id(Str8 id);
 UI_Box* ui_find_prev_build_box_by_box(UI_Box* box);
 
-// - Stack functions and helper
+// - Stack funtions and helpers
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_AUTO_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_GET_FUNC)
-//
+
+// - Stack function helpers (padding)
 V4F32 ui_top_padding();
-V4F32 ui_top_corner_radius();
-V4F32 ui_top_border_width();
-//
+void ui_next_padding(F32 padding);
+void ui_push_padding(F32 padding); 
+void ui_pop_padding(); 
+void ui_next_padding_ex(F32 left, F32 right, F32 top, F32 down);
+
+// - Stack function helpers (sizing)
 void ui_next_width(UI_Size size);
 void ui_next_height(UI_Size size);
-// 
+void ui_next_size_axis(Axis2 axis, UI_Size size);
+
+// - Stack function helpers (background color)
+V4F32 ui_top_b_color();
+void ui_next_b_color(V4F32 color);
+void ui_push_b_color(V4F32 color);
+void ui_pop_b_color();
+
+// - Stack function helpers (corner radius)
+V4F32 ui_top_corner_radius();
+void ui_next_corner_r(F32 r);
+void ui_push_corner_r(F32 r);
+void ui_pop_corner_r();
+
+// - Stack function helpers (border width)
+V4F32 ui_top_border_width();
+void ui_next_border_width(F32 border);
+void ui_push_border_width(F32 border);
+void ui_pop_border_width();
+
+// - Stack function helpers (border)
+void ui_next_border(F32 width, V4F32 color);
+void ui_push_border(F32 width, V4F32 color);
+void ui_pop_border();
+
+// - Stack function helpers (padded border)
+void ui_next_padded_border(F32 width, V4F32 color);
+void ui_push_padded_border(F32 width, V4F32 color);
+void ui_pop_padded_border();
+
+// - Stack function helpers (layout)
 void ui_next_layout_x();
 void ui_next_layout_y();
-
-// - Box style setters for already created boxed
-void ui_set_box_b_color(UI_Box* box, V4F32 color);
-
-
-// TODO: There are some more there that you have defined and have not moved to the .h file yet
 
 // - Macros for automatic stack pushing and popping
 // Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.
@@ -345,14 +383,14 @@ void ui_set_box_b_color(UI_Box* box, V4F32 color);
 #define UI_AlignmentX(v)              DeferLoop(ui_push_alignment_x(v),                ui_pop_alignment_x())
 #define UI_AlignmentY(v)              DeferLoop(ui_push_alignment_y(v),                ui_pop_alignment_y())
 #define UI_HoverCursor(v)             DeferLoop(ui_push_hover_cursor(v),               ui_pop_hover_cursor())
+#define UI_PaddedBorder(v, c)         DeferLoop(ui_push_padded_border(v, c), ui_pop_padded_border)
+#define UI_Border(v, c)               DeferLoop(ui_push_border(v, c), ui_pop_border())
+#define UI_Padding(v)                 DeferLoop(ui_push_padding(v), ui_pop_padding())
 //
 #define UI_Width(v) UI_SizeX(v)
 #define UI_Height(v) UI_SizeY(v)
-#define UI_Padding(v) UI_PaddingLeft(v) UI_PaddingTop(v) UI_PaddingRight(v) UI_PaddingBottom(v)
 
-///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay
-//
 Clay_SizingAxis   __ui_clay_sizing_axis_from_ui_size (UI_Size ui_size);
 Clay_Padding      __ui_clay_padding_from_v4f32       (V4F32 padding);
 V4F32             __ui_v4f32_from_clay_padding       (Clay_Padding clay_padding);
@@ -366,6 +404,9 @@ Rect              __ui_rect_from_clay_bounding_box   (Clay_BoundingBox bbox);
 Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
 V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
 Clay_CornerRadius __ui_clay_corner_radius_from_v2f32 (V4F32 vec);
+
+// - Error handler for clay
+void __ui_error_handler_for_clay(Clay_ErrorData errorText);
 
 #endif
 

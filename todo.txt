@@ -1,13 +1,12 @@
 Current:
+[ ] - Fix the bug with ids when there are a lot of headers in the table
+[ ] - Fix the bug with the scroll bar that when you hold mouse at 0.0 delta per frame it sill moves a bit, not the mouse, but the offset that the scroll bar produces
 
-[ ] - Have the slider be working for the table y axis
-
-[ ] - Fornamize scrolling and getting data needed for it in ui_core
+[ ] - Have a way for window to redraw when resizing
 
 [ ] - There is a larga posibility behind sudle bug with padding and norders between rows and headers
       It would be great to have those not happend as easily, via some api or some like that.
 
-[ ] - Gotta have a way to add data to add columns to tables and then have them set up to do whatever
 
 [ ] - set up reloading dll for ui stuff for the app when there is more data in the app that you have a legit header file for it
 

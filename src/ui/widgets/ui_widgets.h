@@ -3,11 +3,6 @@
 
 #include "ui/ui_core.h"
 
-// - Simple widgets for quick
-UI_Actions ui_button(Str8 id);
-void ui_spacer(UI_Size size);
-#define UI_Spacered(size) DeferLoop(ui_spacer(size), ui_spacer(size))
-
 // - Layout stacks
 void ui_begin_layout_stack(Axis2 axis);
 void ui_end_layout_stack();
@@ -32,6 +27,14 @@ void ui_label_ellipsed(Str8 str);
 void ui_label_ellipsed_f(const char* fmt, ...);
 void ui_text_ellipsed(Str8 str);
 void ui_text_ellipsed_f(const char* fmt, ...);
+
+// - Button
+UI_Actions ui_button(Str8 id_and_text);
+UI_Actions ui_button_f(const char* fmt, ...);
+
+// - Spacer
+void ui_spacer(UI_Size size);
+#define UI_Spacered(size) DeferLoop(ui_spacer(size), ui_spacer(size))
 
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);

@@ -576,28 +576,7 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
 
 void r_present(R_Handle target, B32 vsync)
 {
-  if (!__r_is_handle_valid_handle_chain(target)) { BP; return; }
-  
-  if (os_get_state()->window.handle == target.__win32_window_handle_for_assert)
-  {
-    HCURSOR win32_arrow = LoadCursor(Null, IDC_ARROW);
-    HCURSOR win32_hand  = LoadCursor(Null, IDC_HAND);
-    HCURSOR win32_cross = LoadCursor(Null, IDC_CROSS);
-    HCURSOR win32_pen   = LoadCursor(Null, MAKEINTRESOURCE(32631)); // note: resource id is used here cause WinUser.h does have a predefined macro for it
-
-    HCURSOR win32_cursor = win32_arrow;
-    if      (os_get_state()->window.frame_cursor == OS_Cursor__arrow) { win32_cursor = win32_arrow; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__hand)  { win32_cursor = win32_hand; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__crosshair) { win32_cursor = win32_cross; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__pen)   { win32_cursor = win32_pen; }
-
-    // TODO: This was a fine idea, but this fucks up the thing.
-    //       First of all, the renderer should not carea about this, but just tell the os to do it.
-    //       Second of all this overrides the cursor each frame if the user decided to resize the window,
-    //       and no resize cursor is shown.
-    // SetCursor(win32_cursor);
-
-  } else { InvalidCodePath(); }
+  if (!__r_is_handle_valid_handle_chain(target)) { BreakPoint(); return; }
 
   target.swap_chain->Present(!!vsync, 0);
   if (os_window_is_transparent()) {

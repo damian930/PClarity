@@ -6,29 +6,6 @@
 #include "ui/widgets/ui_widgets.h"
 
 ///////////////////////////////////////////////////////////
-// - Simple widgets for quick
-//
-UI_Actions ui_button(Str8 id)
-{
-  UI_Box* button_box = ui_box_make(id, 
-    UI_Box_flag__has_background|
-    UI_Box_flag__has_rounded_corners|
-    UI_Box_flag__has_borders
-  );
-  UI_Actions acts = ui_actions_from_box(button_box);
-  return acts;
-}
-
-void ui_spacer(UI_Size size)
-{
-  UI_Box* parent = ui_top_parent();
-  if (0) {}
-  else if (parent->clay_element_config.layout.layoutDirection == CLAY_LEFT_TO_RIGHT) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
-  else if (parent->clay_element_config.layout.layoutDirection == CLAY_TOP_TO_BOTTOM) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
-  ui_box_make(Str8{}, 0);
-}
-
-///////////////////////////////////////////////////////////
 // - Layout stacks
 //
 void ui_begin_layout_stack(Axis2 axis)
@@ -191,6 +168,54 @@ void ui_text_ellipsed_f(const char* fmt, ...)
     ui_text_ellipsed(str);
     va_end(argptr);
   }
+}
+
+///////////////////////////////////////////////////////////
+// - Butoon
+//
+UI_Actions ui_button(Str8 id_and_text)
+{
+  ui_next_alignment_x(UI_Alignment_x__center);
+  ui_next_alignment_y(UI_Alignment_y__center);
+  UI_Box* button_box = ui_box_make(id_and_text, 
+    UI_Box_flag__has_padding|
+    UI_Box_flag__has_borders|
+    UI_Box_flag__has_background|
+    UI_Box_flag__has_rounded_corners);
+  UI_Parent(button_box)
+  {
+    // TODO: Use ellipsed text here
+    Str8 text = ui_get_text_part_from_str(id_and_text);
+    ui_text(text);
+  }
+  UI_Actions actions = ui_actions_from_box(button_box);
+  return actions;
+}
+
+UI_Actions ui_button_f(const char* fmt, ...)
+{
+  UI_Actions actions = {};
+  ScratchLoop(scratch, 0, 0)
+  {
+    va_list argptr;
+    va_start(argptr, fmt);
+    Str8 str = str8_valist(scratch.arena, fmt, argptr);
+    actions = ui_button(str);
+    va_end(argptr);
+  }
+  return actions;
+}
+
+///////////////////////////////////////////////////////////
+// - Spacer
+//
+void ui_spacer(UI_Size size)
+{
+  UI_Box* parent = ui_top_parent();
+  if (0) {}
+  else if (parent->clay_element_config.layout.layoutDirection == CLAY_LEFT_TO_RIGHT) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
+  else if (parent->clay_element_config.layout.layoutDirection == CLAY_TOP_TO_BOTTOM) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
+  ui_box_make(Str8{}, 0);
 }
 
 ///////////////////////////////////////////////////////////

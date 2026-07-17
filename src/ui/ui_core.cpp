@@ -21,12 +21,6 @@
 
 UI_State* __ui_g_state = 0;
 
-// TODO: Move this to a better place
-void __ui_error_handler_for_clay(Clay_ErrorData errorText)
-{
-  BreakPoint();
-}
-
 UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
 {
   BreakPoint(
@@ -609,8 +603,15 @@ UI_Actions ui_actions_from_id_f(const char* fmt, ...)
 
 V2F32 ui_clip_offset_from_box(UI_Box* box)
 {
+  Str8 id = __ui_str8_from_clay_string(box->clay_element_config.id.stringId);
+  V2F32 offset = ui_clip_offset_from_id(id);
+  return offset;
+}
+
+V2F32 ui_clip_offset_from_id(Str8 id)
+{
   V2F32 offset = {};
-  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(__ui_str8_from_clay_string(box->clay_element_config.id.stringId));
+  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
   if (!ui_is_null_box(prev_build_box))
   {
     offset = prev_build_box->clip_offset;
@@ -666,6 +667,49 @@ void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset)
 {
   ui_box_set_clip_offset_x(box, clip_offset.x);
   ui_box_set_clip_offset_y(box, clip_offset.y);
+}
+
+void ui_id_set_clip_offset_for_axis(Str8 id, F32 clip_offset, Axis2 axis) 
+{
+  UI_Box* this_buids_root = ui_get_root();
+  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
+  ui_box_set_clip_offset_for_axis(box, clip_offset, axis);
+}
+
+void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset) 
+{
+  UI_Box* this_buids_root = ui_get_root();
+  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
+  ui_box_set_clip_offset_x(box, clip_offset);
+}
+
+void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset) 
+{
+  UI_Box* this_buids_root = ui_get_root();
+  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
+  ui_box_set_clip_offset_y(box, clip_offset);
+}
+
+void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset) 
+{
+  UI_Box* this_buids_root = ui_get_root();
+  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
+  ui_box_set_clip_offset(box, clip_offset);
+}
+
+///////////////////////////////////////////////////////////
+// - ID stuff
+//
+Str8 ui_get_id_part_from_str(Str8 str)
+{
+  // TODO: Do this better
+  return str;
+}
+
+Str8 ui_get_text_part_from_str(Str8 str)
+{
+  // TODO: Do this better
+  return str;
 }
 
 ///////////////////////////////////////////////////////////
@@ -903,53 +947,84 @@ __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_AUTO_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_TOP_FUNC)
 
+///////////////////////////////////////////////////////////
+// - Stack function helpers (padding)
+//
 V4F32 ui_top_padding()
 {
   V4F32 padding = {};
-  padding.v[0] = ui_top_padding_left();
-  padding.v[1] = ui_top_padding_right();
-  padding.v[2] = ui_top_padding_top();
-  padding.v[3] = ui_top_padding_bottom();
+  padding.v[RectEdge__left]   = ui_top_padding_left();
+  padding.v[RectEdge__right]  = ui_top_padding_right();
+  padding.v[RectEdge__top]    = ui_top_padding_top();
+  padding.v[RectEdge__bottom] = ui_top_padding_bottom();
   return padding;
 }
 
-V4F32 ui_top_corner_radius()
-{
-  V4F32 corner_r = {};
-  corner_r.v[0] = ui_top_corner_radius_top_left();
-  corner_r.v[1] = ui_top_corner_radius_top_right();
-  corner_r.v[2] = ui_top_corner_radius_bottom_left();
-  corner_r.v[3] = ui_top_corner_radius_bottom_right();
-  return corner_r;
-}
-
-V4F32 ui_top_border_width()
-{
-  V4F32 border_width = {};
-  border_width.v[0] = ui_top_border_left();
-  border_width.v[1] = ui_top_border_right();
-  border_width.v[2] = ui_top_border_top();
-  border_width.v[3] = ui_top_border_bottom();
-  return border_width;
-}
-
-void ui_next_width(UI_Size size) { ui_next_size_x(size); }
-void ui_next_height(UI_Size size) { ui_next_size_y(size); }
-void ui_next_b_color(V4F32 color) { ui_next_background_color(color); }
-void ui_next_padding(F32 padding) 
+void ui_next_padding(F32 padding)
 {
   ui_next_padding_left(padding);
-  ui_next_padding_right(padding);
   ui_next_padding_top(padding);
+  ui_next_padding_right(padding);
   ui_next_padding_bottom(padding);
 }
-void ui_next_padding_diff(F32 left, F32 right, F32 top, F32 down)
+
+void ui_push_padding(F32 padding)
+{
+  ui_push_padding_left(padding);
+  ui_push_padding_right(padding);
+  ui_push_padding_top(padding);
+  ui_push_padding_bottom(padding);
+}
+
+void ui_pop_padding()
+{
+  ui_pop_padding_left();
+  ui_pop_padding_right();
+  ui_pop_padding_top();
+  ui_pop_padding_bottom();
+}
+
+void ui_next_padding_ex(F32 left, F32 right, F32 top, F32 down)
 {
   ui_next_padding_left(left);
   ui_next_padding_right(right);
   ui_next_padding_top(top);
   ui_next_padding_bottom(down);
 }
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (sizing)
+//
+void ui_next_width(UI_Size size)  { ui_next_size_x(size); }
+void ui_next_height(UI_Size size) { ui_next_size_y(size); }
+void ui_next_size_axis(Axis2 axis, UI_Size size)
+{
+  if (0) {}
+  else if (axis == Axis2__x) { ui_next_size_x(size); }
+  else if (axis == Axis2__y) { ui_next_size_y(size); }
+}
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (background color)
+//
+V4F32 ui_top_b_color()            { return ui_top_background_color(); }
+void ui_next_b_color(V4F32 color) { ui_next_background_color(color); }
+void ui_push_b_color(V4F32 color) { ui_push_background_color(color); }
+void ui_pop_b_color()             { ui_pop_background_color(); }
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (corner radius)
+//
+V4F32 ui_top_corner_radius()
+{
+  V4F32 corner_r = {};
+  corner_r.v[UV__top_left]     = ui_top_corner_radius_top_left();
+  corner_r.v[UV__top_right]    = ui_top_corner_radius_top_right();
+  corner_r.v[UV__bottom_left]  = ui_top_corner_radius_bottom_left();
+  corner_r.v[UV__bottom_right] = ui_top_corner_radius_bottom_right();
+  return corner_r;
+}
+
 void ui_next_corner_r(F32 r)
 {
   ui_next_corner_radius_top_left(r);
@@ -957,6 +1032,36 @@ void ui_next_corner_r(F32 r)
   ui_next_corner_radius_bottom_right(r);
   ui_next_corner_radius_bottom_left(r);
 }
+
+void ui_push_corner_r(F32 r)
+{
+  ui_push_corner_radius_top_left(r);
+  ui_push_corner_radius_top_right(r);
+  ui_push_corner_radius_bottom_right(r);
+  ui_push_corner_radius_bottom_left(r);
+}
+
+void ui_pop_corner_r()
+{
+  ui_pop_corner_radius_top_left();
+  ui_pop_corner_radius_top_right();
+  ui_pop_corner_radius_bottom_right();
+  ui_pop_corner_radius_bottom_left();
+}
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (border width)
+//
+V4F32 ui_top_border_width()
+{
+  V4F32 border = {};
+  border.v[RectEdge__left]   = ui_top_border_left();
+  border.v[RectEdge__right]  = ui_top_border_right();
+  border.v[RectEdge__top]    = ui_top_border_top();
+  border.v[RectEdge__bottom] = ui_top_border_bottom();
+  return border;
+}
+
 void ui_next_border_width(F32 border)
 {
   ui_next_border_left(border);
@@ -964,19 +1069,70 @@ void ui_next_border_width(F32 border)
   ui_next_border_top(border);
   ui_next_border_bottom(border);
 }
+
+void ui_push_border_width(F32 border)
+{
+  ui_push_border_left(border);
+  ui_push_border_right(border);
+  ui_push_border_top(border);
+  ui_push_border_bottom(border);
+}
+
+void ui_pop_border_width()
+{
+  ui_pop_border_left();
+  ui_pop_border_right();
+  ui_pop_border_top();
+  ui_pop_border_bottom();
+}
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (border)
+//
 void ui_next_border(F32 width, V4F32 color)
 {
   ui_next_border_width(width);
   ui_next_border_color(color);
 }
-void ui_next_padded_border(F32 width, V4F32 color) 
+
+void ui_push_border(F32 width, V4F32 color)
+{
+  ui_push_border_width(width);
+  ui_push_border_color(color);
+}
+
+void ui_pop_border()
+{
+  ui_pop_border_width();
+  ui_pop_border_color();
+}
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (padded border)
+//
+void ui_next_padded_border(F32 width, V4F32 color)
 {
   ui_next_border(width, color);
   ui_next_padding(width);
 }
+
+void ui_push_padded_border(F32 width, V4F32 color)
+{
+  ui_push_border(width, color);
+  ui_push_padding(width);
+}
+
+void ui_pop_padded_border()
+{
+  ui_pop_border();
+  ui_pop_padding();
+}
+
+///////////////////////////////////////////////////////////
+// - Stack function helpers (layout)
+//
 void ui_next_layout_x() { ui_next_layout(Axis2__x); }
 void ui_next_layout_y() { ui_next_layout(Axis2__y); }
-
 
 ///////////////////////////////////////////////////////////
 // - Box style setters for already created boxed
@@ -1139,6 +1295,14 @@ Clay_CornerRadius __ui_clay_corner_radius_from_v2f32(V4F32 vec)
   clay_crs.bottomLeft  = vec.v[UV__bottom_left];
   clay_crs.bottomRight = vec.v[UV__bottom_right];
   return clay_crs;
+}
+
+///////////////////////////////////////////////////////////
+// - Move this to a better place
+//
+void __ui_error_handler_for_clay(Clay_ErrorData errorText)
+{
+  BreakPoint();
 }
 
 #endif
