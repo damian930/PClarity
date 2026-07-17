@@ -20,6 +20,8 @@ struct OS_Window {
   B32 should_close;
   OS_Cursor frame_cursor;
 
+  B32 received_message_for_cursor_being_in_the_resie_area;
+
   // Per frame data
   V2F32 dims;
   V2F32 client_area_dims;
@@ -445,6 +447,9 @@ void os_frame_begin()
 
   os_state->frame_generation_counter += 1;
 
+  // TODO: This is new test code, so just putting it somewhere
+  os_state->window.received_message_for_cursor_being_in_the_resie_area = false;
+
   // Creating frame events though the winproc
   for (MSG msg = {}; PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE);)
   {
@@ -482,9 +487,9 @@ void os_frame_begin()
   // Mouse positions
   {
     POINT p = {};
-    BOOL succ = {};
-    succ |= GetCursorPos(&p); Assert(succ); // TODO: This asserted on you once, see why and fix this
-    succ |= ScreenToClient(os_get_state()->window.handle, &p); Assert(succ);
+    BOOL succ = TRUE;
+    succ &= GetCursorPos(&p); Assert(succ); // TODO: This asserted on you once with GetLastError() = 5, have no idea why thought, see why and fix this
+    succ &= ScreenToClient(os_get_state()->window.handle, &p); Assert(succ);
     Handle(succ); 
     os_state->this_frame_mouse_pos = v2f32((F32)p.x, (F32)p.y);
   }
@@ -911,6 +916,17 @@ void os_sleep(U64 ms)
   Sleep((U32)ms);
 }
 
+
+///////////////////////////////////////////////////////////
+// - Cursor stuff
+//
+void os_set_cursor(OS_Cursor cursor)
+{
+  os_get_state()->window.frame_cursor = cursor;
+  BOOL PostMessageW_succ = PostMessageW(os_get_state()->window.handle, WM_SETCURSOR, Null, Null);
+  Assert(PostMessageW_succ);
+}
+
 ///////////////////////////////////////////////////////////
 // - Misc
 //
@@ -928,14 +944,14 @@ LRESULT win32_proc(
   LRESULT result = {};
   switch (message)
   {
-    default: { result = DefWindowProc(window_handle, message, w_param, l_param); } break;
+    default: { result = DefWindowProcW(window_handle, message, w_param, l_param); } break;
     
     case WM_SYSKEYDOWN: 
     case WM_SYSKEYUP: 
     {
       // note: Just dont have a clear thing i need for this yet, but i know that i might need this at some point, 
       //       so leaving this in here with a BP to know when i need this.
-      result = DefWindowProc(window_handle, message, w_param, l_param);
+      result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
 
     case WM_KEYDOWN: 
@@ -1084,11 +1100,35 @@ LRESULT win32_proc(
     // Used to let the window manager set the proper cursor at window enter.
     case WM_SETCURSOR: 
     {
-      // if (LOWORD(l_param) == HTCLIENT) {
-        // SetCursor(win32_state->window.frame_cursor);
-        // result = TRUE;
-      // }
-      result = DefWindowProc(window_handle, message, w_param, l_param); 
+      if (win32_state->window.received_message_for_cursor_being_in_the_resie_area)
+      {
+        result = DefWindowProcW(window_handle, message, w_param, l_param); 
+      }
+      else 
+      {
+        WCHAR* cursor_idc = IDC_ARROW;
+        switch (win32_state->window.frame_cursor)
+        {
+          default: case OS_Cursor__arrow:    { cursor_idc = IDC_ARROW; } break;
+          case OS_Cursor__hand:              { cursor_idc = IDC_HAND; } break;
+          case OS_Cursor__crosshair:         { cursor_idc = IDC_CROSS; } break;
+          case OS_Cursor__pen:               { cursor_idc = MAKEINTRESOURCE(32631); } break;
+          case OS_Cursor__text_selection:    { cursor_idc = IDC_IBEAM; } break;
+          case OS_Cursor__unavailable:       { cursor_idc = IDC_NO; } break;
+          case OS_Cursor__horizontal_resize: { cursor_idc = IDC_SIZEWE; } break;
+        }
+  
+        HCURSOR win32_cursor_handle = (HCURSOR)LoadImageW(0, cursor_idc, IMAGE_CURSOR, Null, Null, LR_DEFAULTSIZE|LR_SHARED);
+        if (win32_cursor_handle == 0) { Assert(0); }
+  
+        // TODO: See if you need to use this here
+        // B32 DestroyCursor_succ = DestroyCursor(win32_cursor_handle);
+        // Assert(DestroyCursor_succ);
+  
+        HCURSOR prev_win32_cursor = SetCursor(win32_cursor_handle);
+
+        result = TRUE;
+      }
     } break;
 
     case WM_CAPTURECHANGED:
@@ -1100,18 +1140,33 @@ LRESULT win32_proc(
 
     case WM_NCCALCSIZE: // This sets the client area for the window at its creation 
     {
-      result = DefWindowProc(window_handle, message, w_param, l_param);
+      result = DefWindowProcW(window_handle, message, w_param, l_param);
+    } break;
+
+    case WM_NCHITTEST:
+    {
+      LRESULT hit_area = DefWindowProc(window_handle, message, w_param, l_param);
+      switch (hit_area)
+      {
+        case HTLEFT:
+        case HTRIGHT:
+        case HTTOP:
+        case HTBOTTOM:
+        case HTTOPLEFT:
+        case HTTOPRIGHT:
+        case HTBOTTOMLEFT:
+        case HTBOTTOMRIGHT: 
+        {
+          win32_state->window.received_message_for_cursor_being_in_the_resie_area = true;
+        } break;
+      }
+      result = hit_area;
     } break;
 
     case WM_ACTIVATEAPP: // note: Message that out window is about to be activated or is not longer active
     {
-      result = DefWindowProc(window_handle, message, w_param, l_param);
+      result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
-
-    // case WM_SIZE: 
-    // {
-
-    // } break;
 
     case WM_PAINT:
     {
@@ -1162,47 +1217,26 @@ LRESULT win32_proc(
   return result;
 }
 
-// Str8 os_get_path_to_system_fonts()
+// Str8 os_get_clipboard_text(Arena* arena)
 // {
-//   return os_get_state()->path_to_system_fonts;
+//   Str8 text = {};
+//   if (OpenClipboard(os_get_state()->window.handle))
+//   {
+//     HANDLE ansi_text_handle = GetClipboardData(CF_TEXT);
+//     if (ansi_text_handle)
+//     {
+//       U8* bytes = (U8*)GlobalLock(ansi_text_handle);
+//       if (bytes)
+//       {
+//         text = str8_from_cstr(arena, bytes);
+//         B32 succ_unlock = GlobalUnlock(ansi_text_handle);
+//         Assert(succ_unlock);
+//       }
+//       B32 succ_close = CloseClipboard();
+//       Assert(succ_close);
+//     }
+//   }
+//   return text;
 // }
-
-void os_set_cursor(OS_Cursor cursor)
-{
-  os_get_state()->window.frame_cursor = cursor;
-}
-
-void os_show_cursor(B32 show)
-{
-  ShowCursor(show);
-}
-
-U64 os_get_mouse_double_click_max_time_ms()
-{
-  U64 time = (U64)GetDoubleClickTime();
-  return time;
-}
-
-Str8 os_get_clipboard_text(Arena* arena)
-{
-  Str8 text = {};
-  if (OpenClipboard(os_get_state()->window.handle))
-  {
-    HANDLE ansi_text_handle = GetClipboardData(CF_TEXT);
-    if (ansi_text_handle)
-    {
-      U8* bytes = (U8*)GlobalLock(ansi_text_handle);
-      if (bytes)
-      {
-        text = str8_from_cstr(arena, bytes);
-        B32 succ_unlock = GlobalUnlock(ansi_text_handle);
-        Assert(succ_unlock);
-      }
-      B32 succ_close = CloseClipboard();
-      Assert(succ_close);
-    }
-  }
-  return text;
-}
 
 #endif

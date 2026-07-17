@@ -100,7 +100,7 @@ enum R_Fill_mode : U32 {
   R_Fill_mode__COUNT,
 };
 
-struct R_Target {
+struct R_Handle {
   // This is shared for rtvs and swap chains 
   // (There are no textures right now which are not also rtvs)
   ID3D11Texture2D*        texture;
@@ -151,18 +151,18 @@ void r_init();
 void r_relesase();
 
 // - Rendering work flow (this is in the order of how it could be used)
-R_Target r_attach_window(OS_Window window);
-void r_prepare_canvas(R_Target* chain);
-void r_submit(R_Target target, D_Command_batch_list* command_batch_list);
-void r_present(R_Target target, B32 vsync);
+R_Handle r_attach_window(OS_Window window);
+void r_prepare_canvas(R_Handle* chain);
+void r_submit(R_Handle target, D_Command_batch_list* command_batch_list);
+void r_present(R_Handle target, B32 vsync);
 
 // - Texture stuff
-R_Target r_make_texture(U32 width, U32 height);
-void r_release_texture(R_Target* texture);
+R_Handle r_make_texture(U32 width, U32 height);
+void r_release_texture(R_Handle* texture);
 
 // - Boring stuff with handles
-R_Target r_target_zero_handle();
-B32 r_target_match(R_Target target, R_Target other);
+R_Handle r_zero_handle();
+B32 r_handle_match(R_Handle target, R_Handle other);
 
 // - Misc
 R_Program r_program_from_file(const WCHAR* shader_program_file, 
@@ -170,21 +170,21 @@ R_Program r_program_from_file(const WCHAR* shader_program_file,
                               const char* p_shader_main_f_name, 
                               const D3D11_INPUT_ELEMENT_DESC* opt_desc_arr,
                               U32 desc_arr_count);
-void r_clear_target(R_Target target, V4F32 color);
-Image r_image_from_texture(Arena* arena, R_Target texture);
-void r_export_texture(R_Target texture, Str8 file_path);
+void r_clear_handle(R_Handle handle, V4F32 color);
+Image r_image_from_texture(Arena* arena, R_Handle texture);
+void r_export_texture(R_Handle texture, Str8 file_path);
 void r_export_image(Image image, Str8 file_name);
-R_Target r_load_texture_from_file(Str8 file_name);
-R_Target r_load_texture_from_image(Image image);
-void r_copy_into_texture_from_texture(R_Target dest_texture, R_Target src_texture, B32* out_opt_is_succ);
-V2F32 r_get_target_dims(R_Target target);
+R_Handle r_load_texture_from_file(Str8 file_name);
+R_Handle r_load_texture_from_image(Image image);
+void r_copy_into_texture_from_texture(R_Handle dest_texture, R_Handle src_texture, B32* out_opt_is_succ);
+V2F32 r_get_handle_dims(R_Handle target);
 
 ///////////////////////////////////////////////////////////
 // - Private stuff that is not for that caller to use or care about
 //
 // - Extra handle checks
-B32 __r_is_target_valid_target(R_Target target);
-B32 __r_is_target_valid_target_chain(R_Target target);
+B32 __r_is_handle_valid_handle(R_Handle handle);
+B32 __r_is_handle_valid_handle_chain(R_Handle handle);
 
 // - Per vertex data describtions
 const global 

@@ -49,6 +49,8 @@ struct Str16 {
   U64 count;
 };
 
+#define Str8FmtArg(str) (int)((str).count), ((str).data) // NOTE(S): Use this for variadic functions where the format specifier is "%.*s" meaning an int value (width) is provided before the char string. 
+
 // - data buffer
 typedef Str8 Data_buffer;
 tu_specific Data_buffer data_buffer_make(Arena* arena, U64 count);

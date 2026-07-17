@@ -38,7 +38,7 @@ void d_release()
 ///////////////////////////////////////////////////////////
 // - Batching 
 //
-void d_begin_batching(R_Target target) 
+void d_begin_batching(R_Handle target) 
 { 
   D_State* draw_state = d_get_state();
   
@@ -48,7 +48,7 @@ void d_begin_batching(R_Target target)
   // There is no need to be doing this here an not inside init, but i am doing this here just because
   draw_state->default_settings.blend_kind    = R_Blend_kind__alpha;
   draw_state->default_settings.render_target = target; 
-  draw_state->default_settings.scissor_rect  = rect_make(0.0f, 0.0f, r_get_target_dims(target).x, r_get_target_dims(target).y);
+  draw_state->default_settings.scissor_rect  = rect_make(0.0f, 0.0f, r_get_handle_dims(target).x, r_get_handle_dims(target).y);
   draw_state->default_settings.fill_mode     = R_Fill_mode__solid;
   draw_state->default_settings.offset_x      = 0.0f;
   draw_state->default_settings.offset_y      = 0.0f;
@@ -73,7 +73,7 @@ void d_end_batching() { /*Nothing here*/ }
 
 D_Command_batch_list* d_get_batch_list() { return &d_get_state()->command_batch_list; }
 
-D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Target texture)
+D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Handle texture)
 {
   D_State* draw_state = d_get_state();
   Arena* arena = draw_state->arena_for_draw_commands;
@@ -102,7 +102,7 @@ D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Target texture)
   return new_batch;
 }
 
-D_Command_batch* d_get_or_add_batch_for_settings(D_Command_type command_type, R_Target texture)
+D_Command_batch* d_get_or_add_batch_for_settings(D_Command_type command_type, R_Handle texture)
 {
   // note:
   // If this static assert fails, that mean that the batch struct has changed. 
@@ -120,8 +120,8 @@ D_Command_batch* d_get_or_add_batch_for_settings(D_Command_type command_type, R_
     || batch->command_type != command_type  
     || batch->blend_kind   != __d_get_current_blend_kind__defaults()
     || batch->fill_mode    != __d_get_current_fill_mode__defaults()
-    || !r_target_match(batch->texture, texture)
-    || !r_target_match(batch->target, __d_get_current_render_target__defaults())
+    || !r_handle_match(batch->texture, texture)
+    || !r_handle_match(batch->target, __d_get_current_render_target__defaults())
     || !rect_match    (batch->scissor_rect, __d_get_current_scissor_rect__defaults())
   ) {
     batch = d_add_new_batch(command_type, texture);
@@ -148,7 +148,7 @@ void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_
 {
   D_State* draw_state    = d_get_state();
   Arena* arena           = draw_state->arena_for_draw_commands;
-  D_Command_batch* batch = d_get_or_add_batch_for_settings(D_Command_type__Rect, r_target_zero_handle());
+  D_Command_batch* batch = d_get_or_add_batch_for_settings(D_Command_type__Rect, r_zero_handle());
 
   rect.x += __d_get_current_offset_x();
   rect.y += __d_get_current_offset_y();
@@ -163,7 +163,7 @@ void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_
   d_add_command_to_batch(batch, command);
 }
 
-void d_add_texture_command(R_Target texture, Rect dest_rect, Rect src_rect, V4F32 tint)
+void d_add_texture_command(R_Handle texture, Rect dest_rect, Rect src_rect, V4F32 tint)
 {
   D_State* draw_state    = d_get_state();
   Arena* arena           = draw_state->arena_for_draw_commands;
@@ -186,8 +186,8 @@ void d_add_texture_command(R_Target texture, Rect dest_rect, Rect src_rect, V4F3
 void d_fill_with_color(V4F32 color)
 {
   V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  R_Target target                = __d_get_current_render_target__defaults();
-  Rect rect                      = rect_make_v(v2f32(0.0f, 0.0f), r_get_target_dims(target));
+  R_Handle target                = __d_get_current_render_target__defaults();
+  Rect rect                      = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(target));
   d_add_rect_command(rect, corner_colors, {}, {}, {}, {});
 }
 
@@ -227,24 +227,26 @@ void d_draw_circle_inset_border(V2F32 center, F32 r, V4F32 color, F32 thickness,
   d_draw_rect_inset_borders(rect, color, thickness, v4f32_all(1.0f), softness);
 }
 
-void d_draw_texture(R_Target texture, V2F32 pos)
+void d_draw_texture(R_Handle texture, V2F32 pos)
 {
-  V2F32 texture_dims = r_get_target_dims(texture);
-  Rect source_rect   = rect_make_v(v2f32(0.0f, 0.0f), r_get_target_dims(texture));
+  V2F32 texture_dims = r_get_handle_dims(texture);
+  Rect source_rect   = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
   Rect dest_rect     = rect_make_v(pos, texture_dims);
   d_add_texture_command(texture, dest_rect, source_rect, white());
 }
 
-void d_draw_texture_pro(R_Target texture, Rect dest_rect, Rect source_rect, V4F32 tint)
+void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint)
 {
   d_add_texture_command(texture, dest_rect, source_rect, tint);
 }
 
-void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
+void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color)
 {
-  F32 origin_y = pos.y + font.ascent;
-  F32 x_offset = 0.0f;
+  F32 scale_factor = font_size / font.size;
   
+  F32 origin_y = pos.y + (font.ascent * scale_factor);
+  F32 x_offset = 0.0f;
+
   for (U64 ch_index = 0; ch_index < text.count; ch_index += 1)
   {
     U8 ch = text.data[ch_index];
@@ -254,29 +256,30 @@ void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
 
     // Just puttin them 1 next to another
     Rect dest_rect = {};
-    dest_rect.x      = origin_x + glyph_data.bearing_x;
-    dest_rect.y      = origin_y - glyph_data.bearing_y;
-    dest_rect.width  = glyph_data.rect_on_atlas.width;
-    dest_rect.height = glyph_data.rect_on_atlas.height;
+    dest_rect.x      = origin_x + (glyph_data.bearing_x * scale_factor);
+    dest_rect.y      = origin_y - (glyph_data.bearing_y * scale_factor);
+    dest_rect.width  = (glyph_data.rect_on_atlas.width * scale_factor);
+    dest_rect.height = (glyph_data.rect_on_atlas.height * scale_factor);
     
     d_draw_texture_pro(font.atlas_texture, dest_rect, glyph_data.rect_on_atlas, color);
 
-    F32 advance = glyph_data.advance;
+    F32 advance = (glyph_data.advance * scale_factor);
     if (ch_index < text.count - 1)
     {
       FP_Kerning_entry entry = fp_get_kerning(font, ch, text.data[ch_index + 1]);
-      if (!IsMemZero(entry)) { advance += entry.advance; }
+      if (!IsMemZero(entry)) { advance += (entry.advance * scale_factor); }
     } 
     x_offset += advance; 
   }
 
   #if DEBUG_MODE
   { // Making sure that the x here is the same as in fp to make sure that that we dont do any stupid mistackes
-    V2F32 fp_text_dims = fp_measure_text(text, font);
-    Assert(fp_text_dims.x == x_offset);
+    V2F32 fp_text_dims = fp_measure_text(text, font, font_size);
+    Assert(0.001f > abs_f32(x_offset - fp_text_dims.x));
   }
   #endif
 
+  // TODO: This should be the a draw layout contant that will decide weather to draw these in debug mode or not
   // These are some debug drawings for baseline and stuff
   #if DEBUG_MODE
   {
@@ -288,13 +291,13 @@ void d_draw_text(Str8 text, FP_Font font, V2F32 pos, V4F32 color)
   #endif
 }
 
-void d_draw_text_f(const char* fmt, FP_Font font, V2F32 pos, V4F32 color, ...)
+void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...)
 {
   Scratch scratch = get_scratch(0, 0);
   va_list valist;
   va_start(valist, color);
   Str8 str = str8_valist(scratch.arena, fmt, valist);
-  d_draw_text(str, font, pos, color);
+  d_draw_text(str, font, font_size, pos, color);
   va_end(valist);
   end_scratch(&scratch);
 }
@@ -331,9 +334,9 @@ void         d_push_blend_kind(R_Blend_kind blend_kind)  { D_State* draw_state =
 void         d_pop_blend_kind()                          { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_blend_kinds, current_blend_kind_count); }
 R_Blend_kind __d_get_current_blend_kind__defaults()      { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_blend_kinds,  current_blend_kind_count,     blend_kind);  }
 
-void     d_push_render_target(R_Target target)           { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_render_targets, current_render_target_count,  target);      }
+void     d_push_render_target(R_Handle target)           { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_render_targets, current_render_target_count,  target);      }
 void     d_pop_render_target()                           { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_render_targets, current_render_target_count); }
-R_Target __d_get_current_render_target__defaults()       { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_render_targets,  current_render_target_count,  render_target); }
+R_Handle __d_get_current_render_target__defaults()       { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_render_targets,  current_render_target_count,  render_target); }
 
 void d_push_scissor_rect(Rect rect)                      { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_scissor_rects, current_scissor_rect_count,  rect);         }
 void d_pop_scissor_rect()                                { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_scissor_rects, current_scissor_rect_count);                }

@@ -118,11 +118,17 @@ RangeF32 rect_get_range_y     (Rect rect)                           { return rec
 
 Rect rect_padded(Rect rect, F32 padd)
 {
+	Rect result = rect_padded_ex(rect, v4f32_all(padd));
+	return result;
+}
+
+Rect rect_padded_ex(Rect rect, V4F32 padding)
+{
 	Rect result  = rect;
-	result.x    -= padd;
-	result.y    -= padd;
-	result.width  += 2 * padd;
-	result.height += 2 * padd;
+	result.x    -= padding.v[RectEdge__left];
+	result.y    -= padding.v[RectEdge__top];
+	result.width  += (padding.v[RectEdge__left] + padding.v[RectEdge__right]);
+	result.height += (padding.v[RectEdge__top] + padding.v[RectEdge__bottom]);
 	if (result.width  < 0.0f) { result.width  = 0.0f; }
 	if (result.height < 0.0f) { result.height = 0.0f; }
 	return result;
@@ -181,6 +187,16 @@ S8  abs_s8 (S8  x) { S8  result = x; if (result < 0) { result *= -1; } return re
 S16 abs_s16(S16 x) { S16 result = x; if (result < 0) { result *= -1; } return result; }
 S32 abs_s32(S32 x) { S32 result = x; if (result < 0) { result *= -1; } return result; }
 S64 abs_s64(S64 x) { S64 result = x; if (result < 0) { result *= -1; } return result; }
+
+///////////////////////////////////////////////////////////
+// - Sign
+//
+F32 sign_f32(F32 x) { return (x < 0.0f ? -1.0f : 1.0f); }
+F64 sign_f64(F64 x) { return (x < 0.0  ? -1.0  : 1.0 ); }
+S8  sign_s8 (S8 x)  { return (x < 0    ? -1    : 1   ); }
+S16 sign_s16(S16 x) { return (x < 0    ? -1    : 1   ); }
+S32 sign_s32(S32 x) { return (x < 0    ? -1    : 1   ); }
+S64 sign_s64(S64 x) { return (x < 0    ? -1    : 1   ); }
 
 ///////////////////////////////////////////////////////////
 // - Clamp

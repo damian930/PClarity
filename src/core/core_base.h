@@ -193,6 +193,16 @@ typedef double F64;
 //
 // Dll is a list with "first" and "last" node pointers.
 // Nodes store the "next" and "prev" node pointers.
+
+// // TODO: Test this in sample and make sure that this works and have this as the building block for the old stuff
+// #define StackPush_Named_Explicit(top_node_p, new_node_p, name_for_next_in_node) \
+// 	if (top_node_p == 0) {     \
+// 		top_node_p = new_node; \
+// 	} else {                                     \
+// 		(new_node)->name_for_next_in_node = top_node_p; \
+// 		top_node_p = new_node;                        \
+// 	}
+
 #define StackPush_Name(list, new_node, name_for_first_in_list, name_for_next_in_node) \
 	if ((list)->name_for_first_in_list == 0) {     \
 			(list)->name_for_first_in_list = new_node; \
@@ -517,17 +527,18 @@ union Rect {
 	struct { F32 x; F32 y; F32 width; F32 height; };
 	struct { V2F32 origin; V2F32 dims; };
 };
-tu_specific Rect     rect_make            (F32 x, F32 y, F32 width, F32 height);
-tu_specific Rect     rect_make_v          (V2F32 pos, V2F32 dims);
-tu_specific Rect     rect_from_center     (V2F32 center, V2F32 dims);
-tu_specific Rect     rect_from_range_v2f32(RangeV2F32 range);
-tu_specific V2F32    rect_get_center      (Rect rect);
-tu_specific B32      rect_match           (Rect r1, Rect r2);
-tu_specific B32      rect_point_inside    (Rect r, V2F32 p);
-tu_specific RangeF32 rect_get_range       (Rect rect, Axis2 axis);
-tu_specific RangeF32 rect_get_range_x     (Rect rect);
-tu_specific RangeF32 rect_get_range_y     (Rect rect);
-tu_specific Rect     rect_padded          (Rect rect, F32 padd);
+tu_specific Rect     rect_make             (F32 x, F32 y, F32 width, F32 height);
+tu_specific Rect     rect_make_v           (V2F32 pos, V2F32 dims);
+tu_specific Rect     rect_from_center      (V2F32 center, V2F32 dims);
+tu_specific Rect     rect_from_range_v2f32 (RangeV2F32 range);
+tu_specific V2F32    rect_get_center       (Rect rect);
+tu_specific B32      rect_match            (Rect r1, Rect r2);
+tu_specific B32      rect_point_inside     (Rect r, V2F32 p);
+tu_specific RangeF32 rect_get_range        (Rect rect, Axis2 axis);
+tu_specific RangeF32 rect_get_range_x      (Rect rect);
+tu_specific RangeF32 rect_get_range_y      (Rect rect);
+tu_specific Rect     rect_padded           (Rect rect, F32 padd);
+tu_specific Rect     rect_padded_ex        (Rect rect, V4F32 padd);
 tu_specific Rect     rect_intersect_on_axis(Rect rect, Rect other, Axis2 axis);
 
 struct RangeV2F32 {
@@ -555,6 +566,13 @@ tu_specific S8  abs_s8 (S8  x);
 tu_specific S16 abs_s16(S16 x);
 tu_specific S32 abs_s32(S32 x);
 tu_specific S64 abs_s64(S64 x);
+
+tu_specific F32 sign_f32(F32 x);
+tu_specific F64 sign_f64(F64 x);
+tu_specific S8  sign_s8 (S8 x);
+tu_specific S16 sign_s16(S16 x);
+tu_specific S32 sign_s32(S32 x);
+tu_specific S64 sign_s64(S64 x);
 
 tu_specific F32 clamp_f32(F32 value, F32 min, F32 max);
 tu_specific F64 clamp_f64(F64 value, F64 min, F64 max);
@@ -832,7 +850,6 @@ typedef U64 Time; // This is used as just a value from Readable_time, it has to 
 
 tu_specific Time time_from_readable_time(Readable_time* r_time);
 tu_specific Readable_time readable_time_from_time(Time time);
-
 
 #endif
 
