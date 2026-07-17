@@ -4,6 +4,10 @@
 #include "core/core_include.h"
 #include "__third_party/clay/clay.h"
 
+/* todo:
+- Work on IDs better, thing about static ids, dynamic ids, parent relative ids, indexed ids
+*/
+
 enum UI_Size_kind {
   UI_Size_kind__px,
   UI_Size_kind__fit,
@@ -29,10 +33,6 @@ enum UI_Box_flag : U32 {
   // TODO: Look into this, i dont thing that this is used right now, i think this is old code that we no longer use type of thing
   UI_Box_flag__has_text_contents   = (1 << 6),
 
-  // Floating doesnt add to the size of its parent and is not a part of the normal layout flow
-  UI_Box_flag__floating_x = (1 << 7), 
-  UI_Box_flag__floating_y = (1 << 8), 
-
   // Clips the box contents on axis. Clipping is not the same as just not drawing. 
   // Clipping changes the interactive zone of boxes. 
   // Not drawing would just not draw a part of the box, but the box would still
@@ -41,13 +41,14 @@ enum UI_Box_flag : U32 {
   // a child of a clip box and if outisde of its parent's on screen bounding box
   // the inputs to it dont go thought, since they are clipped out, both for the user
   // on the screen and for the ui logic. 
-  UI_Box_flag__clip_x = (1 << 9), 
-  UI_Box_flag__clip_y = (1 << 10), 
+  UI_Box_flag__clip_x = (1 << 7), 
+  UI_Box_flag__clip_y = (1 << 8), 
 
-  UI_Box_flag__dont_draw_overflow = (1 << 11),  
+  UI_Box_flag__dont_draw_overflow = (1 << 9),  
+
+  UI_Box_flag__floating = (1 << 10),  
 
   UI_Box_flag__padded_border      = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
-  UI_Box_flag__floating           = UI_Box_flag__floating_x|UI_Box_flag__floating_y, 
   UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
 };
 typedef U32 UI_Box_flags;
@@ -97,18 +98,28 @@ struct UI_Actions {
 };
 
 struct UI_Box {
-  // Our own config
+  U64 generation;
+  Str8 id;
+
+  // Per build box condif // TODO: When done, lock these up under a name for a debug view 
   UI_Box_flags flags;
-
-  // Clay config
-  // TODO: Dont store this, just store your own data for ui box, then when making clay boxes use this. 
-  //       It will make it make more sense and the bridge between ui and clay_ui way cleaner.
-  Clay_ElementDeclaration clay_element_config;
-
+  UI_Size size_on_axis[Axis2__COUNT];
+  Axis2 layout_direction;
+  //
+  V4F32 padding;
+  F32 child_gap;
+  UI_Alignment_x alignment_on_x;
+  UI_Alignment_y alignment_on_y;
+  V4F32 b_color;
+  V4F32 corner_radii;
+  B32 clip_axis[Axis2__COUNT];
+  V2F32 clip_offset;
+  V4F32 border_width;
+  V4F32 border_color;
+  V2F32 floating_fixed_pos;
+  //
   B32 has_hover_cursor;
   OS_Cursor hover_cursor;
-
-  V2F32 clip_offset;
 
   struct {
     UI_Box_custom_draw_func_pointer_type* draw_func; 
@@ -128,14 +139,12 @@ struct UI_Box {
   UI_Box* prev_sibling;
   UI_Box* parent;
   U64 children_count;
-
+  
   // Damian: These are not used on the immediate box, but rather used for the future 
   //         representation of this box 
   //         (future representation is this same box in the next build)
   B32 is_updated_actions_for_this_in_the_future;
   UI_Actions actions_for_this_in_the_future;
-
-  U64 generation;
 };
 
 // TODO: Move this to a better place
@@ -146,22 +155,26 @@ struct UI_Box {
   {}, \
   {}, \
   {}, \
-  { \
-    __ui_custom_draw_stub_func, \
-    {}, \
-  }, \
-  { \
-    {}, \
-    {}, \
-    {}, \
-  }, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
   {}, \
-  \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  {}, \
+  { __ui_custom_draw_stub_func, 0 }, \
+  {}, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
+  &__ui_g_null_box, \
   {}, \
   {}, \
   {}, \
@@ -208,7 +221,7 @@ struct UI_State {
   UI_Box* next_new_elements_parent_box; // Damian, TODO: What the fuck is this even
 
   struct {
-    Clay_ElementId clay_id;
+    Str8 box_id;
     B32 is_mouse_down;
     B32 did_mouse_leave_box_while_was_down;
     V2F32 pos_when_mouse_went_down;
@@ -236,7 +249,7 @@ void ui_release();
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
-void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
+void __ui_build_clay_element_tree_from_box_tree(UI_Box* root); // TODO: Move this out of here into some like helper section
 #define UI_Build(window_dims, mouse_pos, default_font) DeferLoop(ui_begin_build(window_dims, mouse_pos, default_font), ui_end_build())
 
 // - UI drawing
@@ -403,7 +416,8 @@ Clay_String       __ui_clay_string_from_str8         (Str8 str);
 Rect              __ui_rect_from_clay_bounding_box   (Clay_BoundingBox bbox);
 Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
 V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
-Clay_CornerRadius __ui_clay_corner_radius_from_v2f32 (V4F32 vec);
+Clay_CornerRadius __ui_clay_corner_radius_from_v4f32 (V4F32 vec);
+Clay_ElementId    __ui_clay_element_id_from_str8     (Str8 str);
 
 // - Error handler for clay
 void __ui_error_handler_for_clay(Clay_ErrorData errorText);

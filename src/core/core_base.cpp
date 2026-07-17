@@ -68,8 +68,9 @@ V3F32 v3f32(F32 x, F32 y, F32 z) { V3F32 v = { x, y, z }; return v; }
 // - V4F32 
 //
 V4F32 v4f32      (F32 x, F32 y, F32 z, F32 w) { V4F32 v = { x, y, z, w }; return v; }
-B32   v4f32_match(V4F32 v1, V4F32 v2)         { return (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w); }
 V4F32 v4f32_all  (F32 x)                      { return v4f32(x, x, x, x); }
+B32   v4f32_match(V4F32 v1, V4F32 v2)         { return (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w); }
+V4F32 v4f32_scale(V4F32 v, F32 s)             { return v4f32(v.x * s, v.y * s, v.z * s, v.w * s); }
 
 ///////////////////////////////////////////////////////////
 // - V4U8 

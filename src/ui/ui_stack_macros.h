@@ -42,7 +42,10 @@
   EXPANSION(__UI_Alignment_x_stack, UI_Alignment_x, stack_alignment_x, UI_Alignment_x__left, ui_push_alignment_x, ui_next_alignment_x, ui_pop_alignment_x, ui_auto_pop_alignment_x, ui_top_alignment_x, 64, UI_AlignmentX) \
   EXPANSION(__UI_Alignment_y_stack, UI_Alignment_y, stack_alignment_y, UI_Alignment_y__top, ui_push_alignment_y, ui_next_alignment_y, ui_pop_alignment_y, ui_auto_pop_alignment_y, ui_top_alignment_y, 64, UI_AlignmentY) \
   \
-  EXPANSION(__UI_Hover_cursor_stack, OS_Cursor, stack_hover_cursor, OS_Cursor__arrow, ui_push_hover_cursor, ui_next_hover_cursor, ui_pop_hover_cursor, ui_auto_pop_hover_cursor, ui_top_hover_cursor, 64, UI_HoverCursor) 
+  EXPANSION(__UI_Hover_cursor_stack, OS_Cursor, stack_hover_cursor, OS_Cursor__arrow, ui_push_hover_cursor, ui_next_hover_cursor, ui_pop_hover_cursor, ui_auto_pop_hover_cursor, ui_top_hover_cursor, 64, UI_HoverCursor) \
+  \
+  EXPANSION(__UI_Floating_fixed_pos_x, F32, stack_floating_fixed_pos_x, 0.0f, ui_push_floating_fixed_pos_x, ui_next_floating_fixed_pos_x, ui_pop_floating_fixed_pos_x, ui_auto_pop_floating_fixed_pos_x, ui_top_floating_fixed_pos_x, 64, UI_FloatingFixedPosX) \
+  EXPANSION(__UI_Floating_fixed_pos_y, F32, stack_floating_fixed_pos_y, 0.0f, ui_push_floating_fixed_pos_y, ui_next_floating_fixed_pos_y, ui_pop_floating_fixed_pos_y, ui_auto_pop_floating_fixed_pos_y, ui_top_floating_fixed_pos_y, 64, UI_FloatingFixedPosX)  
 
 #define __UI_STACK_DEFINE_STACK_STRUCTS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   struct Stack_type_name { \

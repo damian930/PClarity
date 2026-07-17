@@ -345,11 +345,9 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                       ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
                       ui_next_hover_cursor(OS_Cursor__horizontal_resize);
                       ui_next_b_color(transparent());
+                      ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2));
                       UI_Box* resizer = ui_box_make_f("Data table resizer %lld", UI_Box_flag__has_background|UI_Box_flag__floating, header_index);
-                      resizer->clay_element_config.floating.offset.x = offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2); 
-        
-                      // TODO: There i a bug here, when the left resizer gets dragged, the right one moves as well
-                      //       This is also what is causing the separator to look smaller sometimes for a couple of pixels
+
                       UI_Actions resizer_actions = ui_actions_from_box(resizer);
                       if (resizer_actions.is_down)
                       {

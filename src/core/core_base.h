@@ -479,8 +479,9 @@ union V4F32 {
 	struct { V3F32 hsv; F32 __; };
 };
 tu_specific V4F32 v4f32      (F32 x, F32 y, F32 z, F32 w);
-tu_specific B32   v4f32_match(V4F32 v1, V4F32 v2);
 tu_specific V4F32 v4f32_all  (F32 x);
+tu_specific B32   v4f32_match(V4F32 v1, V4F32 v2);
+tu_specific V4F32 v4f32_scale(V4F32 v, F32 s);
 
 union V4U8 {
 	struct { U8 x; U8 y; U8 z; U8 w; };

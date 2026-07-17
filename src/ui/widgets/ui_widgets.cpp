@@ -213,8 +213,8 @@ void ui_spacer(UI_Size size)
 {
   UI_Box* parent = ui_top_parent();
   if (0) {}
-  else if (parent->clay_element_config.layout.layoutDirection == CLAY_LEFT_TO_RIGHT) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
-  else if (parent->clay_element_config.layout.layoutDirection == CLAY_TOP_TO_BOTTOM) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
+  else if (parent->layout_direction == Axis2__x) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
+  else if (parent->layout_direction == Axis2__y) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
   ui_box_make(Str8{}, 0);
 }
 

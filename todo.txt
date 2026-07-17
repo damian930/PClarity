@@ -1,4 +1,6 @@
 Current:
+[x] - Make clip offsets work again
+[ ] - Add the floating fucntionality we need for floating to work in the table resizers
 [ ] - Fix the bug with ids when there are a lot of headers in the table
 [ ] - Fix the bug with the scroll bar that when you hold mouse at 0.0 delta per frame it sill moves a bit, not the mouse, but the offset that the scroll bar produces
 
