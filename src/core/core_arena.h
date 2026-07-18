@@ -43,6 +43,7 @@ tu_specific U64 arena_get_pos(Arena* arena);
 tu_specific void arena_pop_to_pos(Arena* arena, U64 new_arena_pos);
 tu_specific void arena_pop(Arena* arena, U64 bytes_to_pop);
 tu_specific void arena_clear(Arena* arena);
+tu_specific U64 arena_get_bytes_left(Arena* arena);
 #define ArenaPopType(arena_p, Type) arena_pop(arena_p, sizeof(Type))
 
 // - temp arena stuff

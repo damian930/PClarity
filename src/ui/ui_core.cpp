@@ -263,6 +263,9 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   UI_Box* new_box = ArenaPush(ui_get_build_arena(), UI_Box);
   *new_box = __ui_g_null_box;
 
+  // TODO: This is for testing with a profiler
+  ui_find_prev_build_box_by_id(id);
+
   new_box->id = str8_copy(ui_get_build_arena(), id);
 
   { // Setting up the box
@@ -473,7 +476,7 @@ UI_Box_data ui_box_data_from_id(Str8 id)
 
 UI_Box_data ui_box_data_from_box(UI_Box* box)
 {
-  // TODO: Figure out what happends in clay if you give it negative padding 
+  // TODO: Figure out what happends in Clay_ScrollContainerDataay if you give it negative padding 
   Clay_ElementData clay_element_data = Clay_GetElementData(__ui_clay_element_id_from_str8(box->id));
   UI_Box_data result_data = {};
   result_data.is_found   = clay_element_data.found;

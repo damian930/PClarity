@@ -91,21 +91,89 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    // UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
-    // {
-    //   ui_next_width(ui_px(500));
-    //   ui_next_height(ui_px(500));
-    //   ui_next_b_color(red());
-    //   UI_Box* red_box = ui_box_make_f("red box", UI_Box_flag__has_background);
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      ui_next_width(ui_grow());
+      ui_next_height(ui_grow());
+      ui_next_padded_border(3, nice_green());
+      ui_next_padding(15);
+      ui_next_child_gap(5);
+      ui_next_layout_y();
+      UI_Box* top_box = ui_box_make({}, UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
+      UI_Parent(top_box)
+      {
+        UI_Box* clip_box = ui_box_make(Str8FromC("Clip box id"), UI_Box_flag__clip);
+        UI_Parent(clip_box)
+        {
+          UI_Parent(ui_box_make(Str8FromC("id 1"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 2"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 3"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 4"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 5"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 11"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 12"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 13"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 14"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 15"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 111"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 122"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 133"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 144"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 155"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 1111"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 1222"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 1333"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 1444"), 0))
+          UI_Parent(ui_box_make(Str8FromC("id 1555"), 0))
+          {
+            UI_Row()
+            {
+              for EachIndex(i, 25)
+              {
+                ui_next_width(ui_fit());
+                ui_next_height(ui_fit());
+                ui_next_padded_border(3, nice_blue());
+                ui_next_padding(10);
+                ui_next_child_gap(5);
+                ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
+                UI_Col()
+                {
+                  for EachIndex(j, 25)
+                  {
+                    UI_Wrapper()
+                    {
+                      ui_next_width(ui_px(25));
+                      ui_next_height(ui_px(25));
+                      ui_next_b_color(red());
+                      UI_Box* red_box = ui_box_make({}, UI_Box_flag__has_background);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      
+        UI_Box_data box_data = ui_box_data_from_box(clip_box);
+        if (box_data.is_found)
+        {
+          F32 offset = -ui_clip_offset_from_box(clip_box).y;
+          B32 is_new_offset = false;
+          F32 new_offset = 0.0f;
+          pcl_scroll_bar(ui_grow(), ui_px(50), Axis2__x, Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).x, offset, &new_offset, &is_new_offset);
 
-    //   if (ui_actions_from_box(red_box).is_hovered)
-    //   {
-    //     BP;
-    //   }
-    // }
+          if (is_new_offset)
+          {
+            offset = new_offset;
+          }
+          ui_box_set_clip_offset_y(clip_box, -offset);
+        }
+        
+      }
+    }
 
-    pcl_frame_update(&pcl);
-    pcl_do_ui(font, &pcl);
+    // pcl_frame_update(&pcl);
+    // pcl_do_ui(font, &pcl);
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();

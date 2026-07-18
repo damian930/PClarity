@@ -421,10 +421,23 @@ B32 os_release_mem_chunk(Mem_chunk* mem_chunk)
 {
   if (mem_chunk == 0) { InvalidCodePath(); return false; }
 
-  OS_State* os_state = os_get_state();
-  B32 release_succ = VirtualFree(mem_chunk->base_p, 0, MEM_RELEASE);
-  if (release_succ) {
-    *mem_chunk = Mem_chunk{};
+  // Damian:
+  // Just in case if the memory inside the chuck is also used to have something
+  // allocated on it and then the mem_chunk is allocated on that thing again.
+  // Example: Arena asks for mem_chunk, then allocated itself on the chunck and 
+  // stored the chunk on itself. Then when the arena is releasing, it will pass the 
+  // chuck here, then we will release it and then try to zero it out but the pointer
+  // to where the chucnk was in memory is in the release memory, so the mem error 
+  // will result in a crash. For that reason we have to zero out the chunck before we do the
+  // release the memory with the os
+
+  Mem_chunk mem_chunk_copy = *mem_chunk;
+  void* mem = mem_chunk->base_p;
+  *mem_chunk = Mem_chunk{};
+
+  B32 release_succ = VirtualFree(mem, 0, MEM_RELEASE);
+  if (!release_succ) {
+    *mem_chunk = mem_chunk_copy;
   }
   return release_succ;
 }

@@ -255,6 +255,9 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
           ui_next_width(ui_grow()); ui_next_height(ui_grow());
           UI_Row()
           {
+            B32 is_resizing_headers  = false;
+            U64 resizing_header_index = 0;
+
             // Table
             ui_next_width(ui_grow());
             ui_next_height(ui_grow());
@@ -327,8 +330,6 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         
                   // Floating resizers
                   {
-                    B32 is_pending_resizer_drag = false;
-                    U64 pending_resizer_index   = 0;
                     F32 pending_resizer_drag    = 0.0;
                     
                     F32 offset_x = 0.0f;
@@ -352,17 +353,16 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                       if (resizer_actions.is_down)
                       {
                         F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x;
-        
-                        is_pending_resizer_drag = true;
-                        pending_resizer_index   = header_index;
-                        pending_resizer_drag    = drag;
+                        is_resizing_headers   = true;
+                        resizing_header_index = header_index;
+                        pending_resizer_drag  = drag;
                       }
                     }
         
-                    if (is_pending_resizer_drag)
+                    if (is_resizing_headers)
                     {
-                      F32 old_left_flex  = PCL->table_data.headers[pending_resizer_index + 0].flex_value;
-                      F32 old_right_flex = PCL->table_data.headers[pending_resizer_index + 1].flex_value;
+                      F32 old_left_flex  = PCL->table_data.headers[resizing_header_index + 0].flex_value;
+                      F32 old_right_flex = PCL->table_data.headers[resizing_header_index + 1].flex_value;
                       
                       F32 old_left_px = (old_left_flex / headers_total_flex_value) * space_for_headers;
         
@@ -373,8 +373,8 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         
                       if (new_left_flex > 0.0f && new_right_flex > 0.0f) 
                       {
-                        PCL->table_data.headers[pending_resizer_index + 0].flex_value = new_left_flex;
-                        PCL->table_data.headers[pending_resizer_index + 1].flex_value = new_right_flex;
+                        PCL->table_data.headers[resizing_header_index + 0].flex_value = new_left_flex;
+                        PCL->table_data.headers[resizing_header_index + 1].flex_value = new_right_flex;
                       }
                     }
                   }
@@ -440,9 +440,9 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
         
                       if (header_index != PCL->table_data.header_count - 1)
                       {
+                        if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
                         ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
                         ui_next_height(ui_grow());
-                        ui_next_b_color(nice_blue());
                         ui_box_make({}, UI_Box_flag__has_background);
                       }
                     }
@@ -508,9 +508,9 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
           
                           if (header_index != PCL->table_data.header_count - 1)
                           {
+                            if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
                             ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
                             ui_next_height(ui_grow());
-                            ui_next_b_color(nice_blue());
                             ui_box_make({}, UI_Box_flag__has_background);
                           }
                         }
@@ -742,6 +742,10 @@ F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id)
 // TODO: Have min thumb here as well
 void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scroll_bar_id, F32 outer_vp_size, F32 outer_content_size, F32 outer_vp_offset, F32* out_new_scroll, B32* is_new_offset)
 {
+  // TODO: The api is bad in regerds that you dont really know weather you need to have the box that you wanna
+  // scroll dims or the contents of it or some like that, 
+  // make this better
+
   Assert(size_x.kind != UI_Size_kind__fit);
   Assert(size_y.kind != UI_Size_kind__fit);
 

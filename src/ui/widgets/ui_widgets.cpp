@@ -8,12 +8,18 @@
 ///////////////////////////////////////////////////////////
 // - Layout stacks
 //
-void ui_begin_layout_stack(Axis2 axis)
+void ui_begin_layout_stack_flagged(Axis2 axis, UI_Box_flags flags)
 {
   ui_next_layout(axis);
-  UI_Box* box = ui_box_make({}, 0);
+  UI_Box* box = ui_box_make({}, flags);
   ui_push_parent(box);
 }
+
+void ui_begin_layout_stack(Axis2 axis)
+{
+  ui_begin_layout_stack_flagged(axis, UI_Box_flag__NONE);
+}
+
 void ui_end_layout_stack()
 {
   ui_pop_parent();

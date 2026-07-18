@@ -1,6 +1,12 @@
 Current:
-[x] - Make clip offsets work again
-[ ] - Add the floating fucntionality we need for floating to work in the table resizers
+[ ] - Need to add a profiler to the app
+
+[ ] - Have the whole line be a different color when you drag a header
+[ ] - Add a way to have sort for the ui when we press a header
+
+[ ] - The resizers are not offseted by the offset in the table, this allows for resizing when headers are not visible, 
+      this is a bug, either dont spawn the resizers, or just have the be clip offsetted as well
+
 [ ] - Fix the bug with ids when there are a lot of headers in the table
 [ ] - Fix the bug with the scroll bar that when you hold mouse at 0.0 delta per frame it sill moves a bit, not the mouse, but the offset that the scroll bar produces
 
@@ -9,7 +15,6 @@ Current:
 [ ] - There is a larga posibility behind sudle bug with padding and norders between rows and headers
       It would be great to have those not happend as easily, via some api or some like that.
 
-
 [ ] - set up reloading dll for ui stuff for the app when there is more data in the app that you have a legit header file for it
 
 [ ] - dont allow the headers or rows to overdraw the box that they are in
@@ -17,20 +22,6 @@ Current:
 [ ] - Test if no overdraw in ui box works when you have them nested
       Think abou this, maybe even with who, or claude
 
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
-[x] - Add a button to have a way to have ids work with clay and inputs across frames
-[x] - Have a way to have a custom draw for a box 
-[x] - Finish the initial wrapping of clay in the ui layer
-[x] - Fast path widgets that we might need 
-  [x] - Label
-  [x] - Button
-[x] - Test right,left,top,bottom for borders
-[x] - Test right,left,top,botom for padding
-[x] - Add a way to have cursor be set by the ui for buttons and stuf
-[x] - Add support for cussors from win32 to have the ability to swithch between them
-[x] - Fix the bug where ther resize cursor is not showing up nativelly when window is resized due to the WM_SETCURSOR custom message handling logic 
 [ ] - Add a way to have rounding corners be done in the shader for the ui
 [ ] - Test right,left,top,bottom for corner_radius
 [ ] - Have ui use px corners and not 0-1 % corners 
@@ -40,12 +31,9 @@ Current:
 [ ] - Check if there is a bug with how labels are sized relativelly to how they are draw, seems like they take more space than needed when scaling is used on them to scale the text down
 [ ] - Commands to implement
   [ ] - Close the app
-  [x] - Root font size selector
-[x] - Add a slider in settings for root font size in the app 
 
 [ ] - add min size in px to the table in the main menu
 
-[x] - See the frame rate, it seems to be really low
 [ ] - Take a look at thow texture and therefore text is drawn and batched, fps is probably low cause of that
 
 [ ] - Make api for elipssed labels better, right now you have to suply the size from the outside in a not really intuitive way

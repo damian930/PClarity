@@ -4,14 +4,17 @@
 #include "ui/ui_core.h"
 
 // - Layout stacks
+void ui_begin_layout_stack_flagged(Axis2 axis, UI_Box_flags flags);
 void ui_begin_layout_stack(Axis2 axis);
 void ui_end_layout_stack();
+// TODO: Pass in flags here with ... 
 #define UI_Row() DeferLoop(ui_begin_layout_stack(Axis2__x), ui_end_layout_stack())
 #define UI_Col() DeferLoop(ui_begin_layout_stack(Axis2__y), ui_end_layout_stack())
 
 // - Simple wrapper
 void ui_begin_wrapper();
 void ui_end_wrapper();
+// TODO: Have a way to have flags be passed in via ... to the wrapper macro
 #define UI_Wrapper() DeferLoop(ui_begin_wrapper(), ui_end_wrapper())
 
 // - Labels
