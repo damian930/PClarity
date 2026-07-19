@@ -170,9 +170,9 @@ struct UI_Box {
   // B32 is_updated_actions_for_this_in_the_future;
   // UI_Actions actions_for_this_in_the_future;
 
-
   // NEW_STUFF
   Rect rect;
+  //
   B32 actions_present; // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build 
   UI_Actions actions;  // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build
 };
@@ -313,6 +313,7 @@ void ui_release();
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root); // TODO: Move this out of here into some like helper section
+void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root); // TODO: Move this out of here into some like helper section
 #define UI_Build(window_dims, mouse_pos, default_font) DeferLoop(ui_begin_build(window_dims, mouse_pos, default_font), ui_end_build())
 
 // - UI drawing
@@ -329,10 +330,8 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
 void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
 // - Box data
-/*
 UI_Box_data ui_box_data_from_box(UI_Box* box);
 UI_Box_data ui_box_data_from_id(Str8 id);
-*/
 
 // - Box clip data
 /*
@@ -342,13 +341,11 @@ UI_Box_clip_data ui_box_clip_data_from_id(Str8 id);
 
 // - Box actions 
 UI_Actions ui_actions_from_box(UI_Box* box);
-// UI_Actions ui_actions_from_id(Str8 id);
+UI_Actions ui_actions_from_id(Str8 id);
 
 // - Box clip offset
-/*
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 V2F32 ui_clip_offset_from_id(Str8 id);
-*/
 
 // - Scroll 
 /*

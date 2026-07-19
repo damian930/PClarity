@@ -68,6 +68,7 @@ Platform
 [ ] - Better OS event list API
 [ ] - DPI support
 [ ] - .rc for the app with a custom icon
+[ ] - Add support for ASAN
 
 
 Commands

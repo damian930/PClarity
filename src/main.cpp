@@ -182,33 +182,50 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     // pcl_frame_update(&pcl);
     // pcl_do_ui(font, &pcl);
+  
+    static B32 make = true;
+
+    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+    {
+      if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__a && ev->key_event.went_down)
+      {
+        make = ToggleBool(make);
+      }
+    }
 
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
-      ui_next_floating_fixed_pos_x(50);
-      ui_next_floating_fixed_pos_y(50);
-      ui_next_width(ui_px(50));
-      ui_next_height(ui_px(50));
-      ui_next_b_color(nice_blue());
-      ui_next_padding(5);
-      UI_Box* box = ui_box_make_f("Box test id", UI_Box_flag__floating|UI_Box_flag__has_background|UI_Box_flag__has_padding);
+      Str8 box_id = Str8FromC("Box test id");
+      UI_Box_data box_data = ui_box_data_from_id(box_id);
+      OutputDebugStringF("Rect: .x = %.3f, .y = %.3f, .width = %.3f, .height = %.3f \n", box_data.rect.x, box_data.rect.y, box_data.rect.width, box_data.rect.height);
 
-      UI_Parent(box)
+      if (make)
       {
-        ui_next_width(ui_grow());
-        ui_next_height(ui_grow());
-        ui_next_b_color(nice_green());
-        UI_Box* nested = ui_box_make({}, UI_Box_flag__has_background);
-      }
-
-      UI_Actions box_acts = ui_actions_from_box(box);
-      if (box_acts.is_down)
-      {
-        ui_box_set_b_color(box, white());
-      }
-      else if (box_acts.is_hovered)
-      {
-        ui_box_set_b_color(box, red());
+        ui_next_floating_fixed_pos_x(50);
+        ui_next_floating_fixed_pos_y(50);
+        ui_next_width(ui_px(50));
+        ui_next_height(ui_px(50));
+        ui_next_b_color(nice_blue());
+        ui_next_padding(5);
+        UI_Box* box = ui_box_make(box_id, UI_Box_flag__floating|UI_Box_flag__has_background|UI_Box_flag__has_padding);
+  
+        UI_Parent(box)
+        {
+          ui_next_width(ui_grow());
+          ui_next_height(ui_grow());
+          ui_next_b_color(nice_green());
+          UI_Box* nested = ui_box_make({}, UI_Box_flag__has_background);
+        }
+        
+        UI_Actions box_acts = ui_actions_from_box(box);
+        if (box_acts.is_down)
+        {
+          ui_box_set_b_color(box, white());
+        }
+        else if (box_acts.is_hovered)
+        {
+          ui_box_set_b_color(box, red());
+        }
       }
     }
 
@@ -225,7 +242,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
-    OutputDebugStringF("FPS: %lld, Frame time sec: %.3f\n", prev_frame_fps, (frame_end_time_sec - frame_start_time_sec));
+    // OutputDebugStringF("FPS: %lld, Frame time sec: %.3f\n", prev_frame_fps, (frame_end_time_sec - frame_start_time_sec));
     
     ProfEndGroup();
   }

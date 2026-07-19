@@ -178,6 +178,7 @@ void ui_end_build()
   __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
   Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
   state->render_commands_as_result_of_ui_build = clay_render_commands; 
+  __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
 
   if (!ui_is_null_box(state->final_hover_box))
   {
@@ -282,6 +283,32 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   Clay__CloseElement();
 }
 
+void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root)
+{
+  if (ui_is_null_box(root)) { return; }
+
+  // DD: Only doing this for the boxes that gon stay for the next build
+  if (!ui_is_null_box_key(root->hash_table_key))
+  {
+    Assert(root->per_build_data.id.count != 0);
+    Clay_ElementData clay_data = Clay_GetElementData(__ui_clay_element_id_from_str8(root->per_build_data.id));
+    Assert(clay_data.found);
+    if (clay_data.found)
+    {
+      root->rect = __ui_rect_from_clay_bounding_box(clay_data.boundingBox);
+    }
+  }
+
+  // DD: Recursing over the children
+  for (
+    UI_Box* child = root->per_build_data.first_child;
+    !ui_is_null_box(child);
+    child = child->per_build_data.next_sibling
+  ) {
+    __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(child);
+  }
+}
+
 ///////////////////////////////////////////////////////////
 // - Box making
 //
@@ -295,18 +322,16 @@ UI_Box* ui_null_box()
   return &__ui_g_null_box;
 }
 
-
-
 // TODO: Redo this now that we have a table
 UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 {
   UI_State* state = ui_get_state();
   
-  UI_Box_key key = ui_box_key_from_str8(id);
-
-  UI_Box* box                 = ui_box_from_key(key);
+  // if (str8_match(id, Str8FromC("Box test id"), 0)) { BP; }
+  UI_Box_key new_box_key      = ui_box_key_from_str8(id);
+  UI_Box* box                 = ui_box_from_key(new_box_key);
   B32 is_box_new              = ui_is_null_box(box);
-  B32 is_box_for_single_build = ui_is_null_box_key(key);
+  B32 is_box_for_single_build = ui_is_null_box_key(new_box_key);
   
   // DD: Allocating the box if new box 
   if (is_box_new)
@@ -314,6 +339,7 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
     if (state->count_of_free_boxes == 0) { Assert(ui_is_null_box(state->first_free_box));  }
     if (state->count_of_free_boxes != 0) { Assert(!ui_is_null_box(state->first_free_box)); }
 
+    // DD: Allocating the box
     if (is_box_for_single_build)
     {
       box = ArenaPush(ui_get_build_arena(), UI_Box);
@@ -331,16 +357,24 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
         box = ArenaPush(state->state_arena, UI_Box);
       }
     }
-  }
-  
-  // DD: Setting up the box
-  if (is_box_new) 
-  {
+
+    // DD: Setting up shared state for single build boxes and persistant boxes
     *box = __ui_g_null_box;
+    box->generation_when_created   = ui_get_build_generation();
+
+    // DD: Setting up state for persistant build boxes and adding them to the box hash table
+    if (!is_box_for_single_build)
+    {
+      box->hash_table_key = new_box_key;
+      U64 bucket_index    = box->hash_table_key.v % 64;
+      UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
+      DllPushBack_Name(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket);
+      bucket->count += 1;
+    }
   }
-  box->generation_when_created   = ui_get_build_generation();
+  if (!is_box_for_single_build) { Assert(ui_box_key_match(box->hash_table_key, new_box_key)); }
+  
   box->generation_when_last_used = ui_get_build_generation();
-  box->hash_table_key            = key;
   
   // DD: Resetting the per build data
   box->per_build_data = {};
@@ -386,6 +420,10 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
       if (box->per_build_data.hover_cursor != OS_Cursor__arrow) { box->per_build_data.has_hover_cursor = true; }
     }
   }
+
+  // TODO: Put this is a better place inside UI_Box
+  box->actions_present = false; 
+  box->actions         = {};
 
   // TODO: What the fuck is this here
   state->next_new_elements_parent_box = ui_top_parent();
@@ -545,57 +583,29 @@ void ui_extend_box_with_text(UI_Box* box, Str8 str)
 ///////////////////////////////////////////////////////////
 // - Box data
 //
-// UI_Box_data ui_box_data_from_id(Str8 id)
-// {
-//   UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
-//   UI_Box_data data = ui_box_data_from_box(prev_build_box);
-//   return data;
-// }
-
-/*
 UI_Box_data ui_box_data_from_box(UI_Box* box)
 {
-  if (ui_is_null_box(box)) { return {}; }
-  
+  if (ui_is_null_box(box))                     { return {}; }
+  if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
+
   UI_Box_data box_data = {};
   if (box->generation_when_created < box->generation_when_last_used)
   {
     box_data.is_found = true;
     box_data.rect = box->rect;
-    InvalidCodePath();
-    // TODO: Here you padd up the prev rect or some like that
+    // TODO: Do the rest of the things here that are inside the box data struct
   }
 
   return box_data;
-
-  // TODO: This should just have the thing at this point 
-  // and so you just have to return it via box->rect
-
-  // {
-  //   Clay_ElementId clay_id             = __ui_clay_element_id_from_str8(box->id);
-  //   Clay_ElementData clay_element_data = Clay_GetElementData(clay_id);
-
-  //   box_data.is_found   = true;
-  //   box_data.rect       = ;
-  //   box_data.inner_rect = ;
-
-
-  // }
-
-  // Assert(clay_element_data.found); // DD: Since we have UI_Box* that we got from prev build we also should have the box in clay then, if not this is a bug
-  // if (clay_element_data.found)
-  // {
-  //   V4F32 paddings = {};
-  //   if (prev_build_box->flags & UI_Box_flag__has_padding) { paddings = prev_build_box->padding; }
-    
-  //   result_data.is_found   = true;
-  //   result_data.rect       = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
-  //   result_data.inner_rect = rect_padded_ex(result_data.rect, v4f32_scale(paddings, -1.0f));
-  // }
-
-  // return result_data;
 }
-*/
+
+UI_Box_data ui_box_data_from_id(Str8 id)
+{
+  UI_Box_key key   = ui_box_key_from_str8(id);
+  UI_Box* box      = ui_box_from_key(key);
+  UI_Box_data data = ui_box_data_from_box(box);
+  return data;
+}
 
 ///////////////////////////////////////////////////////////
 // - Box clip data
@@ -640,7 +650,12 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     box->actions_present = true; 
     return {}; 
   }
-
+  if (box->generation_when_created == box->generation_when_last_used) // DD: Box just got made this build
+  {
+    box->actions_present = true;
+    return {};
+  }
+  
   UI_State* state = ui_get_state();
 
   // Data to get
@@ -762,64 +777,34 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   return result_actions;
 }
 
+UI_Actions ui_actions_from_id(Str8 id)
+{
+  UI_Box_key key     = ui_box_key_from_str8(id);
+  UI_Box* box        = ui_box_from_key(key);
+  UI_Actions actions = ui_actions_from_box(box);
+  return actions;
+}
+
 ///////////////////////////////////////////////////////////
 // - Box clip offset
 //
-/*
 V2F32 ui_clip_offset_from_box(UI_Box* box)
 {
-  return box->clip_offset;
-}
-
-V2F32 ui_clip_offset_from_id(Str8 id)
-{
-  // TODO: I dont like this here, this might get fixed if we dont have 2 builds at the same time, but 
-  //       rather just reuse boxes from the prev build that have to stay and then just 
-  //       resue the data in then that we need to be cross frame present
   V2F32 offset = {};
-  UI_Box* this_buid_box = ui_find_box_in_tree_by_id(ui_get_root(), id);
-  if (!ui_is_null_box(this_buid_box)) 
+  if (!ui_is_null_box(box))
   {
-    offset = this_buid_box->clip_offset;
-  }
-  else 
-  {
-    UI_Box* prev_buid_box = ui_find_prev_build_box_by_id(id);
-    if (!ui_is_null_box(prev_buid_box))
-    {
-    offset = prev_buid_box->clip_offset;
-    }
+    offset = box->clip_offset;
   }
   return offset;
 }
 
-// TODO: Have this not be this way
-void ui_set_clip_offset_from_box(UI_Box* box, V2F32 offset)
+V2F32 ui_clip_offset_from_id(Str8 id)
 {
-  box->clip_offset = offset;
+  UI_Box_key key = ui_box_key_from_str8(id);
+  UI_Box* box    = ui_box_from_key(key);
+  V2F32 offset   = ui_clip_offset_from_box(box);
+  return offset;
 }
-void ui_set_clip_offset_from_id(Str8 id, V2F32 offset)
-{
-  UI_Box* box = ui_find_box_in_tree_by_id(ui_get_root(), id);
-  if (!ui_is_null_box(box))
-  {
-    box->clip_offset = offset;
-  }
-}
-
-///////
-// TODO: These are to be moved from here or removed from the codebase
-V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box)
-{
-  V2F32 prev_offset = {};
-  UI_Box* prev_build_box = ui_find_prev_build_box_by_box(box);
-  if (!ui_is_null_box(prev_build_box))
-  {
-    prev_offset = prev_build_box->clip_offset;
-  }
-  return prev_offset;
-}
-*/
 
 ///////////////////////////////////////////////////////////
 // - Box setters
@@ -1522,8 +1507,12 @@ Clay_CornerRadius __ui_clay_corner_radius_from_v4f32(V4F32 vec)
 
 Clay_ElementId __ui_clay_element_id_from_str8(Str8 str)
 {
-  Clay_String clay_str = __ui_clay_string_from_str8(str);
-  Clay_ElementId clay_id = Clay__HashString(clay_str, 0, 0);
+  Clay_ElementId clay_id = {};
+  if (str.count != 0)
+  {
+    Clay_String clay_str = __ui_clay_string_from_str8(str);
+    clay_id = Clay__HashString(clay_str, 0, 0);
+  }
   return clay_id;
 }
 
