@@ -185,6 +185,7 @@ typedef double F64;
 #define EachIndex(it, count)                          (U64 it = 0; it < count; it += 1)
 #define EachEnumRange(it, Type, min_value, max_value) (Type it = min_value; it < max_value; it = (Type)((U64)it + 1))	
 
+// DD: List macros terminology overview
 // Stack is a list that only has the "first" node pointer. Nodes only have the "next" pointer.
 // When pushed onto the stack list, the first element is the new node, and the old first is now next for the new node.
 //
@@ -193,27 +194,48 @@ typedef double F64;
 //
 // Dll is a list with "first" and "last" node pointers.
 // Nodes store the "next" and "prev" node pointers.
+//
+// Explicit means that a macro takes in a node pointer that represents the list and not a pointer
+// to the list itself. So in Explicit version you have to pass for example stack_top_node instead
+// of list that inside of it has the .firs
 
-// // TODO: Test this in sample and make sure that this works and have this as the building block for the old stuff
-// #define StackPush_Named_Explicit(top_node_p, new_node_p, name_for_next_in_node) \
-// 	if (top_node_p == 0) {     \
-// 		top_node_p = new_node; \
-// 	} else {                                     \
-// 		(new_node)->name_for_next_in_node = top_node_p; \
-// 		top_node_p = new_node;                        \
-// 	}
+// TODO:
+// [ ] - Do the explicit and names and zero func and zero value macro variants for queue
+// [ ] - Do the explicit and names and zero func and zero value macro variants for Dll
 
-#define StackPush_Name(list, new_node, name_for_first_in_list, name_for_next_in_node) \
-	if ((list)->name_for_first_in_list == 0) {     \
-			(list)->name_for_first_in_list = new_node; \
-	} else {                                     \
-			(new_node)->name_for_next_in_node = (list)->name_for_first_in_list; \
-			(list)->name_for_first_in_list = new_node;                        \
-	}
-#define StackPop_Name(list, name_for_the_first_in_list, name_for_next_in_node) \
-	if ((list)->name_for_the_first_in_list) { \
-		(list)->name_for_the_first_in_list = (list)->name_for_the_first_in_list->name_for_next_in_node; \
-	}
+// DD: This is to be used with StackPush_Explicit_Ex if you dont need a custom is_node_zero function
+// 	   I was not able to have the macro just do == 0 when you suply 0 for `is_node_zero_func` with 
+//     no comp time warnings and such things. 
+B32 is_zero_pointer(void* p) { return (p == 0); }
+
+// - Stack macro
+#define StackPush_Explicit_Ex(top_node_p, new_node_p, name_for_next_in_node, is_node_zero_func) \
+	do { \
+		if ((is_node_zero_func)((top_node_p))) { \
+			(new_node_p)->name_for_next_in_node = 0; \
+			(top_node_p) = (new_node_p);  \
+		} else { \
+			(new_node_p)->name_for_next_in_node = (top_node_p); \
+			(top_node_p) = (new_node_p);                        \
+		} \
+	} while (0)
+#define StackPop_Explicit_Ex(top_node_p, name_for_next_in_node, is_node_zero_func) \
+	do { \
+		if (!(is_node_zero_func)((top_node_p))) {  \
+			(top_node_p) = (top_node_p)->name_for_next_in_node;  \
+		} \
+	}	while (0)
+
+#define StackPush_Explicit(top_node_p, new_node_p) StackPush_Explicit_Ex(top_node_p, new_node_p, next, is_zero_pointer)
+#define StackPop_Explicit(top_node_p)              StackPop_Explicit_Ex(top_node_p, next, is_zero_pointer)
+
+#define StackPush_Ex(list_p, new_node_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func) StackPush_Explicit_Ex((list_p)->name_for_first_in_list, new_node_p, name_for_next_in_node, optional_is_node_zero_func)
+#define StackPop_Ex(list_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)              StackPop_Explicit_Ex((list_p)->name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)
+
+#define StackPush(list_p, new_node_p) StackPush_Explicit((list_p)->first, new_node_p)
+#define StackPop(list_p)              StackPop_Explicit((list_p)->first)
+
+/// =============
 
 #define QueuePushFront_Name(queue, new_node, name_for_first_in_queue, name_for_last_in_queue, name_for_next_in_node) \
 	if (queue->name_for_first_in_queue == 0) {     \
@@ -327,9 +349,6 @@ typedef double F64;
 		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
 		(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
 	} 
-
-#define StackPush(list, new_node) StackPush_Name((list), (new_node), first, next)
-#define StackPop(list)            StackPop_Name((list), first, next)
 
 #define QueuePushFront(list, new_node) QueuePushFront_Name((list), (new_node), first, last, next)
 #define QueuePushBack(list, new_node)  QueuePushBack_Name((list), (new_node), first, last, next)
@@ -667,6 +686,7 @@ tu_specific V4F32 taupe_u()       { return v4f32(146, 124, 102, 255);  }
 tu_specific V4F32 magenta_u()     { return v4f32(253, 61,  181, 255);  } 
 tu_specific V4F32 nice_green_u()  { return v4f32(120, 171, 128, 255);  } 
 tu_specific V4F32 nice_blue_u()   { return v4f32(97,  175, 239, 255 ); } 
+// TODO: Add nice red from the images in telegram 	
 //
 #define _F_COLOR_FROM_U_COLOR(u_color) v4f32(u_color.r / 255.0f, u_color.g / 255.0f, u_color.b / 255.0f, u_color.a / 255.0f)
 //

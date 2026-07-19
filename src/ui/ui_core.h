@@ -1,8 +1,11 @@
 #ifndef __UI_H
 #define __UI_H
 
-#include "core/core_include.h"
 #include "__third_party/clay/clay.h"
+
+#include "core/core_include.h"
+#include "font_provider/font_provider.h"
+#include "draw/draw.h"
 
 /* todo:
 - Work on IDs better, thing about static ids, dynamic ids, parent relative ids, indexed ids
@@ -97,89 +100,124 @@ struct UI_Actions {
   V2F32 mouse_pos_when_went_down;
 };
 
+struct UI_Box_key {
+  U64 v;
+};
+
 struct UI_Box {
   // Always present after creation
-  U64 generation;
-  Str8 id;
+  U64 generation_when_created;
+  U64 generation_when_last_used;
+
+  UI_Box_key hash_table_key;
 
   // TODO: Add a way to have padding from the prev build box to have inner rect be calculated
 
   // Per build box condif // TODO: When done, lock these up under a name for a debug view 
-  UI_Box_flags flags;
-  UI_Size size_on_axis[Axis2__COUNT];
-  Axis2 layout_direction;
-  //
-  V4F32 padding;
-  F32 child_gap;
-  UI_Alignment_x alignment_on_x;
-  UI_Alignment_y alignment_on_y;
-  V4F32 b_color;
-  V4F32 corner_radii;
-  B32 clip_axis[Axis2__COUNT];
-  V4F32 border_width;
-  V4F32 border_color;
-  V2F32 floating_fixed_pos;
-  B32 has_hover_cursor;
-  OS_Cursor hover_cursor;
+  struct {
+    Str8 id;
 
-  // TODO: Have this be reused from the prev build
-  // Reused from the previous build
+    UI_Box_flags flags;
+    UI_Size size_on_axis[Axis2__COUNT];
+    Axis2 layout_direction;
+    //
+    V4F32 padding;
+    F32 child_gap;
+    UI_Alignment_x alignment_on_x;
+    UI_Alignment_y alignment_on_y;
+    V4F32 b_color;
+    V4F32 corner_radii;
+    B32 clip_axis[Axis2__COUNT];
+    V4F32 border_width;
+    V4F32 border_color;
+    V2F32 floating_fixed_pos;
+    B32 has_hover_cursor;
+    OS_Cursor hover_cursor;
+
+    struct {
+      UI_Box_custom_draw_func_pointer_type* draw_func; 
+      void* data_for_draw_func;
+    } custom_draw_extension;
+
+    struct {
+      Str8 text;
+      F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
+      FP_Font font;
+      V4F32 font_color;
+    } text_extension;
+  
+    // Per build ui tree links
+    UI_Box* first_child;
+    UI_Box* last_child;
+    UI_Box* next_sibling;
+    UI_Box* prev_sibling;
+    UI_Box* parent;
+    U64 children_count;
+  } per_build_data;
+
+  // Result of this box in the previous build
   V2F32 clip_offset;
+  // TODO: Add rect here as well and then just call it from the getters and such thing
   
-  struct {
-    UI_Box_custom_draw_func_pointer_type* draw_func; 
-    void* data_for_draw_func;
-  } custom_draw_extension;
+  // Persistent across builds 
+  UI_Box* next_in_bucket_or_free_list;
+  UI_Box* prev_in_bucket;
 
-  struct {
-    Str8 text;
-    F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
-    FP_Font font;
-    V4F32 font_color;
-  } text_extension;
-
-  UI_Box* first_child;
-  UI_Box* last_child;
-  UI_Box* next_sibling;
-  UI_Box* prev_sibling;
-  UI_Box* parent;
-  U64 children_count;
-  
+  // TODO: Look into if we still need this since we now have a hash table
   // Damian: These are not used on the immediate box, but rather used for the future 
   //         representation of this box 
   //         (future representation is this same box in the next build)
-  B32 is_updated_actions_for_this_in_the_future;
-  UI_Actions actions_for_this_in_the_future;
+  // B32 is_updated_actions_for_this_in_the_future;
+  // UI_Actions actions_for_this_in_the_future;
+
+
+  // NEW_STUFF
+  Rect rect;
+  B32 actions_present; // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build 
+  UI_Actions actions;  // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build
 };
 
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
+#define __UI_NULL_BOX_KEY_VALUE {}
 #define __UI_NULL_BOX_VALUE { \
   {}, \
   {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  { __ui_custom_draw_stub_func, 0 }, \
+  __UI_NULL_BOX_KEY_VALUE, \
+  { \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    {}, \
+    { \
+      __ui_custom_draw_stub_func, \
+      0, \
+    }, \
+    {}, \
+    &__ui_g_null_box, \
+    &__ui_g_null_box, \
+    &__ui_g_null_box, \
+    &__ui_g_null_box, \
+    &__ui_g_null_box, \
+    {}, \
+  }, \
   {}, \
   &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
+  /*{}, */ \
+  /*{}, */ \
+  /*NEW_STUFF*/ \
   {}, \
   {}, \
   {}, \
@@ -209,11 +247,14 @@ struct UI_Box_clip_data {
 // Stack structs
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 
+struct UI_Box_list {
+  UI_Box* first;
+  UI_Box* last;
+  U64 count;
+};
+
 // TODO: Move data fiels in state for better structural meaning
 struct UI_State {
-  // TODO: Add a counter for boxes made last build
-  // TODO: Add a build counter just for debug purposes if we need to
-  
   Arena* state_arena;
 
   // Memory for our own box tree for prev build and the current build
@@ -224,7 +265,7 @@ struct UI_State {
   Arena* arena_for_clay; 
 
   // Result of ui build
-  Clay_RenderCommandArray render_commands_as_result_of_ui_build;
+  Clay_RenderCommandArray render_commands_as_result_of_ui_build; // TODO: Look into where this is allocated and what the lifetime of this is
   UI_Box* final_hover_box;
 
   // Always available data
@@ -234,13 +275,21 @@ struct UI_State {
 
   UI_Box* next_new_elements_parent_box; // Damian, TODO: What the fuck is this even
 
+  // Hash table
+  UI_Box_list hash_table_buckets[64];
+
+  // Free list of boxes
+  UI_Box* first_free_box;
+  U64 count_of_free_boxes;
+
   struct {
-    Str8 box_id;
+    UI_Box_key box_key;
     B32 is_mouse_down;
     B32 did_mouse_leave_box_while_was_down;
     V2F32 pos_when_mouse_went_down;
   } interacted_with_box_data;
 
+  // TODO: See if you still need any of these, the prev root you for sure dont need now that you have a cashe hash table
   UI_Box* current_build_root_box; // This is allocated on the current build arena 
   UI_Box* prev_build_root_box;    // This is allocated on the previous build arena
   
@@ -280,24 +329,32 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
 void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
 // - Box data
+/*
 UI_Box_data ui_box_data_from_box(UI_Box* box);
 UI_Box_data ui_box_data_from_id(Str8 id);
+*/
 
 // - Box clip data
+/*
 UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box);
 UI_Box_clip_data ui_box_clip_data_from_id(Str8 id);
+*/
 
 // - Box actions 
 UI_Actions ui_actions_from_box(UI_Box* box);
-UI_Actions ui_actions_from_id(Str8 id);
+// UI_Actions ui_actions_from_id(Str8 id);
 
 // - Box clip offset
+/*
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 V2F32 ui_clip_offset_from_id(Str8 id);
+*/
 
 // - Scroll 
+/*
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 V2F32 ui_clip_offset_from_id(Str8 id);
+*/
 
 // - Box setters // TODO: This is new, might not be used later
 // TODO: These need better names, i have to look them up all the time, this is not great
@@ -310,9 +367,12 @@ void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset);
 void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset);
 void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset);
 
-// - ID stuff
-// TODO: Add dear_imgui like ## id thing
-// TODO: Add dear_imgui like ### id thing
+// - Box key stuff
+UI_Box_key ui_null_box_key();
+B32 ui_box_key_match(UI_Box_key key, UI_Box_key other);
+B32 ui_is_null_box_key(UI_Box_key key);
+UI_Box_key ui_box_key_from_str8(Str8 str);
+UI_Box* ui_box_from_key(UI_Box_key key);
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
@@ -331,9 +391,12 @@ V2F32 ui_get_mouse_pos();
 V2F32 ui_get_prev_mouse_pos();
 UI_Box* ui_get_current_parent();
 UI_Box* ui_get_root(); // TODO: This might need a better name that specifies weather this is from the prev build or the new build
+
+/*
 UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id);
 UI_Box* ui_find_prev_build_box_by_id(Str8 id);
 UI_Box* ui_find_prev_build_box_by_box(UI_Box* box);
+*/
 
 // - Stack funtions and helpers
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)

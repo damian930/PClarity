@@ -37,6 +37,7 @@ Tables
 
 UI
 --
+[ ] - Locate when you have duplicate id in a build and do some about it
 [x] - Have a box have a pointer to itself in the prev build
 [x] - Have a way to get rect from box 
 [x] - Have a way to get inner rect from box

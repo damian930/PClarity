@@ -18,11 +18,11 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "ui/ui_core.h"
 #include "ui/ui_core.cpp"
 
-#include "ui/widgets/ui_widgets.h"
-#include "ui/widgets/ui_widgets.cpp"
+// #include "ui/widgets/ui_widgets.h"
+// #include "ui/widgets/ui_widgets.cpp"
 
-#include "pclarity/pclarity.h"
-#include "pclarity/pclarity.cpp"
+// #include "pclarity/pclarity.h"
+// #include "pclarity/pclarity.cpp"
 
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
@@ -82,7 +82,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
-  PCL_State pcl = pcl_init();
+  // PCL_State pcl = pcl_init();
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
@@ -180,8 +180,37 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     */
 
-    pcl_frame_update(&pcl);
-    pcl_do_ui(font, &pcl);
+    // pcl_frame_update(&pcl);
+    // pcl_do_ui(font, &pcl);
+
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      ui_next_floating_fixed_pos_x(50);
+      ui_next_floating_fixed_pos_y(50);
+      ui_next_width(ui_px(50));
+      ui_next_height(ui_px(50));
+      ui_next_b_color(nice_blue());
+      ui_next_padding(5);
+      UI_Box* box = ui_box_make_f("Box test id", UI_Box_flag__floating|UI_Box_flag__has_background|UI_Box_flag__has_padding);
+
+      UI_Parent(box)
+      {
+        ui_next_width(ui_grow());
+        ui_next_height(ui_grow());
+        ui_next_b_color(nice_green());
+        UI_Box* nested = ui_box_make({}, UI_Box_flag__has_background);
+      }
+
+      UI_Actions box_acts = ui_actions_from_box(box);
+      if (box_acts.is_down)
+      {
+        ui_box_set_b_color(box, white());
+      }
+      else if (box_acts.is_hovered)
+      {
+        ui_box_set_b_color(box, red());
+      }
+    }
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
