@@ -40,6 +40,8 @@ void d_release()
 //
 void d_begin_batching(R_Handle target) 
 { 
+
+
   D_State* draw_state = d_get_state();
   
   draw_state->command_batch_list = {};

@@ -82,6 +82,8 @@ void ui_release()
 //
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 {   
+  ProfBeginFunc();
+
   { // Making sure that null box has not been modified last frame by someone 
     // TODO: This assert breaks, fix this
     B32 comp = {};
@@ -135,10 +137,14 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
   Clay_UpdateScrollContainers(false, {}, {}); 
   Clay_BeginLayout();
+
+  ProfEndGroup();
 }
 
 void ui_end_build()
 {
+  ProfBeginFunc();
+
   ui_pop_parent();
   
   UI_State* state = ui_get_state();
@@ -152,6 +158,8 @@ void ui_end_build()
   {
     os_set_cursor(state->final_hover_box->hover_cursor);
   }
+
+  ProfEndGroup();
 }
 
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
@@ -263,8 +271,15 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   UI_Box* new_box = ArenaPush(ui_get_build_arena(), UI_Box);
   *new_box = __ui_g_null_box;
 
-  // TODO: This is for testing with a profiler
-  ui_find_prev_build_box_by_id(id);
+
+  // Damian: Getting reused data between build
+  {
+    UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
+    if (!ui_is_null_box(prev_build_box))
+    { 
+      new_box->clip_offset = prev_build_box->clip_offset; 
+    }
+  }
 
   new_box->id = str8_copy(ui_get_build_arena(), id);
 
@@ -287,7 +302,6 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 
     if (new_box->flags & UI_Box_flag__clip_x) { new_box->clip_axis[Axis2__x] = true; }
     if (new_box->flags & UI_Box_flag__clip_y) { new_box->clip_axis[Axis2__y] = true; }
-    // Damian: Not doing nothing with new_box->clip_offset here
 
     if (new_box->flags & UI_Box_flag__has_borders) { 
       new_box->border_width = ui_top_border_width(); 
@@ -465,7 +479,7 @@ void ui_extend_box_with_text(UI_Box* box, Str8 str)
 }
 
 ///////////////////////////////////////////////////////////
-// - Box data queries
+// - Box data
 //
 UI_Box_data ui_box_data_from_id(Str8 id)
 {
@@ -476,16 +490,60 @@ UI_Box_data ui_box_data_from_id(Str8 id)
 
 UI_Box_data ui_box_data_from_box(UI_Box* box)
 {
-  // TODO: Figure out what happends in Clay_ScrollContainerDataay if you give it negative padding 
-  Clay_ElementData clay_element_data = Clay_GetElementData(__ui_clay_element_id_from_str8(box->id));
+  if (box->id.count == 0) { return {}; }
+  
+  UI_Box* prev_build_box= ui_find_prev_build_box_by_box(box);
+  if (ui_is_null_box(prev_build_box)) { return {}; }
+
   UI_Box_data result_data = {};
-  result_data.is_found   = clay_element_data.found;
-  result_data.rect       = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
-  result_data.inner_rect = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
-  result_data.inner_rect = rect_padded_ex(result_data.rect, v4f32_scale(box->padding, -1.0f));
+  
+  Clay_ElementId clay_id             = __ui_clay_element_id_from_str8(box->id);
+  Clay_ElementData clay_element_data = Clay_GetElementData(clay_id);
+  Assert(clay_element_data.found); // DD: Since we have UI_Box* that we got from prev build we also should have the box in clay then, if not this is a bug
+  if (clay_element_data.found)
+  {
+    V4F32 paddings = {};
+    if (prev_build_box->flags & UI_Box_flag__has_padding) { paddings = prev_build_box->padding; }
+    
+    result_data.is_found   = true;
+    result_data.rect       = __ui_rect_from_clay_bounding_box(clay_element_data.boundingBox);
+    result_data.inner_rect = rect_padded_ex(result_data.rect, v4f32_scale(paddings, -1.0f));
+  }
+
   return result_data;
 }
 
+///////////////////////////////////////////////////////////
+// - Box clip data
+//
+UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box)
+{
+  if (ui_is_null_box(box)) { return {}; }
+  UI_Box_clip_data data = ui_box_clip_data_from_id(box->id);
+  return data;
+}
+
+UI_Box_clip_data ui_box_clip_data_from_id(Str8 id)
+{
+  if (id.count == 0) { return {}; }
+
+  UI_Box_clip_data result_clip_data = {};
+
+  Clay_ElementId clay_id = __ui_clay_element_id_from_str8(id);
+  Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(clay_id);
+  if (clay_scroll_data.found)
+  {
+    result_clip_data.is_found      = true;
+    result_clip_data.viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
+    result_clip_data.content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
+  }
+
+  return result_clip_data;
+}
+
+///////////////////////////////////////////////////////////
+// - Box actions
+//
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
   Assert(box->generation == ui_get_build_generation(), "If this asserted, that means that you are using a box that is from prev build, dont do that. Why do you have a box from prev build, what id going on there by dude?");
@@ -621,37 +679,52 @@ UI_Actions ui_actions_from_id(Str8 id)
   return result_actions;
 }
 
-UI_Actions ui_actions_from_id_f(const char* fmt, ...)
-{
-  UI_Actions actions = {};
-  ScratchLoop(scratch, 0, 0)
-  {
-    va_list argptr;
-    va_start(argptr, fmt);
-    Str8 id = str8_valist(scratch.arena, fmt, argptr);
-    va_end(argptr);
-    actions = ui_actions_from_id(id);
-  }
-  return actions;
-}
-
+///////////////////////////////////////////////////////////
+// - Box clip offset
+//
 V2F32 ui_clip_offset_from_box(UI_Box* box)
 {
-  V2F32 offset = ui_clip_offset_from_id(box->id);
-  return offset;
+  return box->clip_offset;
 }
 
 V2F32 ui_clip_offset_from_id(Str8 id)
 {
+  // TODO: I dont like this here, this might get fixed if we dont have 2 builds at the same time, but 
+  //       rather just reuse boxes from the prev build that have to stay and then just 
+  //       resue the data in then that we need to be cross frame present
   V2F32 offset = {};
-  UI_Box* prev_build_box = ui_find_prev_build_box_by_id(id);
-  if (!ui_is_null_box(prev_build_box))
+  UI_Box* this_buid_box = ui_find_box_in_tree_by_id(ui_get_root(), id);
+  if (!ui_is_null_box(this_buid_box)) 
   {
-    offset = prev_build_box->clip_offset;
+    offset = this_buid_box->clip_offset;
+  }
+  else 
+  {
+    UI_Box* prev_buid_box = ui_find_prev_build_box_by_id(id);
+    if (!ui_is_null_box(prev_buid_box))
+    {
+    offset = prev_buid_box->clip_offset;
+    }
   }
   return offset;
 }
 
+// TODO: Have this not be this way
+void ui_set_clip_offset_from_box(UI_Box* box, V2F32 offset)
+{
+  box->clip_offset = offset;
+}
+void ui_set_clip_offset_from_id(Str8 id, V2F32 offset)
+{
+  UI_Box* box = ui_find_box_in_tree_by_id(ui_get_root(), id);
+  if (!ui_is_null_box(box))
+  {
+    box->clip_offset = offset;
+  }
+}
+
+///////
+// TODO: These are to be moved from here or removed from the codebase
 V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box)
 {
   V2F32 prev_offset = {};
@@ -661,21 +734,6 @@ V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box)
     prev_offset = prev_build_box->clip_offset;
   }
   return prev_offset;
-}
-
-V2F32 ui_get_content_dims_from_id(Str8 id)
-{
-  Clay_String clay_string                   = __ui_clay_string_from_str8(id);
-  Clay_ElementId clay_id                    = Clay__HashString(clay_string, 0, 0);
-  Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(clay_id);
-  V2F32 dims = v2f32(clay_scroll_data.contentDimensions.width, clay_scroll_data.contentDimensions.height);
-  return dims;
-}
-
-V2F32 ui_get_content_dims_from_box(UI_Box* box)
-{
-  V2F32 dims = ui_get_content_dims_from_id(box->id);
-  return dims;
 }
 
 ///////////////////////////////////////////////////////////
@@ -1331,6 +1389,22 @@ Clay_ElementId __ui_clay_element_id_from_str8(Str8 str)
   Clay_String clay_str = __ui_clay_string_from_str8(str);
   Clay_ElementId clay_id = Clay__HashString(clay_str, 0, 0);
   return clay_id;
+}
+
+V2F32 __ui_v2f32_from_clay_dimensions(Clay_Dimensions clay_dims)
+{
+  V2F32 dims = {};
+  dims.x = clay_dims.width;
+  dims.y = clay_dims.height;
+  return dims;
+}
+
+Clay_Dimensions __ui_clay_dimensions_from_v2f32(V2F32 vec)
+{
+  Clay_Dimensions clay_dims = {};
+  clay_dims.width  = vec.x;
+  clay_dims.height = vec.y;
+  return clay_dims;
 }
 
 ///////////////////////////////////////////////////////////

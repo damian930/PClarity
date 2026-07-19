@@ -98,8 +98,11 @@ struct UI_Actions {
 };
 
 struct UI_Box {
+  // Always present after creation
   U64 generation;
   Str8 id;
+
+  // TODO: Add a way to have padding from the prev build box to have inner rect be calculated
 
   // Per build box condif // TODO: When done, lock these up under a name for a debug view 
   UI_Box_flags flags;
@@ -113,14 +116,16 @@ struct UI_Box {
   V4F32 b_color;
   V4F32 corner_radii;
   B32 clip_axis[Axis2__COUNT];
-  V2F32 clip_offset;
   V4F32 border_width;
   V4F32 border_color;
   V2F32 floating_fixed_pos;
-  //
   B32 has_hover_cursor;
   OS_Cursor hover_cursor;
 
+  // TODO: Have this be reused from the prev build
+  // Reused from the previous build
+  V2F32 clip_offset;
+  
   struct {
     UI_Box_custom_draw_func_pointer_type* draw_func; 
     void* data_for_draw_func;
@@ -181,10 +186,19 @@ struct UI_Box {
 }
 global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
+// TODO: This should have all the data in there, all the inner data, all the content data and all the scroll data here as well
+//       bot the copy and the originl pointer here for all the use when we need it
 struct UI_Box_data {
   B32 is_found;
-  Rect rect;
-  Rect inner_rect;
+  Rect rect;       // Rect for the box
+  Rect inner_rect; // Rect after padding, this is the rect where the children are placed
+};
+
+// DD: I have that i have to have this is a separate type and not just be a part of the whole package of UI_Box_data because of clay
+struct UI_Box_clip_data {
+  B32 is_found;
+  V2F32 viewport_dims;
+  V2F32 content_dims;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -260,21 +274,30 @@ B32 ui_is_null_box(UI_Box* box);
 UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
-void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, UI_Box_flags flags);
 
 // - Box extension
 void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
 void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
-// - Box data queries
-UI_Box_data ui_box_data_from_id(Str8 id);
+// - Box data
 UI_Box_data ui_box_data_from_box(UI_Box* box);
+UI_Box_data ui_box_data_from_id(Str8 id);
+
+// - Box clip data
+UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box);
+UI_Box_clip_data ui_box_clip_data_from_id(Str8 id);
+
+// - Box actions 
 UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
-UI_Actions ui_actions_from_id_f(const char* fmt, ...);
+
+// - Box clip offset
 V2F32 ui_clip_offset_from_box(UI_Box* box);
 V2F32 ui_clip_offset_from_id(Str8 id);
-V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box);
+
+// - Scroll 
+V2F32 ui_clip_offset_from_box(UI_Box* box);
+V2F32 ui_clip_offset_from_id(Str8 id);
 
 // - Box setters // TODO: This is new, might not be used later
 // TODO: These need better names, i have to look them up all the time, this is not great
@@ -418,6 +441,9 @@ Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
 V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
 Clay_CornerRadius __ui_clay_corner_radius_from_v4f32 (V4F32 vec);
 Clay_ElementId    __ui_clay_element_id_from_str8     (Str8 str);
+V2F32             __ui_v2f32_from_clay_dimensions    (Clay_Dimensions clay_dims);
+Clay_Dimensions   __ui_clay_dimensions_from_v2f32    (V2F32 vec);
+
 
 // - Error handler for clay
 void __ui_error_handler_for_clay(Clay_ErrorData errorText);

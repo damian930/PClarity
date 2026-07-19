@@ -55,16 +55,6 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   //       The win proc from the os file should then also be removed since it is not general but os specific
   OS_State* win32_state = os_get_state();
 
-  profiler_init();
-
-  BeginProfile("Start");
-
-  os_sleep(2);
-
-  EndProfile();
-
-  profiler_release();
-
   ///////////////////////////////////////////////////////////
   // - Window  
   //

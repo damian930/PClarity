@@ -297,13 +297,13 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
                 // Clamping offset to stay valid 
                 if (scroll_axis != Axis2__x)
                 { 
-                  V2F32 inner_dims = ui_get_content_dims_from_box(table_box);
-                  V2F32 dims = ui_box_data_from_box(table_box).rect.dims;
-
-                  F32 max_offset = inner_dims.v[scroll_axis] - dims.v[scroll_axis]; 
-
-                  if (new_frame_offset > 0.0f) { new_frame_offset = 0.0f; }
-                  if (new_frame_offset < -max_offset) { new_frame_offset = -max_offset; }
+                  UI_Box_clip_data table_clip_data = ui_box_clip_data_from_box(table_box);
+                  if (table_clip_data.is_found)
+                  {
+                    F32 max_offset = table_clip_data.content_dims.v[scroll_axis] - table_clip_data.viewport_dims.v[scroll_axis];
+                    if (new_frame_offset > 0.0f) { new_frame_offset = 0.0f; }
+                    if (new_frame_offset < -max_offset) { new_frame_offset = -max_offset; }
+                  }
                 }
 
                 ui_box_set_clip_offset_for_axis(table_box, new_frame_offset, scroll_axis);
@@ -533,23 +533,20 @@ void pcl_do_ui(FP_Font font, PCL_State* PCL)
             //       Dont forget about single source of truth thought, either aply scroll next frame
             //       or build the scroll bar here, but do the actions in the beginnn when you do the 
             //       wheel scroll as well to have a single source of truth untouched
+
             {
-              UI_Box_data box_data = ui_box_data_from_id(table_id);
-              if (box_data.is_found)
+              UI_Box_clip_data box_clip_data = ui_box_clip_data_from_id(table_id);
+              if (box_clip_data.is_found)
               {
                 F32 offset = -ui_clip_offset_from_id(table_id).y;
                 B32 is_new_offset = false;
                 F32 new_offset = 0.0f;
-                pcl_scroll_bar(ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_id(table_id).y, offset, &new_offset, &is_new_offset);
-
-                if (is_new_offset)
+                pcl_scroll_bar(ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar"), box_clip_data.viewport_dims.y, box_clip_data.content_dims.y,offset, &new_offset, &is_new_offset);
+                if (new_offset)
                 {
-                  offset = new_offset;
+                  ui_set_clip_offset_from_id(table_id, v2f32(0.0f, -new_offset));
                 }
-                ui_id_set_clip_offset_y(table_id, -offset);
               }
-
-
             }
             
           }
@@ -782,8 +779,8 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
   ) {
     #define THUMB_MIN_SIZE 5 // TODO: Dont do this like this
     F32 scroll_bar_scroll_space = scroll_bar_data.rect.dims.v[scroll_axis];
-    F32 inner_space       = scroll_bar_data.inner_rect.dims.v[scroll_axis];
-    F32 max_thumb_size    = inner_space;
+    F32 inner_space             = scroll_bar_data.inner_rect.dims.v[scroll_axis];
+    F32 max_thumb_size          = inner_space;
     
     thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
     if (thumb_size > inner_space) { Handle(0); }

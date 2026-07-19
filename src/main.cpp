@@ -27,6 +27,7 @@ void OutputDebugStringF(const char* fmt, ...);
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
+  profiler_init();
   allocate_thread_context();
   B32 os_init_succ = os_init();
   r_init(); 
@@ -83,14 +84,20 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   PCL_State pcl = pcl_init();
 
-  for (;!os_window_should_close();)
+  U64 frame_counter  = 0;
+  U64 prev_frame_fps = 0;
+  for (;!os_window_should_close(); frame_counter += 1)
   {
+    ProfBeginGroupF("App frame %d", frame_counter);
+
     F64 frame_start_time_sec = os_get_time_for_timing_sec();
     
     os_frame_begin();
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
+    // Damian: This was test code for performance
+    /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
       ui_next_width(ui_grow());
@@ -171,12 +178,14 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         
       }
     }
+    */
 
-    // pcl_frame_update(&pcl);
-    // pcl_do_ui(font, &pcl);
+    pcl_frame_update(&pcl);
+    pcl_do_ui(font, &pcl);
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
+    d_draw_text_f("FPS: %lld", font, 32, v2f32(0, 0), magenta(), prev_frame_fps);
 
     d_end_batching();
     r_submit(window_frame_buffer_target, d_get_batch_list());
@@ -186,10 +195,14 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
-    OutputDebugStringF("FPS: %.3f, Frame time sec: %.3f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec), (frame_end_time_sec - frame_start_time_sec));
+    prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
+    OutputDebugStringF("FPS: %lld, Frame time sec: %.3f\n", prev_frame_fps, (frame_end_time_sec - frame_start_time_sec));
+    
+    ProfEndGroup();
   }
 
-  // Not releasing anything since who cares, the system will release all the stuff
+  // Damian: Not releasing anything since who cares, the system will release all the stuff
+  profiler_release();
 
   return 0;
 }

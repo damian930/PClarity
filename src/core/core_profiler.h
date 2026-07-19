@@ -54,8 +54,26 @@ U64 profiler_time_in_ns()
 	return ns;
 }
 
-// TODO: This needs a time func with nanosectods
-#define BeginProfile(name_cstr) spall_buffer_begin(&spall_ctx, &spall_buffer, name_cstr, sizeof(name_cstr), profiler_time_in_ns());
-#define EndProfile()   spall_buffer_end(&spall_ctx, &spall_buffer, profiler_time_in_ns());
+void spall_buffer_begin_fmt(const char* fmt, ...)
+{
+	Scratch scratch = get_scratch(0, 0);
+	va_list argptr;
+	va_start(argptr, fmt);
+
+	Str8 str = str8_valist(scratch.arena, fmt, argptr); Assert(str.count <= s32_max);
+	spall_buffer_begin(&spall_ctx, &spall_buffer, (char*)str.data, (S32)str.count, profiler_time_in_ns());
+
+	va_end(argptr);
+	end_scratch(&scratch);
+}
+
+#define ProfBeginGroup(name_cstr)       spall_buffer_begin(&spall_ctx, &spall_buffer, name_cstr, sizeof(name_cstr), profiler_time_in_ns())
+#define ProfBeginGroupF(name_cstr, ...) spall_buffer_begin_fmt(name_cstr, __VA_ARGS__)
+#define ProfBeginFunc()                 ProfBeginGroup(__FUNCTION__)
+#define ProfEndGroup()                  spall_buffer_end(&spall_ctx, &spall_buffer, profiler_time_in_ns())
+
+#define ProfGroup(name_cstr)       DeferLoop(ProfBeginGroup(name_cstr), ProfEndGroup())
+#define ProfGroupF(name_cstr, ...) DeferLoop(ProfBeginGroupF(name_cstr, __VA_ARGS__), ProfEndGroup())
+
 
 #endif
