@@ -1,6 +1,6 @@
 Current:
-[x] - Add asan poisoning to arenas and all that, or to the os layer mem_chuncks
-[ ] - Have /fsanitize=address be a build option in build.bat
+[ ] - Fix the scroll 
+[ ] - Use the scroll bar on the table Y axis
 
 
 Testing (coverage)
@@ -29,8 +29,8 @@ Rendering
 
 Tables
 ------
-[ ] - Add scroll by wheel and with shift to the right and left
-[ ] - Have the whole line be a different color when you drag a header
+[ ] - Be able to select a header of the table
+[ ] - Be able to select a row of a table and if a row is selected keep the row at the top at all times
 [ ] - Add a way to sort the UI when we press a header
 
 [ ] - The resizers are not offset by the offset in the table. This allows resizing

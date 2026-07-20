@@ -50,6 +50,9 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__dont_draw_overflow = (1 << 9),  
 
   UI_Box_flag__floating = (1 << 10),  
+  
+  UI_Box_flag__hoverable = (1 << 11),  
+  UI_Box_flag__clickable = (1 << 12),  
 
   UI_Box_flag__padded_border      = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
   UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
@@ -80,7 +83,7 @@ struct UI_Provided_data_for_custom_draw {
   V4F32 corner_radii;
 };
 #define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data)
-typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_pointer_type);
+typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func);
 
 UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func); 
 
@@ -135,7 +138,7 @@ struct UI_Box {
     OS_Cursor hover_cursor;
 
     struct {
-      UI_Box_custom_draw_func_pointer_type* draw_func; 
+      UI_Box_custom_draw_func* draw_func; 
       void* data_for_draw_func;
     } custom_draw_extension;
 
@@ -154,6 +157,13 @@ struct UI_Box {
     UI_Box* parent;
     U64 children_count;
   } per_build_data;
+
+  // TODO: Put this somewhere better
+  V4F32 prev_build_padding;
+  UI_Box_flags prev_build_flags;
+
+  // TODO: Put this somewhere better
+  Data_buffer dynamic_drag_memory;
 
   // Result of this box in the previous build
   V2F32 clip_offset;
@@ -278,11 +288,11 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
 void ui_draw();
 
 // - Box making
-UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
-UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
+UI_Box* ui_box_make(UI_Box_flags flags, Str8 id_and_text);
+UI_Box* ui_box_make_f(UI_Box_flags flags, const char* fmt, ...);
 
 // - Box extension
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func* custom_draw, void* data);
 void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
 // - Box data
@@ -290,14 +300,15 @@ UI_Box_data ui_box_data_from_box(UI_Box* box);
 UI_Box_data ui_box_data_from_id(Str8 id);
 
 // - Box clip data
-/*
 UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box);
 UI_Box_clip_data ui_box_clip_data_from_id(Str8 id);
-*/
 
 // - Box actions 
 UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
+
+// - Box fast actions
+B32 ui_box_is_hovered(UI_Box* box);
 
 // - Box clip offset
 V2F32 ui_clip_offset_from_box(UI_Box* box);
@@ -309,16 +320,18 @@ V2F32 ui_clip_offset_from_box(UI_Box* box);
 V2F32 ui_clip_offset_from_id(Str8 id);
 */
 
-// - Box setters // TODO: This is new, might not be used later
-// TODO: These need better names, i have to look them up all the time, this is not great
+// - Box setters 
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
-void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
-void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset);
-void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset);
-void ui_id_set_clip_offset_for_axis(Str8 id, F32 clip_offset, Axis2 axis);
-void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset);
-void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset);
-void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset);
+void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis);
+void ui_box_set_clip_offset_y(UI_Box* box, F32 offset);
+
+// - Box drag memory
+Data_buffer* ui_box_drag_buffer(UI_Box* box);
+Data_buffer* ui_box_drag_buffer_by_id(Str8 id);
+Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc);
+Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc);
+void ui_box_drag_buffer_release(UI_Box* box);
+void ui_box_drag_buffer_release_by_id(Str8 id);
 
 // - Null box
 void ui_set_box_to_null_memory(UI_Box* box);

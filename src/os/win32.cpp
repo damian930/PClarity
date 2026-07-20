@@ -1010,7 +1010,19 @@ LRESULT win32_proc(
           case VK_RETURN:    { key = Key__enter;       } break;
           case VK_OEM_COMMA: { key = Key__comma;       } break;
           case VK_HOME:      { key = Key__home;        } break;
-          case VK_END:       { key = Key__end;        } break;
+          case VK_END:       { key = Key__end;         } break;
+          case VK_F1:        { key = Key__f1;          } break;
+          case VK_F2:        { key = Key__f2;          } break;
+          case VK_F3:        { key = Key__f3;          } break;
+          case VK_F4:        { key = Key__f4;          } break;
+          case VK_F5:        { key = Key__f5;          } break;
+          case VK_F6:        { key = Key__f6;          } break;
+          case VK_F7:        { key = Key__f7;          } break;
+          case VK_F8:        { key = Key__f8;          } break;
+          case VK_F9:        { key = Key__f9;          } break;
+          case VK_F10:       { key = Key__f10;         } break;
+          case VK_F11:       { key = Key__f11;         } break;
+          case VK_F12:       { key = Key__f12;         } break;
         }
       }
 

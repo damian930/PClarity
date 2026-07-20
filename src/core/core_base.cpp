@@ -279,11 +279,22 @@ B32 f32_is_nan(F32 f)
 //
 V4F32 color_change_alpha(V4F32 color, F32 new_a) { color.a = new_a; return color; }
 
-V4F32 color_light_up(V4F32 color, F32 how_much_lighter) 
+V4F32 color_add_light(V4F32 color, F32 how_much_lighter) 
 {
 	color.r += how_much_lighter;
 	color.g += how_much_lighter; 
 	color.b += how_much_lighter;
+	clamp_f32_inplace(&color.r, 0.0f, 1.0f);	 
+	clamp_f32_inplace(&color.g, 0.0f, 1.0f);	 
+	clamp_f32_inplace(&color.b, 0.0f, 1.0f);	 
+	return color;
+}
+
+V4F32 color_scale_light(V4F32 color, F32 how_much_lighter) 
+{
+	color.r *= how_much_lighter;
+	color.g *= how_much_lighter; 
+	color.b *= how_much_lighter;
 	clamp_f32_inplace(&color.r, 0.0f, 1.0f);	 
 	clamp_f32_inplace(&color.g, 0.0f, 1.0f);	 
 	clamp_f32_inplace(&color.b, 0.0f, 1.0f);	 

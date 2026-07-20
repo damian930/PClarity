@@ -109,6 +109,20 @@ enum Key : U32 {
   Key__period,         // '.'   shifted: '>'
   Key__slash,          // '/'   shifted: '?'
 
+  // F1-F12
+  Key__f1,
+  Key__f2,
+  Key__f3,
+  Key__f4,
+  Key__f5,
+  Key__f6,
+  Key__f7,
+  Key__f8,
+  Key__f9,
+  Key__f10,
+  Key__f11,
+  Key__f12,
+
   // Other 
   Key__arrow_left,
   Key__arrow_right,
@@ -262,6 +276,7 @@ void os_frame_end();
 F32 os_get_time_since_last_frame();
 OS_Event_list* os_get_frame_event_list();
 void os_consume_frame_event(OS_Event* event);
+B32 os_consume_wheel_scroll();
 
 // - Windowing
 V2F32 os_get_window_dims();

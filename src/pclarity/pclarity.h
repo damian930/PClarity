@@ -32,6 +32,8 @@ enum PCL_Command {
   PCL_Command__new_main_font_size,
   PCL_Command__add_header_to_table,
   PCL_Command__clear_table,
+  PCL_Command__sort_by_header,
+  PCL_Command__select_row,
   PCL_Command__COUNT,
 };
 
@@ -78,6 +80,8 @@ enum PCL_Table_header_kind : U32 {
 struct PCL_Table_header {
   PCL_Table_header_kind kind;
   F32 flex_value;
+  B32 is_used_for_sorting;
+  B32 sort_small_to_big;
 };
 
 #define PCL_TABLE_HEADER_MAX_COUNT 64
@@ -96,12 +100,21 @@ struct PCL_State {
   // F32 table_header_flex_values[64];
   // U64 table_header_flex_value_count;
 
+  struct {
+    B32 is_selected;
+    S32 pid; // DD: Right now this is used as a key
+  } selected_row_data;
+
   // Config like data
   F32 main_font_size;
 
   // Data that is sometimes used along with commands
-  F32 new_font_size;
-  PCL_Table_header_kind table_header_kind_for_new_table_header;
+  struct {
+    F32 new_font_size;
+    PCL_Table_header_kind table_header_kind_for_new_table_header;
+    U64 sort_by_header__header_index;
+    S32 process_at_row_to_select_pid;
+  } data_for_commands;
 
   struct {
     PCL_Table_header headers[PCL_TABLE_HEADER_MAX_COUNT];
@@ -114,6 +127,8 @@ global F32 pcl_font_size                  = 24.0f;
 global R_Handle pcl_icon_settings         = r_zero_handle();
 global R_Handle pcl_icon_home             = r_zero_handle();
 global R_Handle pcl_icon_magnifying_glass = r_zero_handle();
+global R_Handle pcl_icon_arrow_up         = r_zero_handle();
+global R_Handle pcl_icon_arrow_down       = r_zero_handle();
 global V4F32 __pcl_g_color_values_for_names[PCL_Color_name__COUNT] = {
   rgba_from_hex(0x00000000) , // NONE
   rgba_from_hex(0x191432FF),
@@ -125,6 +140,7 @@ global V4F32 __pcl_g_color_values_for_names[PCL_Color_name__COUNT] = {
 PCL_State pcl_init();
 void pcl_frame_update(PCL_State* PCL);
 void pcl_do_ui(FP_Font font, PCL_State* PCL);
+B32 pcl_ui_table_header(Str8 id, PCL_Table_header header);
 
 // - Misc
 void pcl_add_header_into_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value);

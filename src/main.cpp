@@ -18,11 +18,11 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "ui/ui_core.h"
 #include "ui/ui_core.cpp"
 
-// #include "ui/widgets/ui_widgets.h"
-// #include "ui/widgets/ui_widgets.cpp"
+#include "ui/widgets/ui_widgets.h"
+#include "ui/widgets/ui_widgets.cpp"
 
-// #include "pclarity/pclarity.h"
-// #include "pclarity/pclarity.cpp"
+#include "pclarity/pclarity.h"
+#include "pclarity/pclarity.cpp"
 
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
@@ -82,7 +82,9 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
-  // PCL_State pcl = pcl_init();
+  PCL_State pcl = pcl_init();
+
+  B32 show_debug_stuff = false;
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
@@ -96,8 +98,16 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    // Damian: This was test code for performance
-    /*
+    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+    {
+      if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__f1 && ev->key_event.went_down)
+      {
+        show_debug_stuff = ToggleBool(show_debug_stuff);
+        os_consume_frame_event(ev);
+        break;
+      }
+    }
+
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
       ui_next_width(ui_grow());
@@ -106,32 +116,32 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
       ui_next_padding(15);
       ui_next_child_gap(5);
       ui_next_layout_y();
-      UI_Box* top_box = ui_box_make({}, UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
+      UI_Box* top_box = ui_box_make(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap, {});
       UI_Parent(top_box)
       {
-        UI_Box* clip_box = ui_box_make(Str8FromC("Clip box id"), UI_Box_flag__clip);
+        UI_Box* clip_box = ui_box_make(UI_Box_flag__clip, Str8FromC("Clip box id"));
         UI_Parent(clip_box)
         {
-          UI_Parent(ui_box_make(Str8FromC("id 1"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 2"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 3"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 4"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 5"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 11"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 12"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 13"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 14"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 15"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 111"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 122"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 133"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 144"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 155"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 1111"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 1222"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 1333"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 1444"), 0))
-          UI_Parent(ui_box_make(Str8FromC("id 1555"), 0))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 2")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 3")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 4")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 5")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 11")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 12")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 13")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 14")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 15")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 111")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 122")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 133")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 144")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 155")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1111")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1222")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1333")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1444")))
+          UI_Parent(ui_box_make(0, Str8FromC("id 1555")))
           {
             UI_Row()
             {
@@ -152,7 +162,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
                       ui_next_width(ui_px(25));
                       ui_next_height(ui_px(25));
                       ui_next_b_color(red());
-                      UI_Box* red_box = ui_box_make({}, UI_Box_flag__has_background);
+                      UI_Box* red_box = ui_box_make(UI_Box_flag__has_background, {});
                     }
                   }
                 }
@@ -161,13 +171,13 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
           }
         }
       
-        UI_Box_data box_data = ui_box_data_from_box(clip_box);
-        if (box_data.is_found)
+        UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
+        if (box_clip_data.is_found)
         {
           F32 offset = -ui_clip_offset_from_box(clip_box).y;
           B32 is_new_offset = false;
           F32 new_offset = 0.0f;
-          pcl_scroll_bar(ui_grow(), ui_px(50), Axis2__x, Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).x, offset, &new_offset, &is_new_offset);
+          pcl_scroll_bar(ui_grow(), ui_px(50), Axis2__x, Str8FromC("Scroll bar"), box_clip_data.viewport_dims.x, box_clip_data.content_dims.x, offset, &new_offset, &is_new_offset);
 
           if (is_new_offset)
           {
@@ -178,22 +188,11 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         
       }
     }
-    */
 
     // pcl_frame_update(&pcl);
     // pcl_do_ui(font, &pcl);
-  
-    static B32 make = true;
-
-    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
-    {
-      if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__a && ev->key_event.went_down)
-      {
-        make = ToggleBool(make);
-        // BP;
-      }
-    }
-
+    
+    /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
       Str8 box_id = Str8FromC("Box test id");
@@ -229,10 +228,14 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         }
       }
     }
+    */
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
-    d_draw_text_f("FPS: %lld", font, 32, v2f32(0, 0), magenta(), prev_frame_fps);
+    if (show_debug_stuff)
+    {
+      d_draw_text_f("FPS: %lld", font, 32, v2f32(0, 0), magenta(), prev_frame_fps);
+    }
 
     d_end_batching();
     r_submit(window_frame_buffer_target, d_get_batch_list());
@@ -243,7 +246,6 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
-    // OutputDebugStringF("FPS: %lld, Frame time sec: %.3f\n", prev_frame_fps, (frame_end_time_sec - frame_start_time_sec));
     
     ProfEndGroup();
   }

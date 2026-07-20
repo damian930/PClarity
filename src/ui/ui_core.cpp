@@ -168,7 +168,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 
   ui_next_width(ui_px(window_dims.x));
   ui_next_height(ui_px(window_dims.y));
-  state->current_build_root_box = ui_box_make(Str8FromC("__UI_ROOT_BOX__"), UI_Box_flag__NONE);
+  state->current_build_root_box = ui_box_make(UI_Box_flag__NONE, Str8FromC("__UI_ROOT_BOX__"));
 
   ui_push_parent(state->current_build_root_box);
 
@@ -332,12 +332,10 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
 ///////////////////////////////////////////////////////////
 // - Box making
 //
-// TODO: Redo this now that we have a table
-UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
+UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
 {
   UI_State* state = ui_get_state();
   
-  // if (str8_match(id, Str8FromC("Box test id"), 0)) { BP; }
   UI_Box_key new_box_key      = ui_box_key_from_str8(id);
   UI_Box* box                 = ui_box_from_key(new_box_key);
   B32 is_box_new              = ui_is_null_box(box);
@@ -386,6 +384,12 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   
   box->generation_when_last_used = ui_get_build_generation();
   
+  box->prev_build_flags   = box->per_build_data.flags;
+  box->prev_build_padding = box->per_build_data.padding;
+
+  // DD: Reallocating drag memory to the new build arena to not lose it
+  box->dynamic_drag_memory = str8_copy(ui_get_build_arena(), box->dynamic_drag_memory);
+
   // DD: Resetting the per build data
   box->per_build_data = {};
   
@@ -456,88 +460,17 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
   return box;
 }
 
-// Damian: Testing reverse param order 
-UI_Box* ui_box_make_n(UI_Box_flags flags, Str8 id)
-{
-  return ui_box_make(id, flags);
-}
-
-UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...)
+UI_Box* ui_box_make_f(UI_Box_flags flags, const char* fmt, ...)
 {
   Scratch scratch = get_scratch(0, 0);
   va_list args;
-  va_start(args, flags);
+  va_start(args, fmt);
   Str8 str = str8_valist(scratch.arena, fmt, args);
-  UI_Box* box = ui_box_make(str, flags);
+  UI_Box* box = ui_box_make(flags, str);
   va_end(args);
   end_scratch(&scratch);
   return box;
 }
-
-/*
-void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, UI_Box_flags flags)
-{
-  flags |= ui_top_extra_flags();
-  box->flags = flags;
-
-  Clay_ElementDeclaration* config = &box->clay_element_config;
-
-  config->id = clay_id;
-
-  config->layout.sizing.width    = __ui_clay_sizing_axis_from_ui_size(ui_top_size_x());
-  config->layout.sizing.height   = __ui_clay_sizing_axis_from_ui_size(ui_top_size_y());
-  config->layout.layoutDirection = (ui_top_layout() == Axis2__x ?  CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM);
-  
-  if (flags & UI_Box_flag__has_padding) { config->layout.padding = __ui_clay_padding_from_v4f32(ui_top_padding()); }
-  if (flags & UI_Box_flag__has_child_gap) { config->layout.childGap = (U16)ui_top_child_gap(); }
-  
-  // TODO: If this gets used than thave this be a helper that goes from your type to clay type and in reverse
-  {
-    UI_Alignment_x al = ui_top_alignment_x();
-    if (0) {}
-    else if (al == UI_Alignment_x__left) { config->layout.childAlignment.x = CLAY_ALIGN_X_LEFT; }
-    else if (al == UI_Alignment_x__center) { config->layout.childAlignment.x = CLAY_ALIGN_X_CENTER; }
-    else if (al == UI_Alignment_x__right) { config->layout.childAlignment.x = CLAY_ALIGN_X_RIGHT; }
-  }
-
-  // TODO: If this gets used than thave this be a helper that goes from your type to clay type and in reverse
-  {
-    UI_Alignment_y al = ui_top_alignment_y();
-    if (0) {}
-    else if (al == UI_Alignment_y__top) { config->layout.childAlignment.y = CLAY_ALIGN_Y_TOP; }
-    else if (al == UI_Alignment_y__center) { config->layout.childAlignment.y = CLAY_ALIGN_Y_CENTER; }
-    else if (al == UI_Alignment_y__bottom) { config->layout.childAlignment.y = CLAY_ALIGN_Y_BOTTOM; }
-  }
-
-  if (flags & UI_Box_flag__has_background) { config->backgroundColor = __ui_clay_color_from_v4f32(ui_top_background_color()); }
-  if (flags & UI_Box_flag__has_rounded_corners) { config->cornerRadius = __ui_clay_corner_radius_from_v2f32(ui_top_corner_radius()); }
-
-  if (flags & UI_Box_flag__clip_x) { config->clip.horizontal = true; }
-  if (flags & UI_Box_flag__clip_y) { config->clip.vertical = true; }
-
-  if (flags & UI_Box_flag__has_borders) { config->border = { __ui_clay_color_from_v4f32(ui_top_border_color()), __ui_clay_border_width_from_v4f32(ui_top_border_width()) }; }
-  
-  // TODO: Deal with the fact that clay doesnt allow for single axis float, Assert for now
-  if (!(flags & UI_Box_flag__floating) && ((flags & UI_Box_flag__floating_x) || (flags & UI_Box_flag__floating_y))) { InvalidCodePath(); }
-  if (flags & UI_Box_flag__floating)
-  {
-    config->floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
-    config->floating.attachTo           = CLAY_ATTACH_TO_PARENT;             // Damian: Not sure where i need this, so just const right now
-    config->floating.clipTo             = CLAY_CLIP_TO_NONE;                 // Damian: Not sure where i need this, so just const right now
-    // Clay_Vector2 offset;
-    // Clay_Dimensions expand;
-    // uint32_t parentId;
-    // int16_t zIndex;
-    // Clay_FloatingAttachPoints attachPoints;
-    // Clay_PointerCaptureMode pointerCaptureMode;
-    // Clay_FloatingAttachToElement attachTo;
-    // Clay_FloatingClipToElement clipTo;
-  }
-
-  config->aspectRatio = {}; // TODO: 
-  config->image       = {}; // TODO: 
-}
-*/
 
 // TODO: This is not used right now
 Str8 __ui_get_id_part_from_str8(Str8 str)
@@ -576,17 +509,15 @@ Str8 __ui_get_text_part_from_str8(Str8 str)
 ///////////////////////////////////////////////////////////
 // - Box extension
 //
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
 {
-  InvalidCodePath();
-  // box->custom_draw_extension.draw_func          = custom_draw;
-  // box->custom_draw_extension.data_for_draw_func = (void*)data;
+  box->per_build_data.custom_draw_extension.draw_func          = custom_draw;
+  box->per_build_data.custom_draw_extension.data_for_draw_func = (void*)data;
 }
 
 void ui_extend_box_with_text(UI_Box* box, Str8 str)
 {
-  InvalidCodePath();
-  // box->text_extension.text = str8_copy(ui_get_build_arena(), str);
+  box->per_build_data.text_extension.text = str8_copy(ui_get_build_arena(), str);
 
   // Damian: These are already in the `text_extension`. 
   // box->text_extension.font_size = ui_top_font_size();
@@ -604,9 +535,14 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
   UI_Box_data box_data = {};
   if (box->generation_when_created < box->generation_when_last_used)
   {
-    box_data.is_found = true;
-    box_data.rect = box->rect;
-    // TODO: Do the rest of the things here that are inside the box data struct
+    box_data.is_found   = true;
+    box_data.rect       = box->rect;
+    box_data.inner_rect = box->rect;
+    if (box->prev_build_flags & UI_Box_flag__has_padding) 
+    {
+      V4F32 padding = v4f32_scale(box->prev_build_padding, -1.0f);
+      box_data.inner_rect = rect_padded_ex(box_data.inner_rect, padding);
+    }
   }
 
   return box_data;
@@ -623,32 +559,34 @@ UI_Box_data ui_box_data_from_id(Str8 id)
 ///////////////////////////////////////////////////////////
 // - Box clip data
 //
-/*
 UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box)
 {
-  if (ui_is_null_box(box)) { return {}; }
-  UI_Box_clip_data data = ui_box_clip_data_from_id(box->id);
-  return data;
+  if (ui_is_null_box(box))                     { return {}; }
+  if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
+
+  UI_Box_clip_data box_data = {};
+  if (box->generation_when_created < box->generation_when_last_used)
+  {
+    Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(__ui_clay_element_id_from_str8(box->per_build_data.id));
+    Assert(clay_scroll_data.found);
+    if (clay_scroll_data.found)
+    {
+      box_data.is_found      = true;
+      box_data.viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
+      box_data.content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
+    }
+  }
+
+  return box_data;
 }
 
 UI_Box_clip_data ui_box_clip_data_from_id(Str8 id)
 {
-  if (id.count == 0) { return {}; }
-
-  UI_Box_clip_data result_clip_data = {};
-
-  Clay_ElementId clay_id = __ui_clay_element_id_from_str8(id);
-  Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(clay_id);
-  if (clay_scroll_data.found)
-  {
-    result_clip_data.is_found      = true;
-    result_clip_data.viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
-    result_clip_data.content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
-  }
-
-  return result_clip_data;
+  UI_Box_key key        = ui_box_key_from_str8(id);
+  UI_Box* box           = ui_box_from_key(key);
+  UI_Box_clip_data data = ui_box_clip_data_from_box(box);
+  return data;
 }
-*/
 
 ///////////////////////////////////////////////////////////
 // - Box actions
@@ -693,8 +631,11 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   // Since interacted box data is retained across frame boundary, 
   // we just load the retained state and possibly update it here.
   // No need to load hover, we get it each frame just from the box rect.
-  if (!some_other_box_is_being_interacted_with)
-  {
+  if (
+    box->per_build_data.flags & UI_Box_flag__clickable 
+    &&
+    !some_other_box_is_being_interacted_with
+  ) {
     was_down                = state->interacted_with_box_data.is_mouse_down;
     left_box_while_was_down = state->interacted_with_box_data.did_mouse_leave_box_while_was_down;
   
@@ -772,7 +713,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     }
   }
 
-  // is_active = str8_match(ctx->active_box_id, this_frames_box->id, 0);
+  if (!(box->per_build_data.flags & UI_Box_flag__hoverable)) { is_hovered = false; }
 
   UI_Actions result_actions = {};
   result_actions.is_hovered               = is_hovered;            
@@ -796,6 +737,15 @@ UI_Actions ui_actions_from_id(Str8 id)
   UI_Box* box        = ui_box_from_key(key);
   UI_Actions actions = ui_actions_from_box(box);
   return actions;
+}
+
+///////////////////////////////////////////////////////////
+// - Box fast actions
+//
+B32 ui_box_is_hovered(UI_Box* box)
+{
+  UI_Actions actions = ui_actions_from_box(box);
+  return actions.is_hovered;
 }
 
 ///////////////////////////////////////////////////////////
@@ -957,7 +907,7 @@ void ui_draw()
   {
     // DD: 
     // There is a weird case in clay where there is shared data inside render command
-    // type, you would expect then to always be set to valid data. Docs for .userData
+    // type, you would expect them to always be set to valid data. Docs for .userData
     // say this "A pointer transparently passed through from the original element declaration.".
     // This would mean that .userData is set all the time to what i set it to. So if i 
     // set it to X then it should always be X when i get it from the renderCommand type.
@@ -1043,29 +993,29 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
-        InvalidCodePath();
-
-        /*
         // Damian: Just making sure
         Assert((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData);
-        
-        V4F32 b_color              = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
-        V4F32 clay_corner_r        = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
-        UI_Box* box_to_custom_draw = (UI_Box*)command.renderData.custom.customData;
-
-        Assert(box_to_custom_draw->custom_draw_extension.draw_func);
-        if (box_to_custom_draw->custom_draw_extension.draw_func)
+        if ((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData)
         {
-          UI_Provided_data_for_custom_draw provided_data = {};
-          provided_data.box              = box_to_custom_draw;
-          provided_data.final_box_rect   = rect;
-          provided_data.background_color = b_color;
-          provided_data.corner_radii     = clay_corner_r;
-          
-          box_to_custom_draw->custom_draw_extension.draw_func(provided_data);
-        }
+          V4F32 b_color              = __ui_v4f32_from_clay_color(command.renderData.custom.backgroundColor);
+          V4F32 clay_corner_r        = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
+          UI_Box* box_to_custom_draw = (UI_Box*)command.renderData.custom.customData;
+  
+          UI_Box_custom_draw_func* draw_func = box_to_custom_draw->per_build_data.custom_draw_extension.draw_func;
+          void* draw_func_data               = box_to_custom_draw->per_build_data.custom_draw_extension.data_for_draw_func;
 
-        */
+          Assert(draw_func);
+          if (draw_func)
+          {
+            UI_Provided_data_for_custom_draw provided_data = {};
+            provided_data.box              = box_to_custom_draw;
+            provided_data.final_box_rect   = rect;
+            provided_data.background_color = b_color;
+            provided_data.corner_radii     = clay_corner_r;
+
+            draw_func(provided_data);
+          }
+        }
       } break;
     }
   }
@@ -1368,11 +1318,86 @@ void ui_next_layout_x() { ui_next_layout(Axis2__x); }
 void ui_next_layout_y() { ui_next_layout(Axis2__y); }
 
 ///////////////////////////////////////////////////////////
-// - Box style setters for already created boxed
+// - Box setters, TODO: Move these above stacks to a better place in the file
 //
 void ui_box_set_b_color(UI_Box* box, V4F32 color)
 {
   box->per_build_data.b_color = color;
+}
+
+void ui_box_set_border_width(UI_Box* box, V4F32 border_width)
+{
+  box->per_build_data.border_width = border_width;
+}
+
+void ui_box_set_border_color(UI_Box* box, V4F32 border_color)
+{
+  box->per_build_data.border_color = border_color;
+}
+
+void ui_box_set_border(UI_Box* box, V4F32 border_width, V4F32 border_color)
+{
+  ui_box_set_border_width(box, border_width);
+  ui_box_set_border_color(box, border_color);
+}
+
+void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
+{
+  box->clip_offset.v[axis] = clip_offset;
+}
+
+void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis)
+{
+  UI_Box_key key = ui_box_key_from_str8(id);
+  UI_Box* box = ui_box_from_key(key);
+  ui_box_set_clip_offset_for_axis(box, clip_offset, axis);
+}
+
+void ui_box_set_clip_offset_y(UI_Box* box, F32 offset)
+{
+  ui_box_set_clip_offset_for_axis(box, offset, Axis2__y);
+}
+
+///////////////////////////////////////////////////////////
+// - Box drag memory
+//
+Data_buffer* ui_box_drag_buffer(UI_Box* box)
+{
+  return &box->dynamic_drag_memory;
+}
+
+Data_buffer* ui_box_drag_buffer_by_id(Str8 id)
+{
+  UI_Box_key key      = ui_box_key_from_str8(id);
+  UI_Box* box         = ui_box_from_key(key);
+  Data_buffer* buffer = ui_box_drag_buffer(box);
+  return buffer;
+}
+
+Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc)
+{
+  box->dynamic_drag_memory = data_buffer_make(ui_get_build_arena(), size_to_alloc);
+  return &box->dynamic_drag_memory;
+}
+
+Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc)
+{
+  UI_Box_key key      = ui_box_key_from_str8(id);
+  UI_Box* box         = ui_box_from_key(key);
+  Data_buffer* buffer = ui_box_drag_buffer_alloc(box, size_to_alloc);
+  return buffer;
+}
+
+void ui_box_drag_buffer_release(UI_Box* box)
+{
+  box->dynamic_drag_memory = Data_buffer{};
+}
+
+void ui_box_drag_buffer_release_by_id(Str8 id)
+{
+  UI_Box_key key      = ui_box_key_from_str8(id);
+  UI_Box* box         = ui_box_from_key(key);
+  ui_box_drag_buffer_release(box);
 }
 
 ///////////////////////////////////////////////////////////

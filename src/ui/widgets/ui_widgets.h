@@ -551,6 +551,7 @@ void ui_aply_text_ops(UI_Text_op_list text_op_list, U8* text_buffer, U64 max_tex
 }
  
 // Damian: This shows the text in the buffer and gives the user the means to update the data when they choose to 
+/*
 UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_x, U8* text_buffer, U64 text_buffer_size, U64 buffer_max_count, U64 cursor_pos, U64 section_pos, Str8 edit_box_id)
 {
   FP_Font font                 = ui_top_font();
@@ -719,5 +720,6 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
   }
   return result_text_op_list;
 }
+*/
 
 #endif

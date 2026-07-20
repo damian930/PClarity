@@ -1,59 +1,18 @@
-#include "core/core_include.h"
-#include "core/core_include.cpp"
+// #include "core/core_include.h"
+// #include "core/core_include.cpp"
 
-// #include "ui/ui_core.h"
-// #include "ui/ui_core.cpp"
+#include "ui/ui_core.h"
+#include "ui/ui_core.cpp"
 
-struct Node {
-  U32 v;
-  Node* next;
-  Node* prev;
-};
+#include "ui/widgets/ui_widgets.h"
+#include "ui/widgets/ui_widgets.cpp"
+
+#include "pclarity/pclarity.h"
+#include "pclarity/pclarity.cpp"
 
 int main()
 {
-  os_init();
-  allocate_thread_context();
-
-  Arena* arena = get_scratch(0, 0).arena;
-
-  U32* value ArenaPush(arena, U32);
-
-  U8* test = (U8*)arena->mem_chunck.base_p + arena->bytes_used;
-  *test = 5;
-
-
-
-  Node* first_node = 0;
-  Node* last_node  = 0;
-
-  for EachIndex(i, 5)
-  {
-    {
-      Node* node = ArenaPush(arena, Node);
-      node->v = (U32)i;
-      DllPushBack_Explicit(first_node, last_node, node);
-    }
-    for (Node* node = first_node; node; node = node->next)
-    {
-      printf("%d --> ", node->v);
-    }
-    printf("\n");
-  }
-
-  for EachIndex(i, 10)
-  {
-    DllPopBack_Explicit(first_node, last_node);
-
-    for (Node* node = first_node; node; node = node->next)
-    {
-      printf("%d --> ", node->v);
-    }
-    printf("\n");
-  }
-
-
-  // QueuePushFront_Explicit_Ex
+  return 0;
 }
 
 
