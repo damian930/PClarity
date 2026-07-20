@@ -33,7 +33,20 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
   );
 }
 
-B32 test_bool = false;
+global UI_Box __ui_g_null_box = {};
+#define __UI_NULL_BOX_MEM_SET(box_p) \
+  do { \
+    (box_p)->per_build_data.custom_draw_extension.draw_func          = __ui_custom_draw_stub_func; \
+    (box_p)->per_build_data.custom_draw_extension.data_for_draw_func = 0;  \
+    (box_p)->per_build_data.first_child  = &__ui_g_null_box; \
+    (box_p)->per_build_data.last_child   = &__ui_g_null_box; \
+    (box_p)->per_build_data.next_sibling = &__ui_g_null_box; \
+    (box_p)->per_build_data.prev_sibling = &__ui_g_null_box; \
+    (box_p)->per_build_data.parent       = &__ui_g_null_box; \
+    (box_p)->next_in_bucket_or_free_list = &__ui_g_null_box; \
+    (box_p)->prev_in_bucket              = &__ui_g_null_box; \
+  } while (0)
+
 
 ///////////////////////////////////////////////////////////
 // - State
@@ -47,8 +60,6 @@ void ui_set_state(UI_State* state)
 {
   __ui_g_state = state;
 }
-
-static UI_Box test_null_box_value = __ui_g_null_box;
 
 void ui_init()
 {
@@ -73,6 +84,8 @@ void ui_init()
   __ui_g_state->prev_build_root_box    = ui_null_box();
 
   __ui_g_state->first_free_box = ui_null_box();
+
+  __UI_NULL_BOX_MEM_SET(&__ui_g_null_box);
 }
 
 void ui_release()
@@ -98,12 +111,12 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 
   { // DD: Making sure that null box has not been modified last frame by someone 
     B32 comp = {};
-    UI_Box valid_null_box = __UI_NULL_BOX_VALUE;
-    MemCompareSafe(__ui_g_null_box, valid_null_box, &comp);
-    #if 0
+    UI_Box test_null_box = {}; __UI_NULL_BOX_MEM_SET(&test_null_box);
+    MemCompareSafe(__ui_g_null_box, test_null_box, &comp);
+    #if 1
     Assert(comp); // DD: I was not able where we modify the value, might be in the stack push macros, but i am not sure
     #endif 
-    if (!comp) { __ui_g_null_box = __UI_NULL_BOX_VALUE; }
+    // if (!comp) { state->zero_box_mem_data = state->prev_build_box_mem_data; }
   }
 
   // DD: Cleaning the cashe hash table 
@@ -121,12 +134,12 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
       if ((box->generation_when_last_used + 1) != state->build_generation)
       {
         // DD: Removing the box from the bucket list
-        DllPop_Name(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket);
+        DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_is_null_box, ui_null_box());
         bucket->count -= 1;
 
-        // DD: Adding the box to the state free list
-        *box = __UI_NULL_BOX_VALUE;
-        StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_is_null_box);
+        // DD: Nulling the box and adding the box to the state free list
+        __UI_NULL_BOX_MEM_SET(box);
+        StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_is_null_box, ui_null_box());
         state->count_of_free_boxes += 1;
       }
     }
@@ -319,16 +332,6 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
 ///////////////////////////////////////////////////////////
 // - Box making
 //
-B32 ui_is_null_box(UI_Box* box)
-{
-  return (box == 0) || (box == &__ui_g_null_box);
-}
-
-UI_Box* ui_null_box()
-{
-  return &__ui_g_null_box;
-}
-
 // TODO: Redo this now that we have a table
 UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 {
@@ -375,7 +378,7 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
       box->hash_table_key = new_box_key;
       U64 bucket_index    = box->hash_table_key.v % 64;
       UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
-      DllPushBack_Name(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket);
+      DllPushBack_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_is_null_box, ui_null_box());
       bucket->count += 1;
     }
   }
@@ -434,11 +437,14 @@ UI_Box* ui_box_make(Str8 id, UI_Box_flags flags)
 
   // TODO: What the fuck is this here
   state->next_new_elements_parent_box = ui_top_parent();
-  box->per_build_data.parent = state->next_new_elements_parent_box;
-  if (!ui_is_null_box(box->per_build_data.parent))
   {
-    DllPushBack_Name_NullFunc(box->per_build_data.parent, box, per_build_data.first_child, per_build_data.last_child, per_build_data.next_sibling, per_build_data.prev_sibling, ui_is_null_box);
-    box->per_build_data.parent->per_build_data.children_count += 1;
+    UI_Box** parent = &box->per_build_data.parent;
+    *parent = state->next_new_elements_parent_box;
+    if (!ui_is_null_box(*parent))
+    {
+      DllPushBack_Explicit_Ex((*parent)->per_build_data.first_child, (*parent)->per_build_data.last_child, box, per_build_data.next_sibling, per_build_data.prev_sibling, ui_is_null_box, ui_null_box());
+      (*parent)->per_build_data.children_count += 1;
+    }
   }
 
   // DD: Auto popping all the stacks
@@ -868,9 +874,21 @@ void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset)
 */
 
 ///////////////////////////////////////////////////////////
+// - Null box
+//
+B32 ui_is_null_box(UI_Box* box)
+{
+  return (box == 0) || (box == &__ui_g_null_box);
+}
+
+UI_Box* ui_null_box()
+{
+  return &__ui_g_null_box;
+}
+
+///////////////////////////////////////////////////////////
 // - Box key stuff
 //
-
 UI_Box_key ui_null_box_key()
 {
   UI_Box_key key = {};

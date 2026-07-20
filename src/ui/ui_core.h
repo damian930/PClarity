@@ -179,50 +179,8 @@ struct UI_Box {
 
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
+// TODO: Have this inside state as well, why not at this point
 #define __UI_NULL_BOX_KEY_VALUE {}
-#define __UI_NULL_BOX_VALUE { \
-  {}, \
-  {}, \
-  __UI_NULL_BOX_KEY_VALUE, \
-  { \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    {}, \
-    { \
-      __ui_custom_draw_stub_func, \
-      0, \
-    }, \
-    {}, \
-    &__ui_g_null_box, \
-    &__ui_g_null_box, \
-    &__ui_g_null_box, \
-    &__ui_g_null_box, \
-    &__ui_g_null_box, \
-    {}, \
-  }, \
-  {}, \
-  &__ui_g_null_box, \
-  /*{}, */ \
-  /*{}, */ \
-  /*NEW_STUFF*/ \
-  {}, \
-  {}, \
-  {}, \
-}
-global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
 
 // TODO: This should have all the data in there, all the inner data, all the content data and all the scroll data here as well
 //       bot the copy and the originl pointer here for all the use when we need it
@@ -292,7 +250,7 @@ struct UI_State {
   // TODO: See if you still need any of these, the prev root you for sure dont need now that you have a cashe hash table
   UI_Box* current_build_root_box; // This is allocated on the current build arena 
   UI_Box* prev_build_root_box;    // This is allocated on the previous build arena
-  
+
   struct {
     #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
     __UI_STACK_DATA_TABLE_EXPANSION(EXPANSION)
@@ -320,8 +278,6 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
 void ui_draw();
 
 // - Box making
-B32 ui_is_null_box(UI_Box* box);
-UI_Box* ui_null_box();
 UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
 UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
 
@@ -363,6 +319,11 @@ void ui_id_set_clip_offset_for_axis(Str8 id, F32 clip_offset, Axis2 axis);
 void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset);
 void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset);
 void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset);
+
+// - Null box
+void ui_set_box_to_null_memory(UI_Box* box);
+B32 ui_is_null_box(UI_Box* box);
+UI_Box* ui_null_box();
 
 // - Box key stuff
 UI_Box_key ui_null_box_key();

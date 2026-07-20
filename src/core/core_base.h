@@ -215,8 +215,8 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 // - Stack macro
 #define StackPush_Explicit_Ex(top_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	do { \
-		(new_node_p) = (node_pointer_zero_value); \
 		if ((is_node_zero_func)((top_node_p))) { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value);  \
 			(top_node_p) = (new_node_p);  \
 		} else { \
 			(new_node_p)->name_for_next_in_node = (top_node_p); \
@@ -230,11 +230,11 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 		} \
 	}	while (0)
 
-#define StackPush_Explicit(top_node_p, new_node_p) StackPush_Explicit_Ex(top_node_p, new_node_p, next, is_zero_pointer)
+#define StackPush_Explicit(top_node_p, new_node_p) StackPush_Explicit_Ex(top_node_p, new_node_p, next, is_zero_pointer, 0)
 #define StackPop_Explicit(top_node_p)              StackPop_Explicit_Ex(top_node_p, next, is_zero_pointer)
-
-#define StackPush_Ex(list_p, new_node_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func) StackPush_Explicit_Ex((list_p)->name_for_first_in_list, new_node_p, name_for_next_in_node, optional_is_node_zero_func)
-#define StackPop_Ex(list_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)              StackPop_Explicit_Ex((list_p)->name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)
+ 
+#define StackPush_Ex(list_p, new_node_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func, node_pointer_zero_value) StackPush_Explicit_Ex((list_p)->name_for_first_in_list, new_node_p, name_for_next_in_node, optional_is_node_zero_func, node_pointer_zero_value)
+#define StackPop_Ex(list_p, name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)                                       StackPop_Explicit_Ex((list_p)->name_for_first_in_list, name_for_next_in_node, optional_is_node_zero_func)
 
 #define StackPush(list_p, new_node_p) StackPush_Explicit((list_p)->first, new_node_p)
 #define StackPop(list_p)              StackPop_Explicit((list_p)->first)
@@ -265,6 +265,7 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 			(first_node_p) = (new_node_p); \
 			(last_node_p)  = (new_node_p); \
 		} else { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
 			(last_node_p)->name_for_next_in_node = (new_node_p); \
 			(last_node_p) = (new_node_p); \
 		} \

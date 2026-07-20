@@ -108,7 +108,8 @@ FP_Font fp_load_font(Str8 ttf_file_path, F32 font_size, RangeU64 unicode_range_t
   FP_Font* result_font = {};
   {
     FP_Font_node* new_font_node = ArenaPush(fp_state->state_arena, FP_Font_node);
-    DllPushBack_Name(fp_state, new_font_node, first_font, last_font, next, prev);
+    
+    DllPushBack_Explicit_Ex(fp_state->first_font, fp_state->last_font, new_font_node, next, prev, is_zero_pointer, 0);
     fp_state->font_count += 1;
     
     result_font = &new_font_node->font; 

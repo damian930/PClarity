@@ -190,8 +190,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
       if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__a && ev->key_event.went_down)
       {
         make = ToggleBool(make);
-        test_bool = true;
-        BP;
+        // BP;
       }
     }
 
