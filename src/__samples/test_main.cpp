@@ -17,6 +17,13 @@ int main()
 
   Arena* arena = get_scratch(0, 0).arena;
 
+  U32* value ArenaPush(arena, U32);
+
+  U8* test = (U8*)arena->mem_chunck.base_p + arena->bytes_used;
+  *test = 5;
+
+
+
   Node* first_node = 0;
   Node* last_node  = 0;
 

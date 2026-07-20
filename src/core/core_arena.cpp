@@ -4,11 +4,19 @@
 #include "core/core_arena.h"
 #include "os/win32.cpp" 
 
+// DD: I dont really know where i need this, so imma just add this here and use in the arenas, 
+// and then if i ever need this again somewhere else i will see where i need to add it to have 
+// it be part of the codebase in a better way.
+//
+// ASAN_POISON_MEMORY_REGION and ASAN_UNPOISON_MEMORY_REGION work when there is a lib that gets linked
+// when we use msvc flag `/fsanitize=address`, otherwise it just zero expands. 
+#include "sanitizer/asan_interface.h"
+
 #define ArenaMinAllocSize (1024 * 4) 
 StaticAssert(ArenaMinAllocSize > sizeof(Arena)); // This is for meta data just in case
 
 ///////////////////////////////////////////////////////////
-// - arena stuff
+// - Arena stuff
 //
 Arena* arena_alloc(U64 size_to_reserve)
 {
@@ -32,11 +40,16 @@ Arena* arena_alloc_ex(U64 size_to_reserve, B32 start_at_specific_page, U32 alloc
   arena->mem_chunck    = mem_chunk;
   arena->metadata_size = sizeof(Arena);
   arena->bytes_used    = sizeof(Arena);
+  
+  __arena_poison_not_used_commited_memory(arena);
+
   return arena;
 }
 
 void arena_release(Arena** arena)
 {
+  __arena_unpoison_all_commited_memory(*arena);
+
   B32 succ = os_release_mem_chunk(&(*arena)->mem_chunck);
   *arena = 0; 
   if (!succ) { BP; }
@@ -44,6 +57,8 @@ void arena_release(Arena** arena)
 
 U8* arena_push_nozero(Arena* arena, U64 size_to_push)
 {
+  __arena_unpoison_all_commited_memory(arena);
+
   if (arena->bytes_used + size_to_push > arena->mem_chunck.n_pages_commited * __arena_g_page_size)
   {
     U64 bytes_we_have_place_for      = (arena->mem_chunck.n_pages_commited * __arena_g_page_size) - arena->bytes_used;
@@ -62,6 +77,9 @@ U8* arena_push_nozero(Arena* arena, U64 size_to_push)
 
   U8* result_p = (U8*)arena->mem_chunck.base_p + arena->bytes_used;
   arena->bytes_used += size_to_push;
+
+  __arena_poison_not_used_commited_memory(arena);
+
   return result_p;
 }
 
@@ -94,29 +112,39 @@ U64 arena_get_pos(Arena* arena)
 // todo: Test this 
 void arena_pop_to_pos(Arena* arena, U64 new_arena_pos)
 {
+  __arena_unpoison_all_commited_memory(arena);
+  
   if (new_arena_pos > arena->bytes_used) { Assert(false); return; }
 
   if (new_arena_pos < arena->metadata_size) { new_arena_pos = arena->metadata_size; }
   arena->bytes_used = new_arena_pos;
+
+  __arena_poison_not_used_commited_memory(arena);
 }
 
 void arena_pop(Arena* arena, U64 bytes_to_pop)
 {
+  __arena_unpoison_all_commited_memory(arena);
+
   if (bytes_to_pop > arena->bytes_used - arena->metadata_size)
   {
     bytes_to_pop = arena->bytes_used - arena->metadata_size;
   }
   arena->bytes_used -= bytes_to_pop;
+
+  __arena_poison_not_used_commited_memory(arena);
 }
 
 void arena_clear(Arena* arena)
 {
+  __arena_unpoison_all_commited_memory(arena);
   if (arena == 0) { Assert(0); return; }
   arena->bytes_used = arena->metadata_size;
+  __arena_poison_not_used_commited_memory(arena);
 }
 
 ///////////////////////////////////////////////////////////
-// - temp arena stuff
+// - Temp arena stuff
 //
 Temp_arena temp_arena_begin(Arena* arena)
 {
@@ -129,12 +157,28 @@ Temp_arena temp_arena_begin(Arena* arena)
 void temp_arena_end(Temp_arena* temp)
 {
   if (temp->arena == 0) { InvalidCodePath("This shoud no happend, but it doesnt break the code, so dev time assert is fine"); return;  }
-
-  temp->arena->bytes_used = temp->stored_index;
+  arena_pop_to_pos(temp->arena, temp->stored_index);
   *temp = {};
 }
 
+///////////////////////////////////////////////////////////
+// - Helpers
+//
+void __arena_poison_not_used_commited_memory(Arena* arena)
+{
+  U64 commited = os_bytes_commited(arena->mem_chunck);
+  U64 reserved = os_bytes_reserved(arena->mem_chunck);
+  Assert(commited <= reserved);
+  Assert(arena->bytes_used <= commited);
+  U64 commited_bytes_left = commited - arena->bytes_used;
+  ASAN_POISON_MEMORY_REGION((U8*)arena->mem_chunck.base_p + arena->bytes_used, commited_bytes_left);
+}
 
+void __arena_unpoison_all_commited_memory(Arena* arena)
+{
+  U64 bytes_commited = os_bytes_commited(arena->mem_chunck);
+  ASAN_UNPOISON_MEMORY_REGION(arena->mem_chunck.base_p, bytes_commited);
+}
 
 #endif
 

@@ -447,6 +447,18 @@ U64 os_get_mem_page_size()
   return __os_g_page_size;
 }
 
+U64 os_bytes_commited(Mem_chunk chunk)
+{
+  U64 bytes_commited = chunk.n_pages_commited * __arena_g_page_size;
+  return bytes_commited;
+}
+
+U64 os_bytes_reserved(Mem_chunk chunk)
+{
+  U64 bytes_reserved = chunk.n_pages_reserved * __arena_g_page_size;
+  return bytes_reserved;
+}
+
 ///////////////////////////////////////////////////////////
 // - Frame
 //

@@ -249,6 +249,8 @@ B32 os_commit_mem_pages_to_chunk(Mem_chunk* mem_chunk, U64 n_pages);
 B32 os_decommit_mem_pages_from_chuck(Mem_chunk* mem_chunk, U64 n_pages);
 B32 os_release_mem_chunk(Mem_chunk* mem_chunk);
 U64 os_get_mem_page_size();
+U64 os_bytes_commited(Mem_chunk chunk);
+U64 os_bytes_reserved(Mem_chunk chunk);
 
 // note/todo: I dont really like this list api for events, i would rather it just be whatever and the caller just gets them and consumed them based
 //            on som api not like we have now. Maybe it would make sense to just have different calls like:

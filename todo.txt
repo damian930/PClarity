@@ -1,8 +1,7 @@
 Current:
-[ ] - Add asan poisoning to arenas and all that, or to the os layer mem_chuncks
-[ ] - Have a way to have thing thing there
-// TODO: Move this out of here
-#include "sanitizer/asan_interface.h"
+[x] - Add asan poisoning to arenas and all that, or to the os layer mem_chuncks
+[ ] - Have /fsanitize=address be a build option in build.bat
+
 
 Testing (coverage)
 -----------
@@ -47,10 +46,6 @@ Tables
 UI
 --
 [ ] - Locate when you have duplicate id in a build and do some about it
-[x] - Have a box have a pointer to itself in the prev build
-[x] - Have a way to get rect from box 
-[x] - Have a way to get inner rect from box
-[x] - Have a way to get scroll offset from box
 [ ] - Have a way to get inner content dim sum from box
 [ ] - Have scroll be passed between frames in ui boxed
 [ ] - Make the api for scroll way better
