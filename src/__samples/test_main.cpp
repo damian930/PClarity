@@ -1,15 +1,56 @@
 #include "core/core_include.h"
 #include "core/core_include.cpp"
 
-#include "ui/ui_core.h"
-#include "ui/ui_core.cpp"
+// #include "ui/ui_core.h"
+// #include "ui/ui_core.cpp"
+
+struct Node {
+  U32 v;
+  Node* next;
+};
+
+global Node _g_node = {};
+
+B32 is_node_zero(Node* node) { return &_g_node == node || node == 0; }
 
 int main()
 {
   os_init();
   allocate_thread_context();
 
-  return 0;
+  Arena* arena = get_scratch(0, 0).arena;
+
+  Node* first_node = &_g_node;
+  Node* last_node = &_g_node;
+
+  for EachIndex(i, 5)
+  {
+    {
+      Node* node = ArenaPush(arena, Node);
+      node->v = (U32)i;
+      // TODO: Do this with push back
+      QueuePushBack_Explicit_Ex(first_node, last_node, node, next, is_node_zero, &_g_node);
+    }
+    for (Node* node = first_node; !is_node_zero(node); node = node->next)
+    {
+      printf("%d --> ", node->v);
+    }
+    printf("\n");
+  }
+
+  for EachIndex(i, 10)
+  {
+    QueuePopFront_Explicit_Ex(first_node, last_node, next, is_node_zero, &_g_node);
+
+    for (Node* node = first_node; !is_node_zero(node); node = node->next)
+    {
+      printf("%d --> ", node->v);
+    }
+    printf("\n");
+  }
+
+
+  // QueuePushFront_Explicit_Ex
 }
 
 

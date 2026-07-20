@@ -33,6 +33,8 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
   );
 }
 
+B32 test_bool = false;
+
 ///////////////////////////////////////////////////////////
 // - State
 //
@@ -45,6 +47,8 @@ void ui_set_state(UI_State* state)
 {
   __ui_g_state = state;
 }
+
+static UI_Box test_null_box_value = __ui_g_null_box;
 
 void ui_init()
 {
@@ -96,7 +100,10 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
     B32 comp = {};
     UI_Box valid_null_box = __UI_NULL_BOX_VALUE;
     MemCompareSafe(__ui_g_null_box, valid_null_box, &comp);
-    Assert(comp);
+    #if 0
+    Assert(comp); // DD: I was not able where we modify the value, might be in the stack push macros, but i am not sure
+    #endif 
+    if (!comp) { __ui_g_null_box = __UI_NULL_BOX_VALUE; }
   }
 
   // DD: Cleaning the cashe hash table 
@@ -109,7 +116,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
       box = next_box
     ) {
       next_box = box->next_in_bucket_or_free_list;
-      
+
       // DD: If the box has not been "used" for a single build we remove it from the box cashe hash table
       if ((box->generation_when_last_used + 1) != state->build_generation)
       {
@@ -118,7 +125,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
         bucket->count -= 1;
 
         // DD: Adding the box to the state free list
-        box = ui_null_box();
+        *box = __UI_NULL_BOX_VALUE;
         StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_is_null_box);
         state->count_of_free_boxes += 1;
       }

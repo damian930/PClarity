@@ -54,6 +54,7 @@ if "%release%"=="1"                         set pre_processor_defines=/D"RELEASE
 if "%dont_assert_handle_later_macros%"=="1" set pre_processor_defines=%pre_processor_defines% /D"DONT_ASSERT_HANDLE_LATER_MACROS" && echo [UNRESOLVED_HANDLE_LATERs]
 
 :: Common compiler flags
+@REM /fsanitize=address
 set common_compiler_flags=/nologo %errors_to_ignore% %pre_processor_defines% /INCREMENTAL:NO /I"../src" /W4 /MDd /FC /std:c++20 /permissive- /utf-8 /Zc:preprocessor 
 
 :: Common linker flags

@@ -208,11 +208,13 @@ typedef double F64;
 //     no comp time warnings and such things. 
 B32 is_zero_pointer(void* p) { return (p == 0); }
 
+// TODO: Document that these change the node next and prev so you cant add a list to this thing 
+
 // - Stack macro
-#define StackPush_Explicit_Ex(top_node_p, new_node_p, name_for_next_in_node, is_node_zero_func) \
+#define StackPush_Explicit_Ex(top_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	do { \
+		(new_node_p) = node_pointer_zero_value; \
 		if ((is_node_zero_func)((top_node_p))) { \
-			(new_node_p)->name_for_next_in_node = 0; \
 			(top_node_p) = (new_node_p);  \
 		} else { \
 			(new_node_p)->name_for_next_in_node = (top_node_p); \
@@ -235,32 +237,65 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 #define StackPush(list_p, new_node_p) StackPush_Explicit((list_p)->first, new_node_p)
 #define StackPop(list_p)              StackPop_Explicit((list_p)->first)
 
-/// =============
+// - Queue macros macro
+#define QueuePushFront_Explicit_Ex(first_node_p, last_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+		else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p)) { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			(first_node_p) = (new_node_p); \
+			(last_node_p)  = (new_node_p); \
+		} else { \
+			(new_node_p)->name_for_next_in_node = (first_node_p); \
+			(first_node_p) = new_node_p;                       \
+		} \
+	}	while (0) 
 
-#define QueuePushFront_Name(queue, new_node, name_for_first_in_queue, name_for_last_in_queue, name_for_next_in_node) \
-	if (queue->name_for_first_in_queue == 0) {     \
-			queue->name_for_first_in_queue = new_node; \
-			queue->name_for_last_in_queue = new_node;  \
-	} else {                                       \
-			new_node->name_for_next_in_node = queue->name_for_first_in_queue; \
-			queue->name_for_first_in_queue = new_node;                       \
-	}
-#define QueuePushBack_Name(queue, new_node, name_for_first_in_queue, name_for_last_in_queue, name_for_next_in_node) \
-	if ((queue)->name_for_first_in_queue == 0) {     \
-			(queue)->name_for_first_in_queue = new_node; \
-			(queue)->name_for_last_in_queue = new_node;  \
-	} else {                                       \
-			(queue)->name_for_last_in_queue->name_for_next_in_node = new_node; \
-			(queue)->name_for_last_in_queue = new_node;                        \
-	}
+#define QueuePushBack_Explicit_Ex(first_node_p, last_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+		else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p)) { \
+			new_node_p->name_for_next_in_node = node_pointer_zero_value; \
+			first_node_p = (new_node_p); \
+			last_node_p  = (new_node_p); \
+		} else { \
+			(last_node_p)->name_for_next_in_node = (new_node_p); \
+			(last_node_p) = (new_node_p); \
+		} \
+	}	while (0) 
 
-#define QueuePopFront_Name(queue, name_for_the_first_in_queue, name_for_the_last_in_queue, name_for_the_next_in_node) \
-	if (queue->name_for_the_first_in_queue == queue->name_for_the_last_in_queue) { \
-		queue->name_for_the_first_in_queue = 0; \
-		queue->name_for_the_last_in_queue = 0; \
-	} else if (queue->name_for_the_first_in_queue != 0) { \
-			queue->name_for_the_first_in_queue = queue->name_for_the_first_in_queue->name_for_the_next_in_node; \
-	}
+#define QueuePopFront_Explicit_Ex(first_node_p, last_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
+	if (0) {} \
+	else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
+	else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+	else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))   { } \
+	else if ((first_node_p) == (last_node_p)) { \
+		(first_node_p) = (node_pointer_zero_value); \
+		(last_node_p) = (node_pointer_zero_value); \
+	} else if (!is_node_zero_func(first_node_p)) { \
+		(first_node_p) = (first_node_p)->name_for_next_in_node; \
+	} 
+
+// TODO: test this
+#define QueuePushFront_Explicit(first_node_p, last_node_p, new_node_p) QueuePushFront_Explicit_Ex(first_node_p, last_node_p, new_node_p, next, is_zero_pointer, 0)
+#define QueuePushBack_Explicit(first_node_p, last_node_p, new_node_p)  QueuePushBack_Explicit_Ex(first_node_p, last_node_p, new_node_p, next, is_zero_pointer, 0)
+#define QueuePopFront_Explicit(first_node_p, last_node_p)              QueuePopFront_Explicit_Ex(first_node_p, last_node_p, next, is_zero_pointer, 0)
+
+// TODO: test this
+#define QueuePushFront_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) QueuePushFront_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+#define QueuePushBack_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)  QueuePushBack_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+#define QueuePopFront_Ex(list_p, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)            QueuePopFront_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+
+// TODO: test this
+#define QueuePushFront(list_p, new_node) QueuePushFront_Ex(list_p, new_node, first, last, next, is_zero_pointer, 0)
+#define QueuePushBack(list_p, new_node)  QueuePushBack_Ex(list_p, new_node, first, last, next, is_zero_pointer, 0)
+#define QueuePopFront(list_p)            QueuePopFront_Ex(list_p, first, last, next, is_zero_pointer, 0)
+
+// TODO: Do the dlls here
 
 #define DllPushBack_Name(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node) \
 	if (   (dll_p)->name_for_first_in_dll == Null                             \

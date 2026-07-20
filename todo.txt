@@ -1,4 +1,9 @@
 Current:
+[ ] - Add asan poisoning to arenas and all that, or to the os layer mem_chuncks
+[ ] - Have a way to have thing thing there
+// TODO: Move this out of here
+#include "sanitizer/asan_interface.h"
+
 
 Performance
 -----------
@@ -69,7 +74,6 @@ Platform
 [ ] - DPI support
 [ ] - .rc for the app with a custom icon
 [ ] - Add support for ASAN
-
 
 Commands
 --------
