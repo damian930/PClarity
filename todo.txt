@@ -4,6 +4,10 @@ Current:
 // TODO: Move this out of here
 #include "sanitizer/asan_interface.h"
 
+Testing (coverage)
+-----------
+[ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change
+
 
 Performance
 -----------

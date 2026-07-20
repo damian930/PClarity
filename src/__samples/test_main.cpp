@@ -7,11 +7,8 @@
 struct Node {
   U32 v;
   Node* next;
+  Node* prev;
 };
-
-global Node _g_node = {};
-
-B32 is_node_zero(Node* node) { return &_g_node == node || node == 0; }
 
 int main()
 {
@@ -20,18 +17,17 @@ int main()
 
   Arena* arena = get_scratch(0, 0).arena;
 
-  Node* first_node = &_g_node;
-  Node* last_node = &_g_node;
+  Node* first_node = 0;
+  Node* last_node  = 0;
 
   for EachIndex(i, 5)
   {
     {
       Node* node = ArenaPush(arena, Node);
       node->v = (U32)i;
-      // TODO: Do this with push back
-      QueuePushBack_Explicit_Ex(first_node, last_node, node, next, is_node_zero, &_g_node);
+      DllPushBack_Explicit(first_node, last_node, node);
     }
-    for (Node* node = first_node; !is_node_zero(node); node = node->next)
+    for (Node* node = first_node; node; node = node->next)
     {
       printf("%d --> ", node->v);
     }
@@ -40,9 +36,9 @@ int main()
 
   for EachIndex(i, 10)
   {
-    QueuePopFront_Explicit_Ex(first_node, last_node, next, is_node_zero, &_g_node);
+    DllPopBack_Explicit(first_node, last_node);
 
-    for (Node* node = first_node; !is_node_zero(node); node = node->next)
+    for (Node* node = first_node; node; node = node->next)
     {
       printf("%d --> ", node->v);
     }

@@ -185,6 +185,8 @@ typedef double F64;
 #define EachIndex(it, count)                          (U64 it = 0; it < count; it += 1)
 #define EachEnumRange(it, Type, min_value, max_value) (Type it = min_value; it < max_value; it = (Type)((U64)it + 1))	
 
+B32 is_zero_pointer(void* p) { return (p == 0); }
+
 // DD: List macros terminology overview
 // Stack is a list that only has the "first" node pointer. Nodes only have the "next" pointer.
 // When pushed onto the stack list, the first element is the new node, and the old first is now next for the new node.
@@ -198,22 +200,22 @@ typedef double F64;
 // Explicit means that a macro takes in a node pointer that represents the list and not a pointer
 // to the list itself. So in Explicit version you have to pass for example stack_top_node instead
 // of list that inside of it has the .firs
+//
+// Macros have an invariant, so use them acordingly.
+// - When adding a node to the list, the node links get reset. So if a node had a ->next node and you try to add it
+//   to the back of a DLL, the node's ->next and ->prev will get reset to the zero value and only the node will be added to the list.
+//   This is to keep the logic in synch between first_list_p and last_list_p and the links that you would go over with list.first->next->next->next->....
+// - Popping of nodes result in the list change. The nodes around the node that gets removed change their links,
+//   but the node that is getting removed stays the same. 
 
-// TODO:
-// [ ] - Do the explicit and names and zero func and zero value macro variants for queue
-// [ ] - Do the explicit and names and zero func and zero value macro variants for Dll
-
-// DD: This is to be used with StackPush_Explicit_Ex if you dont need a custom is_node_zero function
-// 	   I was not able to have the macro just do == 0 when you suply 0 for `is_node_zero_func` with 
-//     no comp time warnings and such things. 
-B32 is_zero_pointer(void* p) { return (p == 0); }
-
-// TODO: Document that these change the node next and prev so you cant add a list to this thing 
+// DD: is_zero_pointer is to be used with StackPush_Explicit_Ex if you dont need a custom is_node_zero function
+// I was not able to have the macro just do == 0 when you suply 0 for `is_node_zero_func` with 
+// no comp time warnings and such things. 
 
 // - Stack macro
 #define StackPush_Explicit_Ex(top_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	do { \
-		(new_node_p) = node_pointer_zero_value; \
+		(new_node_p) = (node_pointer_zero_value); \
 		if ((is_node_zero_func)((top_node_p))) { \
 			(top_node_p) = (new_node_p);  \
 		} else { \
@@ -223,7 +225,7 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 	} while (0)
 #define StackPop_Explicit_Ex(top_node_p, name_for_next_in_node, is_node_zero_func) \
 	do { \
-		if (!(is_node_zero_func)((top_node_p))) {  \
+		if (!((is_node_zero_func)((top_node_p)))) {  \
 			(top_node_p) = (top_node_p)->name_for_next_in_node;  \
 		} \
 	}	while (0)
@@ -237,31 +239,31 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 #define StackPush(list_p, new_node_p) StackPush_Explicit((list_p)->first, new_node_p)
 #define StackPop(list_p)              StackPop_Explicit((list_p)->first)
 
-// - Queue macros macro
+// - Queue macros 
 #define QueuePushFront_Explicit_Ex(first_node_p, last_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	do { \
 		if (0) {} \
-		else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
-		else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
-		else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p)) { \
+		else if ((is_node_zero_func)(first_node_p)  && !((is_node_zero_func)(last_node_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(first_node_p)) && (is_node_zero_func)(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(first_node_p) && (is_node_zero_func)(last_node_p)) { \
 			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
 			(first_node_p) = (new_node_p); \
 			(last_node_p)  = (new_node_p); \
 		} else { \
 			(new_node_p)->name_for_next_in_node = (first_node_p); \
-			(first_node_p) = new_node_p;                       \
+			(first_node_p) = (new_node_p);                       \
 		} \
 	}	while (0) 
 
 #define QueuePushBack_Explicit_Ex(first_node_p, last_node_p, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	do { \
 		if (0) {} \
-		else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
-		else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
-		else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p)) { \
-			new_node_p->name_for_next_in_node = node_pointer_zero_value; \
-			first_node_p = (new_node_p); \
-			last_node_p  = (new_node_p); \
+		else if ((is_node_zero_func)(first_node_p) && !((is_node_zero_func)(last_node_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if ((!(is_node_zero_func)(first_node_p)) && (is_node_zero_func)(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(first_node_p) && (is_node_zero_func)(last_node_p)) { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			(first_node_p) = (new_node_p); \
+			(last_node_p)  = (new_node_p); \
 		} else { \
 			(last_node_p)->name_for_next_in_node = (new_node_p); \
 			(last_node_p) = (new_node_p); \
@@ -270,13 +272,13 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 
 #define QueuePopFront_Explicit_Ex(first_node_p, last_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) \
 	if (0) {} \
-	else if (is_node_zero_func(first_node_p)  && !is_node_zero_func(last_node_p)) { Assert(0, "You got invalid list buddy"); } \
-	else if (!is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
-	else if (is_node_zero_func(first_node_p) && is_node_zero_func(last_node_p))   { } \
+	else if ((is_node_zero_func)(first_node_p)  && (!(is_node_zero_func)(last_node_p))) { Assert(0, "You got invalid list buddy"); } \
+	else if ((!(is_node_zero_func)(first_node_p)) && (is_node_zero_func)(last_node_p))  { Assert(0, "You got invalid list buddy"); } \
+	else if ((is_node_zero_func)(first_node_p) && (is_node_zero_func)(last_node_p))   { } \
 	else if ((first_node_p) == (last_node_p)) { \
 		(first_node_p) = (node_pointer_zero_value); \
 		(last_node_p) = (node_pointer_zero_value); \
-	} else if (!is_node_zero_func(first_node_p)) { \
+	} else if ((!(is_node_zero_func)(first_node_p))) { \
 		(first_node_p) = (first_node_p)->name_for_next_in_node; \
 	} 
 
@@ -286,115 +288,129 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 #define QueuePopFront_Explicit(first_node_p, last_node_p)              QueuePopFront_Explicit_Ex(first_node_p, last_node_p, next, is_zero_pointer, 0)
 
 // TODO: test this
-#define QueuePushFront_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) QueuePushFront_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
-#define QueuePushBack_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)  QueuePushBack_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, new_node_p, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
-#define QueuePopFront_Ex(list_p, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)            QueuePopFront_Explicit_Ex(list_p->name_for_first_in_list, list_p->name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+#define QueuePushFront_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value) QueuePushFront_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, new_node, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+#define QueuePushBack_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)  QueuePushBack_Explicit_Ex ((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, new_node, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
+#define QueuePopFront_Ex(list_p, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)            QueuePopFront_Explicit_Ex ((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, name_for_next_in_node, is_node_zero_func, node_pointer_zero_value)
 
 // TODO: test this
 #define QueuePushFront(list_p, new_node) QueuePushFront_Ex(list_p, new_node, first, last, next, is_zero_pointer, 0)
 #define QueuePushBack(list_p, new_node)  QueuePushBack_Ex(list_p, new_node, first, last, next, is_zero_pointer, 0)
 #define QueuePopFront(list_p)            QueuePopFront_Ex(list_p, first, last, next, is_zero_pointer, 0)
 
-// TODO: Do the dlls here
-
-#define DllPushBack_Name(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node) \
-	if (   (dll_p)->name_for_first_in_dll == Null                             \
-			&& (dll_p)->name_for_last_in_dll == Null                              \
-	) { 									 												                          \
-		(dll_p)->name_for_first_in_dll = new_node_p;                            \
-		(dll_p)->name_for_last_in_dll = new_node_p; 													  \
-	} 																							 											  \
-	else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
-		(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
-		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
-		(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
-	} 											 												 												\
-	else { 									 												 												\
-		(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
-		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
-		(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
-	} 
-#define DllPushFront_Name(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node) \
-	if (   dll_p->name_for_first_in_dll == Null                             \
-			&& dll_p->name_for_last_in_dll  == Null                             \
-	) {                                                                     \
-			dll_p->name_for_first_in_dll = new_node_p;                          \
-			dll_p->name_for_last_in_dll  = new_node_p;                          \
-	}                                                                       \
-	else if (dll_p->name_for_first_in_dll == dll_p->name_for_last_in_dll) { \
-			new_node_p->name_for_next_in_node = dll_p->name_for_last_in_dll;    \
-			dll_p->name_for_last_in_dll->name_for_prev_in_node = new_node_p;    \
-			dll_p->name_for_first_in_dll = new_node_p;                          \
-	}                                                                       \
-	else {                                                                  \
-			new_node_p->name_for_next_in_node = dll_p->name_for_first_in_dll;   \
-			dll_p->name_for_first_in_dll->name_for_prev_in_node = new_node_p;   \
-			dll_p->name_for_first_in_dll = new_node_p;                          \
-	}
-#define DllPopFront_Name(list, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-	if (list->name_for_first_in_list == list->name_for_last_in_list) { \
-		list->name_for_first_in_list = 0; \
-		list->name_for_last_in_list = 0; \
-	} else { \
-		list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
-		list->name_for_first_in_list->name_for_prev_in_node = 0; \
-	}
-#define DllPopBack_Name(list, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-	if (list->name_for_first_in_list == list->name_for_last_in_list) { \
-		list->name_for_first_in_list = 0; \
-		list->name_for_last_in_list = 0; \
-	} else { \
-		list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
-		list->name_for_last_in_list->name_for_next_in_node = 0; \
-	}						
-#define DllPop_Name(list, node_to_pop, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node) \
-	if (node_to_pop) { \
-		if (list->name_for_first_in_list == 0 && list->name_for_last_in_list == 0) { \
-			InvalidCodePath("This should not happened. Node is given but list is not valid for it."); \
-		} else if (list->name_for_first_in_list == node_to_pop && list->name_for_last_in_list == node_to_pop) { \
-			list->name_for_first_in_list = list->name_for_last_in_list = 0; \
-		} else if (list->name_for_first_in_list == node_to_pop) { \
-			list->name_for_first_in_list = list->name_for_first_in_list->name_for_next_in_node; \
-			list->name_for_first_in_list->name_for_prev_in_node = 0; \
-		} else if (list->name_for_last_in_list == node_to_pop) { \
-			list->name_for_last_in_list = list->name_for_last_in_list->name_for_prev_in_node; \
-			list->name_for_last_in_list->name_for_next_in_node = 0; \
+// - Doubly linked list macros 
+#define DllPushBack_Explicit_Ex(dll_first_p, dll_last_p, new_node_p, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if ((is_node_zero_func)(dll_first_p) && !((is_node_zero_func)(dll_last_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(dll_first_p)) && (is_node_zero_func)(dll_last_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(dll_first_p) && (is_node_zero_func)(dll_last_p)) { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			(new_node_p)->name_for_prev_in_node  = (node_pointer_zero_value); \
+			(dll_first_p) = (new_node_p); \
+			(dll_last_p)  = (new_node_p); \
+		} else { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			(new_node_p)->name_for_prev_in_node  = (dll_last_p); \
+			(dll_last_p)->name_for_next_in_node = (new_node_p); \
+			(dll_last_p) = (new_node_p); \
 		} \
-		else { \
-			node_to_pop->name_for_prev_in_node->name_for_next_in_node = node_to_pop->name_for_next_in_node; \
-			node_to_pop->name_for_next_in_node->name_for_prev_in_node = node_to_pop->name_for_prev_in_node; \
+	} while (0)
+
+#define DllPushFront_Explicit_Ex(dll_first_p, dll_last_p, new_node_p, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if ((is_node_zero_func)(dll_first_p) && !((is_node_zero_func)(dll_last_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(dll_first_p)) && (is_node_zero_func)(dll_last_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(dll_first_p) && (is_node_zero_func)(dll_last_p)) { \
+			(new_node_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			(new_node_p)->name_for_prev_in_node  = (node_pointer_zero_value); \
+			(dll_first_p) = (new_node_p); \
+			(dll_last_p)  = (new_node_p); \
+		} else { \
+			(new_node_p)->name_for_prev_in_node = (node_pointer_zero_value); \
+			(new_node_p)->name_for_next_in_node  = (dll_first_p); \
+			(dll_first_p)->name_for_prev_in_node = (new_node_p); \
+			(dll_first_p) = (new_node_p); \
 		} \
-	}
+	} while (0)
 
-// TODO: This is new code, not yet part of the official code kind of thing
-#define DllPushBack_Name_NullFunc(dll_p, new_node_p, name_for_first_in_dll, name_for_last_in_dll, name_for_next_in_node, name_for_prev_in_node, is_node_null_func) \
-	if (   is_node_null_func((dll_p)->name_for_first_in_dll)                             \
-			&& is_node_null_func((dll_p)->name_for_last_in_dll)                              \
-	) { 									 												                          \
-		(dll_p)->name_for_first_in_dll = new_node_p;                            \
-		(dll_p)->name_for_last_in_dll = new_node_p; 													  \
-	} 																							 											  \
-	else if ((dll_p)->name_for_first_in_dll == (dll_p)->name_for_last_in_dll) { \
-		(dll_p)->name_for_first_in_dll->name_for_next_in_node = new_node_p;     \
-		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_first_in_dll;     \
-		(dll_p)->name_for_last_in_dll = new_node_p; 												 		\
-	} 											 												 												\
-	else { 									 												 												\
-		(dll_p)->name_for_last_in_dll->name_for_next_in_node = new_node_p; 			\
-		(new_node_p)->name_for_prev_in_node = (dll_p)->name_for_last_in_dll; 		  \
-		(dll_p)->name_for_last_in_dll = new_node_p;  											 			\
-	} 
+#define DllPopFront_Explicit_Ex(dll_first_p, dll_last_p, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if ((is_node_zero_func)(dll_first_p) && !((is_node_zero_func)(dll_last_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(dll_first_p)) && (is_node_zero_func)(dll_last_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(dll_first_p) && (is_node_zero_func)(dll_last_p)) { } \
+		else if ((dll_first_p) == (dll_last_p)) { \
+			(dll_first_p) = (node_pointer_zero_value); \
+			(dll_last_p)  = (node_pointer_zero_value); \
+		} else { \
+			(dll_first_p) = (dll_first_p)->name_for_next_in_node; \
+			(dll_first_p)->name_for_prev_in_node = (node_pointer_zero_value); \
+		} \
+	} while (0)
 
-#define QueuePushFront(list, new_node) QueuePushFront_Name((list), (new_node), first, last, next)
-#define QueuePushBack(list, new_node)  QueuePushBack_Name((list), (new_node), first, last, next)
-#define QueuePopFront(list) 				   QueuePopFront_Name((list), first, last, next)
-// QueuePopBack: Queue cant be popped from the back, since it would require a retraversal from first_node to set the new last as last
+#define DllPopBack_Explicit_Ex(dll_first_p, dll_last_p, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if ((is_node_zero_func)(dll_first_p) && !((is_node_zero_func)(dll_last_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(dll_first_p)) && (is_node_zero_func)(dll_last_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if ((is_node_zero_func)(dll_first_p) && (is_node_zero_func)(dll_last_p)) { } \
+		else if ((dll_first_p) == (dll_last_p)) { \
+			(dll_first_p) = (node_pointer_zero_value); \
+			(dll_last_p)  = (node_pointer_zero_value); \
+		} else { \
+			(dll_last_p) = (dll_last_p)->name_for_prev_in_node; \
+			(dll_last_p)->name_for_next_in_node = (node_pointer_zero_value); \
+		} \
+	} while (0)
 
-#define DllPushFront(list_p, new_node_p) DllPushFront_Name((list_p), (new_node_p), first, last, next, prev)
-#define DllPushBack(list_p, new_node_p)  DllPushBack_Name((list_p), (new_node_p), first, last, next, prev)
-#define DllPopFront(list_p)              DllPopFront_Name((list_p), first, last, next, prev)
-#define DllPopBack(list_p)               DllPopBack_Name((list_p), first, last, next, prev)
-#define DllPop(list_p, node_to_pop_p)    DllPop_Name((list_p), node_to_pop_p, first, last, next, prev)
+#define DllPop_Explicit_Ex(dll_first_p, dll_last_p, node_to_pop, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value) \
+	do { \
+		if (0) {} \
+		else if ((is_node_zero_func)(dll_first_p) && !((is_node_zero_func)(dll_last_p))) { Assert(0, "You got invalid list buddy"); } \
+		else if (!((is_node_zero_func)(dll_first_p)) && (is_node_zero_func)(dll_last_p)) { Assert(0, "You got invalid list buddy"); } \
+		else if (!(is_node_zero_func)(node_to_pop)) { \
+			if (0) {} \
+			else if ((is_node_zero_func)(dll_first_p) && (is_node_zero_func)(dll_last_p)) { Assert(0, "This should not happened. Node is given but list is not valid for it."); } \
+			else if ((dll_first_p) == (node_to_pop) && (dll_last_p) == (node_to_pop)) { \
+				(dll_first_p) = (node_pointer_zero_value); \
+				(dll_last_p)  = (node_pointer_zero_value); \
+			} \
+			else if ((dll_first_p) == (node_to_pop)) { \
+				(dll_first_p) = (dll_first_p)->name_for_next_in_node; \
+				(dll_first_p)->name_for_prev_in_node = (node_pointer_zero_value); \
+			} \
+			else if ((dll_last_p) == (node_to_pop)) { \
+				(dll_last_p) = (dll_last_p)->name_for_prev_in_node; \
+				(dll_last_p)->name_for_next_in_node = (node_pointer_zero_value); \
+			} \
+			else { \
+				(node_to_pop)->name_for_prev_in_node->name_for_next_in_node = (node_to_pop)->name_for_next_in_node; \
+				(node_to_pop)->name_for_next_in_node->name_for_prev_in_node = (node_to_pop)->name_for_prev_in_node; \
+			} \
+		} \
+	} while (0)
+
+	// TODO: test this
+#define DllPushBack_Explicit(dll_first_p, dll_last_p, new_node_p)   DllPushBack_Explicit_Ex(dll_first_p, dll_last_p, new_node_p, next, prev, is_zero_pointer, 0)
+#define DllPushFront_Explicit(dll_first_p, dll_last_p, new_node_p)  DllPushFront_Explicit_Ex(dll_first_p, dll_last_p, new_node_p, next, prev, is_zero_pointer, 0)
+#define DllPopFront_Explicit(dll_first_p, dll_last_p)               DllPopFront_Explicit_Ex(dll_first_p, dll_last_p, next, prev, is_zero_pointer, 0)
+#define DllPopBack_Explicit(dll_first_p, dll_last_p)                DllPopBack_Explicit_Ex(dll_first_p, dll_last_p, next, prev, is_zero_pointer, 0)
+#define DllPop_Explicit(dll_first_p, dll_last_p, node_to_pop)       DllPop_Explicit_Ex(dll_first_p, dll_last_p, node_to_pop, next, prev, is_zero_pointer, 0)
+
+// TODO: test this
+#define DllPushBack_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)   DllPushBack_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, new_node, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)
+#define DllPushFront_Ex(list_p, new_node, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)  DllPushFront_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, new_node, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)
+#define DllPopFront_Ex(list_p, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)             DllPopFront_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)
+#define DllPopBack_Ex(list_p, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)              DllPopBack_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)
+#define DllPop_Ex(list_p, node_to_pop, name_for_first_in_list, name_for_last_in_list, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)     DllPop_Explicit_Ex((list_p)->name_for_first_in_list, (list_p)->name_for_last_in_list, node_to_pop, name_for_next_in_node, name_for_prev_in_node, is_node_zero_func, node_pointer_zero_value)
+
+// TODO: test this
+#define DllPushBack(list_p, new_node)     DllPushBack_Ex(list_p, new_node, first, last, next, prev, is_zero_pointer, 0)
+#define DllPushFront(list_p, new_node)    DllPushFront_Ex(list_p, new_node, first, last, next, prev, is_zero_pointer, 0)
+#define DllPopFront(list_p)               DllPopFront_Ex(list_p, first, last, next, prev, is_zero_pointer, 0)
+#define DllPopBack(list_p)                DllPopBack_Ex(list_p, first, last, next, prev, is_zero_pointer, 0)
+#define DllPop(list_p, node_to_pop)       DllPop_Ex(list_p, node_to_pop, first, last, next, prev, is_zero_pointer, 0)
 
 #define SwapValues(Type, x, y) { Type temp = x; x = y; y = temp; }
 
