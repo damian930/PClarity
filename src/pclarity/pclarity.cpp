@@ -497,12 +497,27 @@ void pcl_do_ui(FP_Font font, PCL_State* pcl)
             ui_spacer(ui_rem(0.25f));
 
             // DD, Todo: Y slider to the left of the table
+            
+            { // DD: Y Scroll bar for the table 
+              UI_Box_clip_data table_clip_data = ui_box_clip_data_from_box(table_box);
+              if (table_clip_data.is_found) // TODO: Make it work even if you pass stupid values in
+              {
+                F32 out_new_scroll = 0.0f;
+                B32 is_new_offset  = false;
+                pcl_scroll_bar(
+                  ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar for table"),
+                  table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_clip_offset_from_box(table_box).y,
+                  &out_new_scroll, &is_new_offset
+                );
 
-            ui_next_width(ui_px(50));
-            ui_next_height(ui_px(50));
-            ui_next_b_color(blue());
-            ui_box_make(UI_Box_flag__has_background, {});
+                if (is_new_offset) {
+                  ui_box_set_clip_offset_y(table_box, -out_new_scroll);
+                  // TODO: Does it make more sense to have this be defered till next frame to not interfere with boxes and such things ???
+                }
+                // OutputDebugStringF("OFFSET: %f \n", offset);
+              }
 
+            }
           }
 
 
@@ -751,8 +766,8 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
   Scratch scratch = get_scratch(0, 0);
   
   Str8 before_thumb_box_id = str8_fmt(scratch.arena, "%.*s__before_thumb_box", Str8FmtArg(scroll_bar_id)); 
-  Str8 thumb_id            = str8_fmt(scratch.arena, "%.*s__thumb", Str8FmtArg(scroll_bar_id)); 
-  Str8 after_thumb_box_id  = str8_fmt(scratch.arena, "%.*s__after_thumb_box", Str8FmtArg(scroll_bar_id)); 
+  Str8 thumb_id            = str8_fmt(scratch.arena, "%.*s__thumb",            Str8FmtArg(scroll_bar_id)); 
+  Str8 after_thumb_box_id  = str8_fmt(scratch.arena, "%.*s__after_thumb_box",  Str8FmtArg(scroll_bar_id)); 
 
   UI_Actions before_thumb_box_actions = ui_actions_from_id(before_thumb_box_id);
   UI_Actions thumb_actions            = ui_actions_from_id(thumb_id);
@@ -821,7 +836,6 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
 
       thumb_offset += offset_we_can_add;
 
-      // move thumb_data.rect by the new offset and store the relative pos
       F32 new_thumb_rect_pos_after_offset_change = thumb_offset;
   
       // TODO: This drag api is not the best, but i dont know what i dont like about it
@@ -890,7 +904,6 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
     ui_next_size_axis(axis2_other(scroll_axis), ui_grow()); 
     ui_next_b_color(white());
     UI_Box* after_thumb_box = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background, after_thumb_box_id);
-
   }
   
   end_scratch(&scratch);

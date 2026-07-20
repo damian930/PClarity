@@ -1358,6 +1358,11 @@ void ui_box_set_clip_offset_y(UI_Box* box, F32 offset)
   ui_box_set_clip_offset_for_axis(box, offset, Axis2__y);
 }
 
+void ui_box_set_clip_offset_x(UI_Box* box, F32 offset)
+{
+  ui_box_set_clip_offset_for_axis(box, offset, Axis2__x);
+}
+
 ///////////////////////////////////////////////////////////
 // - Box drag memory
 //

@@ -1,7 +1,8 @@
 Current:
-[ ] - Fix the scroll 
-[ ] - Use the scroll bar on the table Y axis
-
+[ ] - Scroll bar works when you drag the thumb, but the jumping of the thumb
+      when the outer area of the thumb is touched is bugging.
+      There is a very easy way to see if it is what it should be,
+      The bug is visible also, should not be hard to find.
 
 Testing (coverage)
 -----------

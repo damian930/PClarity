@@ -324,6 +324,7 @@ V2F32 ui_clip_offset_from_id(Str8 id);
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_y(UI_Box* box, F32 offset);
+void ui_box_set_clip_offset_x(UI_Box* box, F32 offset);
 
 // - Box drag memory
 Data_buffer* ui_box_drag_buffer(UI_Box* box);
