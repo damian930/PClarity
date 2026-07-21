@@ -1,59 +1,69 @@
 Current:
 
-[ ] - Have the slider be working for the table y axis
 
-[ ] - Fornamize scrolling and getting data needed for it in ui_core
+Testing (coverage)
+-----------
+[ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change
 
-[ ] - There is a larga posibility behind sudle bug with padding and norders between rows and headers
-      It would be great to have those not happend as easily, via some api or some like that.
 
-[ ] - Gotta have a way to add data to add columns to tables and then have them set up to do whatever
+Performance
+-----------
+[ ] - r_present seem to be taking too long for not a lot of drawings
 
-[ ] - set up reloading dll for ui stuff for the app when there is more data in the app that you have a legit header file for it
-
-[ ] - dont allow the headers or rows to overdraw the box that they are in
+Rendering
+---------
+[ ] - Ask d3d discord about the 5ms present time when having a singl rect to draw
+[ ] - Have a way for window to redraw when resizing
+[ ] - Have the app be rendered when the window gets resized
+[ ] - Don't allow the headers or rows to overdraw the box that they are in
 [ ] - Fix that dont_overdraw_children only uses scissor rect for the box and not the whole nested tree of the box
-[ ] - Test if no overdraw in ui box works when you have them nested
-      Think abou this, maybe even with who, or claude
+[ ] - Test if no overdraw in UI box works when you have them nested
+      Think about this, maybe even with Who, or Claude
 
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_START
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_SCISSOR_END
-[x] - finish with the draw command for clay, command: CLAY_RENDER_COMMAND_TYPE_CUSTOM
-[x] - Add a button to have a way to have ids work with clay and inputs across frames
-[x] - Have a way to have a custom draw for a box 
-[x] - Finish the initial wrapping of clay in the ui layer
-[x] - Fast path widgets that we might need 
-  [x] - Label
-  [x] - Button
-[x] - Test right,left,top,bottom for borders
-[x] - Test right,left,top,botom for padding
-[x] - Add a way to have cursor be set by the ui for buttons and stuf
-[x] - Add support for cussors from win32 to have the ability to swithch between them
-[x] - Fix the bug where ther resize cursor is not showing up nativelly when window is resized due to the WM_SETCURSOR custom message handling logic 
-[ ] - Add a way to have rounding corners be done in the shader for the ui
-[ ] - Test right,left,top,bottom for corner_radius
-[ ] - Have ui use px corners and not 0-1 % corners 
-[ ] - Add an external profiler to the app
-[ ] - Add things to layers to just have quick messages when we use the layers without having them be initialised or some like that.
-      Since a lot of the layers are statefull and have an idea about in which order things are to be used it might help in some cases. 
-[ ] - Check if there is a bug with how labels are sized relativelly to how they are draw, seems like they take more space than needed when scaling is used on them to scale the text down
-[ ] - Commands to implement
-  [ ] - Close the app
-  [x] - Root font size selector
-[x] - Add a slider in settings for root font size in the app 
+[ ] - Add a way to have rounded corners be done in the shader for the UI
+[ ] - Test right, left, top, bottom for corner_radius
+[ ] - Have UI use pixel corners and not 0-1% corners
 
-[ ] - add min size in px to the table in the main menu
 
-[x] - See the frame rate, it seems to be really low
-[ ] - Take a look at thow texture and therefore text is drawn and batched, fps is probably low cause of that
+Tables
+------
+[ ] - Be able to select a header of the table
+[ ] - Be able to select a row of a table and if a row is selected keep the row at the top at all times
+[ ] - Add a way to sort the UI when we press a header
 
-[ ] - Make api for elipssed labels better, right now you have to suply the size from the outside in a not really intuitive way
+[ ] - The resizers are not offset by the offset in the table. This allows resizing
+      when headers are not visible.
+      This is a bug. Either don't spawn the resizers, or have them be clip-offset as well.
 
-[ ] - Better os event list api
-[ ] - Have the app be rendred when the window gets resized
+[ ] - Fix the bug with IDs when there are a lot of headers in the table
+[ ] - Fix the bug with the scroll bar where holding the mouse at 0.0 delta per frame
+      still moves the offset a bit
+[ ] - Add a minimum size in pixels to the table in the main menu
+
+
+UI
+--
+[ ] - Fix the bug with the scroll bar and the table where when the scroll bar is ui_grow() or ui_p_of_p() the table keeps getting bigger forever. This makes no sense.
+[ ] - To be able to have more headers you have to be able to only show the rows that are visible based on the viewport to the user, here is the link "https://www.nicbarker.com/virtual-scrolling"
+
+Layers / Architecture
+---------------------
+[ ] - Add proper release code for the layers that use it, some of them need that
+[ ] - Set up DLL reloading for UI stuff once the app has more data and a proper
+      shared header
+[ ] - Add things to layers to provide quick messages when they are used before
+      initialization or in the wrong order.
+      Since a lot of the layers are stateful, this could help catch misuse.
+[ ] - Rename DllPop DllRemove  
+
+
+Platform
+--------
+[ ] - Better OS event list API
 [ ] - DPI support
-[ ] - Call Dll pop DllRemove
-[ ] - .rs for the app with a custom icon
+[ ] - .rc for the app with a custom icon
+[ ] - Add support for ASAN
 
-
- 
+Commands
+--------
+[ ] - Close the app

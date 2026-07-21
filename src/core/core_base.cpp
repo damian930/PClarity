@@ -68,8 +68,9 @@ V3F32 v3f32(F32 x, F32 y, F32 z) { V3F32 v = { x, y, z }; return v; }
 // - V4F32 
 //
 V4F32 v4f32      (F32 x, F32 y, F32 z, F32 w) { V4F32 v = { x, y, z, w }; return v; }
-B32   v4f32_match(V4F32 v1, V4F32 v2)         { return (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w); }
 V4F32 v4f32_all  (F32 x)                      { return v4f32(x, x, x, x); }
+B32   v4f32_match(V4F32 v1, V4F32 v2)         { return (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w); }
+V4F32 v4f32_scale(V4F32 v, F32 s)             { return v4f32(v.x * s, v.y * s, v.z * s, v.w * s); }
 
 ///////////////////////////////////////////////////////////
 // - V4U8 
@@ -109,7 +110,7 @@ Rect     rect_make            (F32 x, F32 y, F32 width, F32 height) { Rect r = {
 Rect     rect_make_v          (V2F32 pos, V2F32 dims)               { return rect_make(pos.x, pos.y, dims.x, dims.y); }
 Rect     rect_from_center     (V2F32 center, V2F32 dims)            { Rect r = {}; r.x = center.x - (dims.x / 2.0f); r.y = center.y - (dims.y / 2.0f); r.width = dims.x; r.height = dims.y; return r; }
 Rect     rect_from_range_v2f32(RangeV2F32 range)                    { return rect_make(range.min.x, range.min.y, range.max.x - range.min.x, range.max.y - range.min.y); }
-V2F32    rect_get_center      (Rect rect)                           { return v2f32(rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)); }
+V2F32    rect_center          (Rect rect)                           { return v2f32(rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)); }
 B32      rect_match           (Rect r1, Rect r2)                    { return (r1.x == r2.x && r1.y == r2.y && r1.width == r2.width && r1.height == r2.height); }
 B32      rect_point_inside    (Rect r, V2F32 v)                     { return (r.x <= v.x && v.x < r.x + r.width && r.y <= v.y && v.y < r.y + r.height); }
 RangeF32 rect_get_range       (Rect rect, Axis2 axis)               { return rangeF32(rect.origin.v[axis], rect.origin.v[axis] + rect.dims.v[axis]); }
@@ -278,11 +279,22 @@ B32 f32_is_nan(F32 f)
 //
 V4F32 color_change_alpha(V4F32 color, F32 new_a) { color.a = new_a; return color; }
 
-V4F32 color_light_up(V4F32 color, F32 how_much_lighter) 
+V4F32 color_add_light(V4F32 color, F32 how_much_lighter) 
 {
 	color.r += how_much_lighter;
 	color.g += how_much_lighter; 
 	color.b += how_much_lighter;
+	clamp_f32_inplace(&color.r, 0.0f, 1.0f);	 
+	clamp_f32_inplace(&color.g, 0.0f, 1.0f);	 
+	clamp_f32_inplace(&color.b, 0.0f, 1.0f);	 
+	return color;
+}
+
+V4F32 color_scale_light(V4F32 color, F32 how_much_lighter) 
+{
+	color.r *= how_much_lighter;
+	color.g *= how_much_lighter; 
+	color.b *= how_much_lighter;
 	clamp_f32_inplace(&color.r, 0.0f, 1.0f);	 
 	clamp_f32_inplace(&color.g, 0.0f, 1.0f);	 
 	clamp_f32_inplace(&color.b, 0.0f, 1.0f);	 

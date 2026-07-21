@@ -3,20 +3,18 @@
 
 #include "ui/ui_core.h"
 
-// - Simple widgets for quick
-UI_Actions ui_button(Str8 id);
-void ui_spacer(UI_Size size);
-#define UI_Spacered(size) DeferLoop(ui_spacer(size), ui_spacer(size))
-
 // - Layout stacks
+void ui_begin_layout_stack_flagged(Axis2 axis, UI_Box_flags flags);
 void ui_begin_layout_stack(Axis2 axis);
 void ui_end_layout_stack();
+// TODO: Pass in flags here with ... 
 #define UI_Row() DeferLoop(ui_begin_layout_stack(Axis2__x), ui_end_layout_stack())
 #define UI_Col() DeferLoop(ui_begin_layout_stack(Axis2__y), ui_end_layout_stack())
 
 // - Simple wrapper
 void ui_begin_wrapper();
 void ui_end_wrapper();
+// TODO: Have a way to have flags be passed in via ... to the wrapper macro
 #define UI_Wrapper() DeferLoop(ui_begin_wrapper(), ui_end_wrapper())
 
 // - Labels
@@ -32,6 +30,14 @@ void ui_label_ellipsed(Str8 str);
 void ui_label_ellipsed_f(const char* fmt, ...);
 void ui_text_ellipsed(Str8 str);
 void ui_text_ellipsed_f(const char* fmt, ...);
+
+// - Button
+UI_Actions ui_button(Str8 id_and_text);
+UI_Actions ui_button_f(const char* fmt, ...);
+
+// - Spacer
+void ui_spacer(UI_Size size);
+#define UI_Spacered(size) DeferLoop(ui_spacer(size), ui_spacer(size))
 
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);
@@ -545,6 +551,7 @@ void ui_aply_text_ops(UI_Text_op_list text_op_list, U8* text_buffer, U64 max_tex
 }
  
 // Damian: This shows the text in the buffer and gives the user the means to update the data when they choose to 
+/*
 UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_x, U8* text_buffer, U64 text_buffer_size, U64 buffer_max_count, U64 cursor_pos, U64 section_pos, Str8 edit_box_id)
 {
   FP_Font font                 = ui_top_font();
@@ -713,5 +720,6 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
   }
   return result_text_op_list;
 }
+*/
 
 #endif

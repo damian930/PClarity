@@ -27,6 +27,7 @@ void OutputDebugStringF(const char* fmt, ...);
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
+  profiler_init();
   allocate_thread_context();
   B32 os_init_succ = os_init();
   r_init(); 
@@ -83,55 +84,196 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   PCL_State pcl = pcl_init();
 
-  for (;!os_window_should_close();)
+  B32 show_debug_stuff = false;
+
+  U64 frame_counter  = 0;
+  U64 prev_frame_fps = 0;
+  for (;!os_window_should_close(); frame_counter += 1)
   {
+    ProfBeginGroupF("App frame %d", frame_counter);
+
     F64 frame_start_time_sec = os_get_time_for_timing_sec();
     
     os_frame_begin();
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
+    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+    {
+      if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__f1 && ev->key_event.went_down)
+      {
+        show_debug_stuff = ToggleBool(show_debug_stuff);
+        os_consume_frame_event(ev);
+        break;
+      }
+    }
+
+    /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
+      static U64 col_count = 100;
+
+      ui_next_b_color(nice_green());
+      if (ui_button_f("Add").is_clicked) { col_count += 10; }
+      ui_next_b_color(red());
+      if (ui_button_f("Remove").is_clicked) { col_count -= 50; }
+
+      ui_next_width(ui_grow());
+      ui_next_height(ui_grow());
       UI_Col()
       {
-        ui_next_width(ui_px(250));
-        ui_next_height(ui_px(250));
+        ui_next_width(ui_grow());
+        ui_next_height(ui_grow());
         ui_next_padded_border(3, nice_green());
-        UI_Box* clip_box = ui_box_make(Str8FromC("Clip box"), UI_Box_flag__clip|UI_Box_flag__padded_border);
+        ui_next_padding(15);
+        ui_next_child_gap(5);
+        ui_next_layout_x();
+        UI_Box* top_box = ui_box_make(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap, {});
         
-        UI_Parent(clip_box)
+        UI_Parent(top_box)
         {
-          for EachIndex(i, 100)
+          UI_Col()
           {
-            ui_text_f("Text %lld", i);
+            UI_Box* clip_box = ui_box_make(UI_Box_flag__clip, Str8FromC("Clip box id"));
+            UI_Parent(clip_box)
+            {
+              UI_Parent(ui_box_make(0, Str8FromC("id 1")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 2")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 3")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 4")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 5")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 11")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 12")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 13")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 14")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 15")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 111")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 122")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 133")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 144")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 155")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1111")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1222")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1333")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1444")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1555")))
+              {
+                UI_Row()
+                {
+                  for EachIndex(i, 25)
+                  {
+                    ui_next_width(ui_fit());
+                    ui_next_height(ui_fit());
+                    ui_next_padded_border(3, nice_blue());
+                    ui_next_padding(10);
+                    ui_next_child_gap(5);
+                    ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
+                    UI_Col()
+                    {
+                      for EachIndex(j, col_count)
+                      {
+                        UI_Wrapper()
+                        {
+                          ui_next_width(ui_px(25));
+                          ui_next_height(ui_px(25));
+                          ui_next_b_color(red());
+                          UI_Box* red_box = ui_box_make(UI_Box_flag__has_background, {});
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        
+            ui_spacer(ui_px(10));
+  
+            UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
+            if (box_clip_data.is_found)
+            {
+              B32 is_new_offset = false;
+              F32 new_offset = 0.0f;
+              
+              // todo: When outer vp size is 0, then jus thave the thumb be the full size of the scroll bar
+              // pcl_scroll_bar(ui_grow(), ui_px(50), Axis2__x, Str8FromC("Scroll bar x"), box_clip_data.viewport_dims.x, box_clip_data.content_dims.x, -ui_clip_offset_from_box(clip_box).x, &new_offset, &is_new_offset);
+              // TODO: Fix the bug here
+              pcl_scroll_bar_faster(ui_grow(), ui_px(100), Axis2__y, ui_box_id(clip_box), Str8FromC("Scroll bar x"), &new_offset, &is_new_offset);
+  
+              if (is_new_offset)
+              {
+                ui_box_set_clip_offset_y(clip_box, -new_offset);
+              }
+            }
           }
-        }
-
-        UI_Box_data box_data = ui_box_data_from_box(clip_box);
-        if (box_data.is_found)
-        {
-          F32 offset = ui_clip_offset_from_box(clip_box).y;
-          B32 is_new_offset = false;
-          F32 new_offset = 0.0f;
-          pcl_scroll_bar(ui_px(250), ui_px(100), Str8FromC("Scroll bar"), box_data.rect.height, ui_get_content_dims_from_box(clip_box).y, offset, &new_offset, &is_new_offset);
-
-          if (is_new_offset)
+  
+  
+          UI_Box* clip_box = ui_box_from_key(ui_box_key_from_str8(Str8FromC("Clip box id")));
+          UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
+          if (box_clip_data.is_found)
           {
-            ui_box_set_clip_offset_y(clip_box, -new_offset);
+            B32 is_new_offset = false;
+            F32 new_offset = 0.0f;
+            pcl_scroll_bar(ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar"), box_clip_data.viewport_dims.y, box_clip_data.content_dims.y, -ui_clip_offset_from_box(clip_box).y, &new_offset, &is_new_offset);
+  
+            if (is_new_offset)
+            {
+              ui_box_set_clip_offset_y(clip_box, -new_offset);
+            }
           }
+          
         }
       }
 
-
-
     }
+    */
 
-    // pcl_frame_update(&pcl);
-    // pcl_do_ui(font, &pcl);
+    pcl_frame_update(&pcl);
+    pcl_build_ui(font, &pcl);
+    
+    /*
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      Str8 box_id = Str8FromC("Box test id");
+      UI_Box_data box_data = ui_box_data_from_id(box_id);
+      OutputDebugStringF("Rect: .x = %.3f, .y = %.3f, .width = %.3f, .height = %.3f \n", box_data.rect.x, box_data.rect.y, box_data.rect.width, box_data.rect.height);
+
+      if (make)
+      {
+        ui_next_floating_fixed_pos_x(50);
+        ui_next_floating_fixed_pos_y(50);
+        ui_next_width(ui_px(50));
+        ui_next_height(ui_px(50));
+        ui_next_b_color(nice_blue());
+        ui_next_padding(5);
+        UI_Box* box = ui_box_make(box_id, UI_Box_flag__floating|UI_Box_flag__has_background|UI_Box_flag__has_padding);
+  
+        UI_Parent(box)
+        {
+          ui_next_width(ui_grow());
+          ui_next_height(ui_grow());
+          ui_next_b_color(nice_green());
+          UI_Box* nested = ui_box_make({}, UI_Box_flag__has_background);
+        }
+        
+        UI_Actions box_acts = ui_actions_from_box(box);
+        if (box_acts.is_down)
+        {
+          ui_box_set_b_color(box, white());
+        }
+        else if (box_acts.is_hovered)
+        {
+          ui_box_set_b_color(box, red());
+        }
+      }
+    }
+    */
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
+    if (show_debug_stuff)
+    {
+      d_draw_text_f("FPS: %lld", font, 32, v2f32(0, 0), magenta(), prev_frame_fps);
+    }
 
     d_end_batching();
     r_submit(window_frame_buffer_target, d_get_batch_list());
@@ -141,12 +283,13 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
-    // OutputDebugStringF("Frame time sec: %f\n", frame_end_time_sec - frame_start_time_sec);
-    // OutputDebugStringF("FPS:            %f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec));
-    // OutputDebugStringF("\n");
+    prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
+    
+    ProfEndGroup();
   }
 
-  // Not releasing anything since who cares, the system will release all the stuff
+  // Damian: Not releasing anything since who cares, the system will release all the stuff
+  profiler_release();
 
   return 0;
 }

@@ -36,6 +36,16 @@
 #include "__third_party/stb/stb_image.h"
 #endif
 
+#define RELESE_MODE_RENDERER 0
+
+#if DEBUG_MODE
+  #define R_DEBUG_MODE 1 
+#elif RELEASE_MODE
+  #define R_DEBUG_MODE 0
+#elif RELESE_MODE_RENDERER
+  #define R_DEBUG_MODE 0
+#endif
+
 global D3D_State* __d3d_g_state = 0;
 
 #define HR(cond) Handle(cond == S_OK)
@@ -60,7 +70,7 @@ void r_init()
   {
     D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
     UINT flags = 0;
-    #if DEBUG_MODE
+    #if R_DEBUG_MODE
     flags = D3D11_CREATE_DEVICE_DEBUG; 
     #endif
 
@@ -73,7 +83,7 @@ void r_init()
   }
 
   // Debug
-  #if DEBUG_MODE
+  #if R_DEBUG_MODE
   {
     // Debug for device
     ID3D11InfoQueue* debug_q = 0;
@@ -262,6 +272,7 @@ void r_relesase()
 R_Handle r_attach_window(OS_Window window)
 {
   // todo: Check if window is not zero here when you start having them
+  ProfBeginFunc();
 
   D3D_State* d3d = r_get_state();
 
@@ -292,7 +303,7 @@ R_Handle r_attach_window(OS_Window window)
     desc.Scaling     = (os_window_is_transparent() ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE);                    // todo: Learn what these do
     desc.AlphaMode   = (os_window_is_transparent() ? DXGI_ALPHA_MODE_PREMULTIPLIED : DXGI_ALPHA_MODE_UNSPECIFIED); // todo: Learn what these do
     desc.SwapEffect  = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    desc.Flags       = 0;
+    // desc.Flags       = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // TODO: This is new, might have to remove this 
     if  (os_window_is_transparent()) { hr = dxgi_factory->CreateSwapChainForComposition(d3d->device, &desc, Null, &swap_chain); }
     else                             { hr = dxgi_factory->CreateSwapChainForHwnd(d3d->device, window.handle, &desc, Null, Null, &swap_chain); }
     HR(hr);
@@ -355,11 +366,15 @@ R_Handle r_attach_window(OS_Window window)
   handle.comp_device = comp_device;
   handle.texture     = frame_buffer_texture;
   handle.texture_rtv = frame_buffer_rtv;
+  
+  ProfEndGroup();
   return handle;
 }
 
 void r_prepare_canvas(R_Handle* chain)
 {
+  ProfBeginFunc();
+
   if (!__r_is_handle_valid_handle_chain(*chain)) { BP; return; }
   {
     B32 match = chain->__win32_window_handle_for_assert == os_get_state()->window.handle;
@@ -397,6 +412,8 @@ void r_prepare_canvas(R_Handle* chain)
     chain->swap_chain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&chain->texture);
     d3d->device->CreateRenderTargetView(chain->texture, NULL, &chain->texture_rtv);
   }
+
+  ProfEndGroup();
 }
 
 // todo: This should not have to use a target here, since this implies that we are rendering into something like a frame buffer,
@@ -410,6 +427,7 @@ void r_prepare_canvas(R_Handle* chain)
 //       data flow better and not change this with no detailed knowlage about the depending system.
 void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
 {
+  ProfBeginFunc();
   if (!__r_is_handle_valid_handle(target)) { BP; return; }
 
   D3D_State* d3d = r_get_state();
@@ -572,37 +590,21 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
   }
 
   d3d->context->ClearState();
+  
+  ProfEndGroup();
 }
 
 void r_present(R_Handle target, B32 vsync)
 {
-  if (!__r_is_handle_valid_handle_chain(target)) { BP; return; }
-  
-  if (os_get_state()->window.handle == target.__win32_window_handle_for_assert)
-  {
-    HCURSOR win32_arrow = LoadCursor(Null, IDC_ARROW);
-    HCURSOR win32_hand  = LoadCursor(Null, IDC_HAND);
-    HCURSOR win32_cross = LoadCursor(Null, IDC_CROSS);
-    HCURSOR win32_pen   = LoadCursor(Null, MAKEINTRESOURCE(32631)); // note: resource id is used here cause WinUser.h does have a predefined macro for it
-
-    HCURSOR win32_cursor = win32_arrow;
-    if      (os_get_state()->window.frame_cursor == OS_Cursor__arrow) { win32_cursor = win32_arrow; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__hand)  { win32_cursor = win32_hand; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__crosshair) { win32_cursor = win32_cross; }
-    else if (os_get_state()->window.frame_cursor == OS_Cursor__pen)   { win32_cursor = win32_pen; }
-
-    // TODO: This was a fine idea, but this fucks up the thing.
-    //       First of all, the renderer should not carea about this, but just tell the os to do it.
-    //       Second of all this overrides the cursor each frame if the user decided to resize the window,
-    //       and no resize cursor is shown.
-    // SetCursor(win32_cursor);
-
-  } else { InvalidCodePath(); }
+  ProfBeginFunc();
+  if (!__r_is_handle_valid_handle_chain(target)) { BreakPoint(); return; }
 
   target.swap_chain->Present(!!vsync, 0);
   if (os_window_is_transparent()) {
     target.comp_device->Commit();
   }
+
+  ProfEndGroup();
 }
 
 ///////////////////////////////////////////////////////////
@@ -676,7 +678,7 @@ R_Program r_program_from_file(const WCHAR* shader_program_file,
   D3D_State* d3d = r_get_state();
 
   UINT flags = 0;
-  #if DEBUG_MODE
+  #if R_DEBUG_MODE
   flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
   #endif
 

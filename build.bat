@@ -6,6 +6,7 @@
 ::  - release                         (Compiles the code in relese mode)
 ::  - clean                           (Cleans the build directory before building into it)
 ::  - strict                          (Turns off some warning messages that are silences for debug build by default)
+::  - asan                            (Turns on address sanitization)
 ::  - dont_assert_handle_later_macros (Allows HandleLater macros to compile in relese build. Its for testing purposes, should not be used in the finals release build)
 ::  (Any combination of these might be used together)
 :: There migth also be more notes about the build file at the end of the build file. 
@@ -48,6 +49,9 @@ if "%strict%"=="1"      (echo [strict]) else (echo [non strict])
 if "%strict%"==""       set errors_to_ignore=/wd4189 /wd4100 /wd4505 %errors_to_alway_ignore%
 if "%strict%"=="1"      set errors_to_ignore=%errors_to_alway_ignore%
 
+:: ASAN ebabled/disabled
+if "%asan%"=="1" set asan=1 | echo [asan]
+
 :: Pre processor defines
 if "%debug%"=="1"                           set pre_processor_defines=/D"DEBUG_MODE"
 if "%release%"=="1"                         set pre_processor_defines=/D"RELEASE_MODE"
@@ -55,6 +59,7 @@ if "%dont_assert_handle_later_macros%"=="1" set pre_processor_defines=%pre_proce
 
 :: Common compiler flags
 set common_compiler_flags=/nologo %errors_to_ignore% %pre_processor_defines% /INCREMENTAL:NO /I"../src" /W4 /MDd /FC /std:c++20 /permissive- /utf-8 /Zc:preprocessor 
+if "%asan%"=="1" set common_compiler_flags=%common_compiler_flags% /fsanitize=address
 
 :: Common linker flags
 set common_linker_flags=/LIBPATH:"../src" /INCREMENTAL:NO

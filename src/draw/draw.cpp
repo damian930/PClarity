@@ -40,6 +40,8 @@ void d_release()
 //
 void d_begin_batching(R_Handle target) 
 { 
+
+
   D_State* draw_state = d_get_state();
   
   draw_state->command_batch_list = {};
@@ -96,7 +98,7 @@ D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Handle texture)
   new_batch->blend_kind   = __d_get_current_blend_kind__defaults();
   new_batch->fill_mode    = __d_get_current_fill_mode__defaults();
 
-  QueuePushBack_Name(&draw_state->command_batch_list, new_batch, first, last, next_batch);
+  QueuePushBack_Ex(&draw_state->command_batch_list, new_batch, first, last, next_batch, is_zero_pointer, 0);
   draw_state->command_batch_list.count += 1;
 
   return new_batch;
@@ -136,8 +138,8 @@ void d_add_command_to_batch(D_Command_batch* batch, D_Command command)
 
   D_Command_node* node = ArenaPush(arena, D_Command_node);
   node->command = command;
-  
-  QueuePushBack_Name(batch, node, first_command_node, last_command_node, next);
+   
+  QueuePushBack_Ex(batch, node, first_command_node, last_command_node, next, is_zero_pointer, 0);
   batch->count += 1;
 }
 

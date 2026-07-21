@@ -109,6 +109,20 @@ enum Key : U32 {
   Key__period,         // '.'   shifted: '>'
   Key__slash,          // '/'   shifted: '?'
 
+  // F1-F12
+  Key__f1,
+  Key__f2,
+  Key__f3,
+  Key__f4,
+  Key__f5,
+  Key__f6,
+  Key__f7,
+  Key__f8,
+  Key__f9,
+  Key__f10,
+  Key__f11,
+  Key__f12,
+
   // Other 
   Key__arrow_left,
   Key__arrow_right,
@@ -249,6 +263,8 @@ B32 os_commit_mem_pages_to_chunk(Mem_chunk* mem_chunk, U64 n_pages);
 B32 os_decommit_mem_pages_from_chuck(Mem_chunk* mem_chunk, U64 n_pages);
 B32 os_release_mem_chunk(Mem_chunk* mem_chunk);
 U64 os_get_mem_page_size();
+U64 os_bytes_commited(Mem_chunk chunk);
+U64 os_bytes_reserved(Mem_chunk chunk);
 
 // note/todo: I dont really like this list api for events, i would rather it just be whatever and the caller just gets them and consumed them based
 //            on som api not like we have now. Maybe it would make sense to just have different calls like:
@@ -260,6 +276,7 @@ void os_frame_end();
 F32 os_get_time_since_last_frame();
 OS_Event_list* os_get_frame_event_list();
 void os_consume_frame_event(OS_Event* event);
+B32 os_consume_wheel_scroll();
 
 // - Windowing
 V2F32 os_get_window_dims();

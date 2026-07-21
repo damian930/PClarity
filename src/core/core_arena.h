@@ -22,7 +22,7 @@ struct Temp_arena {
 
 global U64 __arena_g_page_size = Kilobytes(4);
 
-// - arena stuff
+// - Arena stuff
 tu_specific Arena* arena_alloc(U64 size_to_reserve);
 tu_specific Arena* arena_alloc_ex(U64 size_to_reserve, B32 start_at_specific_page, U32 allocation_granulatity_index);
 tu_specific void arena_release(Arena** arena);
@@ -43,12 +43,17 @@ tu_specific U64 arena_get_pos(Arena* arena);
 tu_specific void arena_pop_to_pos(Arena* arena, U64 new_arena_pos);
 tu_specific void arena_pop(Arena* arena, U64 bytes_to_pop);
 tu_specific void arena_clear(Arena* arena);
+tu_specific U64 arena_get_bytes_left(Arena* arena);
 #define ArenaPopType(arena_p, Type) arena_pop(arena_p, sizeof(Type))
 
-// - temp arena stuff
+// - Temp arena stuff
 tu_specific Temp_arena temp_arena_begin(Arena* arena);
 tu_specific void temp_arena_end(Temp_arena* temp);
 typedef Temp_arena Scratch;
+
+// - Helpers
+void __arena_poison_not_used_commited_memory(Arena* arena);
+void __arena_unpoison_all_commited_memory(Arena* arena);
 
 #endif
 

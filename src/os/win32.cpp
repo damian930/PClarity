@@ -5,7 +5,11 @@
 #include "os/win32.h"
 #pragma comment (lib, "user32.lib")
 #pragma comment (lib, "oneCore.lib")
-//
+
+// For DwmFlush
+#include "dwmapi.h"
+#pragma comment (lib, "dwmapi.lib")
+
 // Windows version and build getters
 #include "winnt.h"
 #pragma comment (lib, "ntdll.lib")
@@ -417,10 +421,23 @@ B32 os_release_mem_chunk(Mem_chunk* mem_chunk)
 {
   if (mem_chunk == 0) { InvalidCodePath(); return false; }
 
-  OS_State* os_state = os_get_state();
-  B32 release_succ = VirtualFree(mem_chunk->base_p, 0, MEM_RELEASE);
-  if (release_succ) {
-    *mem_chunk = Mem_chunk{};
+  // Damian:
+  // Just in case if the memory inside the chuck is also used to have something
+  // allocated on it and then the mem_chunk is allocated on that thing again.
+  // Example: Arena asks for mem_chunk, then allocated itself on the chunck and 
+  // stored the chunk on itself. Then when the arena is releasing, it will pass the 
+  // chuck here, then we will release it and then try to zero it out but the pointer
+  // to where the chucnk was in memory is in the release memory, so the mem error 
+  // will result in a crash. For that reason we have to zero out the chunck before we do the
+  // release the memory with the os
+
+  Mem_chunk mem_chunk_copy = *mem_chunk;
+  void* mem = mem_chunk->base_p;
+  *mem_chunk = Mem_chunk{};
+
+  B32 release_succ = VirtualFree(mem, 0, MEM_RELEASE);
+  if (!release_succ) {
+    *mem_chunk = mem_chunk_copy;
   }
   return release_succ;
 }
@@ -428,6 +445,18 @@ B32 os_release_mem_chunk(Mem_chunk* mem_chunk)
 U64 os_get_mem_page_size()
 {
   return __os_g_page_size;
+}
+
+U64 os_bytes_commited(Mem_chunk chunk)
+{
+  U64 bytes_commited = chunk.n_pages_commited * __arena_g_page_size;
+  return bytes_commited;
+}
+
+U64 os_bytes_reserved(Mem_chunk chunk)
+{
+  U64 bytes_reserved = chunk.n_pages_reserved * __arena_g_page_size;
+  return bytes_reserved;
 }
 
 ///////////////////////////////////////////////////////////
@@ -981,7 +1010,19 @@ LRESULT win32_proc(
           case VK_RETURN:    { key = Key__enter;       } break;
           case VK_OEM_COMMA: { key = Key__comma;       } break;
           case VK_HOME:      { key = Key__home;        } break;
-          case VK_END:       { key = Key__end;        } break;
+          case VK_END:       { key = Key__end;         } break;
+          case VK_F1:        { key = Key__f1;          } break;
+          case VK_F2:        { key = Key__f2;          } break;
+          case VK_F3:        { key = Key__f3;          } break;
+          case VK_F4:        { key = Key__f4;          } break;
+          case VK_F5:        { key = Key__f5;          } break;
+          case VK_F6:        { key = Key__f6;          } break;
+          case VK_F7:        { key = Key__f7;          } break;
+          case VK_F8:        { key = Key__f8;          } break;
+          case VK_F9:        { key = Key__f9;          } break;
+          case VK_F10:       { key = Key__f10;         } break;
+          case VK_F11:       { key = Key__f11;         } break;
+          case VK_F12:       { key = Key__f12;         } break;
         }
       }
 
@@ -1167,31 +1208,16 @@ LRESULT win32_proc(
     {
       result = DefWindowProcW(window_handle, message, w_param, l_param);
     } break;
-
+    
+    case WM_SIZE:
     case WM_PAINT:
     {
-      static U64 times_wm_paint_has_been_handles = 0;
-
-      { // Handling WM_PAINT
-        HWND hwnd = os_get_state()->window.handle;
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
-        EndPaint(hwnd, &ps);
-      }
-      times_wm_paint_has_been_handles += 1;
-
-      // TODO: This asserted when i maximized the window, test this and change 
-      //       the assert and the comment here 
-      // Assert(times_wm_paint_has_been_handles == 1);
-      // For windows that dont use things like gdi but use d3d 11 and such for rendering 
-      // those apis dont generate wm_paint. But there is still a single time that wm_paint
-      // gets generated. That is when the window is first created to set it up.
-      // That is why i expect the times we handle wm_paint to be == 1.
-      // Assert it to know if i am wrong and it still gets generated in some edge cases.
-      // But it for sure doesnt get generated on submit calls to d3d 11 like DrawInstanced,
-      // nor does it get generated for present calls for d3d like Present for swap chains 
-      // or Commit for dwm IDCompositionDevice 
+      // TODO:
+      HWND hwnd = os_get_state()->window.handle;
+      PAINTSTRUCT ps = {};
+      HDC hdc = BeginPaint(hwnd, &ps);
+      EndPaint(hwnd, &ps);
+      // DwmFlush();
     } break;
 
     case WM_CLOSE: // For regular windows this is send when the close button it pressed 

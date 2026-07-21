@@ -1,8 +1,15 @@
 #ifndef __UI_H
 #define __UI_H
 
-#include "core/core_include.h"
 #include "__third_party/clay/clay.h"
+
+#include "core/core_include.h"
+#include "font_provider/font_provider.h"
+#include "draw/draw.h"
+
+/* todo:
+- Work on IDs better, thing about static ids, dynamic ids, parent relative ids, indexed ids
+*/
 
 enum UI_Size_kind {
   UI_Size_kind__px,
@@ -26,11 +33,8 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__has_rounded_corners = (1 << 4),
   UI_Box_flag__has_borders         = (1 << 5),
   
+  // TODO: Look into this, i dont thing that this is used right now, i think this is old code that we no longer use type of thing
   UI_Box_flag__has_text_contents   = (1 << 6),
-
-  // Floating doesnt add to the size of its parent and is not a part of the normal layout flow
-  UI_Box_flag__floating_x = (1 << 7), 
-  UI_Box_flag__floating_y = (1 << 8), 
 
   // Clips the box contents on axis. Clipping is not the same as just not drawing. 
   // Clipping changes the interactive zone of boxes. 
@@ -40,13 +44,17 @@ enum UI_Box_flag : U32 {
   // a child of a clip box and if outisde of its parent's on screen bounding box
   // the inputs to it dont go thought, since they are clipped out, both for the user
   // on the screen and for the ui logic. 
-  UI_Box_flag__clip_x = (1 << 9), 
-  UI_Box_flag__clip_y = (1 << 10), 
+  UI_Box_flag__clip_x = (1 << 7), 
+  UI_Box_flag__clip_y = (1 << 8), 
 
-  UI_Box_flag__dont_draw_overflow = (1 << 11),  
+  UI_Box_flag__dont_draw_overflow = (1 << 9),  
+
+  UI_Box_flag__floating = (1 << 10),  
+  
+  UI_Box_flag__hoverable = (1 << 11),  
+  UI_Box_flag__clickable = (1 << 12),  
 
   UI_Box_flag__padded_border      = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
-  UI_Box_flag__floating           = UI_Box_flag__floating_x|UI_Box_flag__floating_y, 
   UI_Box_flag__clip               = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
 };
 typedef U32 UI_Box_flags;
@@ -75,7 +83,7 @@ struct UI_Provided_data_for_custom_draw {
   V4F32 corner_radii;
 };
 #define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data)
-typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func_pointer_type);
+typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func);
 
 UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func); 
 
@@ -95,82 +103,116 @@ struct UI_Actions {
   V2F32 mouse_pos_when_went_down;
 };
 
+struct UI_Box_key {
+  U64 v;
+};
+
 struct UI_Box {
-  // Our own config
-  UI_Box_flags flags;
+  // Always present after creation
+  U64 generation_when_created;
+  U64 generation_when_last_created;
 
-  // Clay config
-  // TODO: Dont store this, just store your own data for ui box, then when making clay boxes use this. 
-  //       It will make it make more sense and the bridge between ui and clay_ui way cleaner.
-  Clay_ElementDeclaration clay_element_config;
+  UI_Box_key hash_table_key;
 
-  B32 has_hover_cursor;
-  OS_Cursor hover_cursor;
+  // TODO: Add a way to have padding from the prev build box to have inner rect be calculated
 
+  Clay_ElementId prev_box_clay_id;
+
+  // Per build box condif // TODO: When done, lock these up under a name for a debug view 
+  struct {
+    Str8 id;
+
+    UI_Box_flags flags;
+    UI_Size size_on_axis[Axis2__COUNT];
+    Axis2 layout_direction;
+    //
+    V4F32 padding;
+    F32 child_gap;
+    UI_Alignment_x alignment_on_x;
+    UI_Alignment_y alignment_on_y;
+    V4F32 b_color;
+    V4F32 corner_radii;
+    B32 clip_axis[Axis2__COUNT];
+    V4F32 border_width;
+    V4F32 border_color;
+    V2F32 floating_fixed_pos;
+    B32 has_hover_cursor;
+    OS_Cursor hover_cursor;
+
+    struct {
+      UI_Box_custom_draw_func* draw_func; 
+      void* data_for_draw_func;
+    } custom_draw_extension;
+
+    struct {
+      Str8 text;
+      F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
+      FP_Font font;
+      V4F32 font_color;
+    } text_extension;
+  
+    // Per build ui tree links
+    UI_Box* first_child;
+    UI_Box* last_child;
+    UI_Box* next_sibling;
+    UI_Box* prev_sibling;
+    UI_Box* parent;
+    U64 children_count;
+  } per_build_data;
+
+  // TODO: Put this somewhere better
+  V4F32 prev_build_padding;
+  UI_Box_flags prev_build_flags;
+
+  // TODO: Put this somewhere better
+  Data_buffer dynamic_drag_memory;
+
+  // Result of this box in the previous build
   V2F32 clip_offset;
+  
+  // TODO: This is text
+  B32 is_defered_offset_present;  
+  V2F32 clip_offset_defered;
 
-  struct {
-    UI_Box_custom_draw_func_pointer_type* draw_func; 
-    void* data_for_draw_func;
-  } custom_draw_extension;
+  // TODO: Add rect here as well and then just call it from the getters and such thing
+  
+  // Persistent across builds 
+  UI_Box* next_in_bucket_or_free_list;
+  UI_Box* prev_in_bucket;
 
-  struct {
-    Str8 text;
-    F32 font_size; // Damian: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
-    FP_Font font;
-    V4F32 font_color;
-  } text_extension;
-
-  UI_Box* first_child;
-  UI_Box* last_child;
-  UI_Box* next_sibling;
-  UI_Box* prev_sibling;
-  UI_Box* parent;
-  U64 children_count;
-
+  // TODO: Look into if we still need this since we now have a hash table
   // Damian: These are not used on the immediate box, but rather used for the future 
   //         representation of this box 
   //         (future representation is this same box in the next build)
-  B32 is_updated_actions_for_this_in_the_future;
-  UI_Actions actions_for_this_in_the_future;
+  // B32 is_updated_actions_for_this_in_the_future;
+  // UI_Actions actions_for_this_in_the_future;
 
-  U64 generation;
+  // NEW_STUFF
+  Rect rect;
+  //
+  B32 actions_present; // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build 
+  UI_Actions actions;  // Might make sense to put these in their own section of data that is per build but has to be created mid somewhere mid build
 };
 
 // TODO: Move this to a better place
 // TODO: Also redo the __UI_NULL_BOX_VALUE since it might be wrong if the order of the box field have changed since you did the macor
-#define __UI_NULL_BOX_VALUE { \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  {}, \
-  { \
-    __ui_custom_draw_stub_func, \
-    {}, \
-  }, \
-  { \
-    {}, \
-    {}, \
-    {}, \
-  }, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  &__ui_g_null_box, \
-  {}, \
-  \
-  {}, \
-  {}, \
-  {}, \
-}
-global UI_Box __ui_g_null_box = __UI_NULL_BOX_VALUE;
+// TODO: Have this inside state as well, why not at this point
+#define __UI_NULL_BOX_KEY_VALUE {}
 
+// TODO: This should have all the data in there, all the inner data, all the content data and all the scroll data here as well
+//       bot the copy and the originl pointer here for all the use when we need it
 struct UI_Box_data {
   B32 is_found;
-  Rect rect;
-  Rect inner_rect;
+  Rect rect;       // Rect for the box
+  Rect inner_rect; // Rect after padding, this is the rect where the children are placed
+};
+
+// DD: I have that i have to have this is a separate type and not just be a part of the whole package of UI_Box_data because of clay
+struct UI_Box_clip_data {
+  B32 is_found;
+  V2F32 viewport_dims;
+  V2F32 content_dims;
+  V2F32 offset;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -181,11 +223,14 @@ struct UI_Box_data {
 // Stack structs
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 
+struct UI_Box_list {
+  UI_Box* first;
+  UI_Box* last;
+  U64 count;
+};
+
 // TODO: Move data fiels in state for better structural meaning
 struct UI_State {
-  // TODO: Add a counter for boxes made last build
-  // TODO: Add a build counter just for debug purposes if we need to
-  
   Arena* state_arena;
 
   // Memory for our own box tree for prev build and the current build
@@ -196,7 +241,7 @@ struct UI_State {
   Arena* arena_for_clay; 
 
   // Result of ui build
-  Clay_RenderCommandArray render_commands_as_result_of_ui_build;
+  Clay_RenderCommandArray render_commands_as_result_of_ui_build; // TODO: Look into where this is allocated and what the lifetime of this is
   UI_Box* final_hover_box;
 
   // Always available data
@@ -206,16 +251,28 @@ struct UI_State {
 
   UI_Box* next_new_elements_parent_box; // Damian, TODO: What the fuck is this even
 
+  // Hash table
+  UI_Box_list hash_table_buckets[64];
+
+  // Free list of boxes
+  UI_Box* first_free_box;
+  U64 count_of_free_boxes;
+
+  // TODO: Move this 
+  U64 this_build_box_count;
+  U64 last_build_box_count;
+
   struct {
-    Clay_ElementId clay_id;
+    UI_Box_key box_key;
     B32 is_mouse_down;
     B32 did_mouse_leave_box_while_was_down;
     V2F32 pos_when_mouse_went_down;
   } interacted_with_box_data;
 
+  // TODO: See if you still need any of these, the prev root you for sure dont need now that you have a cashe hash table
   UI_Box* current_build_root_box; // This is allocated on the current build arena 
   UI_Box* prev_build_root_box;    // This is allocated on the previous build arena
-  
+
   struct {
     #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
     __UI_STACK_DATA_TABLE_EXPANSION(EXPANSION)
@@ -235,38 +292,78 @@ void ui_release();
 // - UI building
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font);
 void ui_end_build();
-void __ui_build_clay_element_tree_from_box_tree(UI_Box* root);
+void __ui_build_clay_element_tree_from_box_tree(UI_Box* root); // TODO: Move this out of here into some like helper section
+void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root); // TODO: Move this out of here into some like helper section
 #define UI_Build(window_dims, mouse_pos, default_font) DeferLoop(ui_begin_build(window_dims, mouse_pos, default_font), ui_end_build())
 
 // - UI drawing
 void ui_draw();
 
 // - Box making
-B32 ui_is_null_box(UI_Box* box);
-UI_Box* ui_null_box();
-UI_Box* ui_box_make(Str8 id_and_text, UI_Box_flags flags);
-UI_Box* ui_box_make_f(const char* fmt, UI_Box_flags flags, ...);
-void __ui_get_next_box_clay_element_config(UI_Box* box, Clay_ElementId clay_id, UI_Box_flags flags);
+UI_Box* ui_box_make(UI_Box_flags flags, Str8 id_and_text);
+UI_Box* ui_box_make_f(UI_Box_flags flags, const char* fmt, ...);
 
 // - Box extension
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func_pointer_type* custom_draw, void* data);
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func* custom_draw, void* data);
 void ui_extend_box_with_text(UI_Box* box, Str8 str);
 
-// - Box data queries
-UI_Box_data ui_box_data_from_id(Str8 id);
+// - Box data
 UI_Box_data ui_box_data_from_box(UI_Box* box);
+UI_Box_data ui_box_data_from_id(Str8 id);
+
+// - Box clip data
+UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box);
+UI_Box_clip_data ui_box_clip_data_from_id(Str8 id);
+
+// - Box actions 
 UI_Actions ui_actions_from_box(UI_Box* box);
 UI_Actions ui_actions_from_id(Str8 id);
-UI_Actions ui_actions_from_id_f(const char* fmt, ...);
+
+// - Box fast actions
+B32 ui_box_is_hovered(UI_Box* box);
+
+// - Box clip offset
 V2F32 ui_clip_offset_from_box(UI_Box* box);
-V2F32 ui_get_prev_build_scroll_for_box(UI_Box* box);
+V2F32 ui_clip_offset_from_id(Str8 id);
 
+// - Scroll 
+/*
+V2F32 ui_clip_offset_from_box(UI_Box* box);
+V2F32 ui_clip_offset_from_id(Str8 id);
+*/
 
-// - Box setters // TODO: This is new, might not be used later
+// - Box setters 
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
-void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset);
-void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset);
-void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset);
+void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis);
+void ui_box_set_clip_offset_y(UI_Box* box, F32 offset);
+void ui_box_set_clip_offset_x(UI_Box* box, F32 offset);
+
+// - Box drag memory
+Data_buffer* ui_box_drag_buffer(UI_Box* box);
+Data_buffer* ui_box_drag_buffer_by_id(Str8 id);
+Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc);
+Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc);
+void ui_box_drag_buffer_release(UI_Box* box);
+void ui_box_drag_buffer_release_by_id(Str8 id);
+
+// - Null box
+void ui_set_box_to_null_memory(UI_Box* box);
+B32 ui_is_null_box(UI_Box* box);
+UI_Box* ui_null_box();
+
+// - Box key stuff
+UI_Box_key ui_null_box_key();
+B32 ui_box_key_match(UI_Box_key key, UI_Box_key other);
+B32 ui_is_null_box_key(UI_Box_key key);
+UI_Box_key ui_box_key_from_str8(Str8 str);
+UI_Box* ui_box_from_key(UI_Box_key key);
+
+// - Other getters for convinience
+// TODO: See if this is needed
+Str8 ui_box_id(UI_Box* box)
+{
+  return box->per_build_data.id;
+}
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
@@ -285,31 +382,62 @@ V2F32 ui_get_mouse_pos();
 V2F32 ui_get_prev_mouse_pos();
 UI_Box* ui_get_current_parent();
 UI_Box* ui_get_root(); // TODO: This might need a better name that specifies weather this is from the prev build or the new build
+
+/*
 UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id);
 UI_Box* ui_find_prev_build_box_by_id(Str8 id);
 UI_Box* ui_find_prev_build_box_by_box(UI_Box* box);
+*/
 
-// - Stack functions and helper
+// - Stack funtions and helpers
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_PUSH_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_AUTO_POP_FUNC)
 __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_GET_FUNC)
-//
+
+// - Stack function helpers (padding)
 V4F32 ui_top_padding();
-V4F32 ui_top_corner_radius();
-V4F32 ui_top_border_width();
-//
+void ui_next_padding(F32 padding);
+void ui_push_padding(F32 padding); 
+void ui_pop_padding(); 
+void ui_next_padding_ex(F32 left, F32 right, F32 top, F32 down);
+
+// - Stack function helpers (sizing)
 void ui_next_width(UI_Size size);
 void ui_next_height(UI_Size size);
-// 
+void ui_next_size_axis(Axis2 axis, UI_Size size);
+
+// - Stack function helpers (background color)
+V4F32 ui_top_b_color();
+void ui_next_b_color(V4F32 color);
+void ui_push_b_color(V4F32 color);
+void ui_pop_b_color();
+
+// - Stack function helpers (corner radius)
+V4F32 ui_top_corner_radius();
+void ui_next_corner_r(F32 r);
+void ui_push_corner_r(F32 r);
+void ui_pop_corner_r();
+
+// - Stack function helpers (border width)
+V4F32 ui_top_border_width();
+void ui_next_border_width(F32 border);
+void ui_push_border_width(F32 border);
+void ui_pop_border_width();
+
+// - Stack function helpers (border)
+void ui_next_border(F32 width, V4F32 color);
+void ui_push_border(F32 width, V4F32 color);
+void ui_pop_border();
+
+// - Stack function helpers (padded border)
+void ui_next_padded_border(F32 width, V4F32 color);
+void ui_push_padded_border(F32 width, V4F32 color);
+void ui_pop_padded_border();
+
+// - Stack function helpers (layout)
 void ui_next_layout_x();
 void ui_next_layout_y();
-
-// - Box style setters for already created boxed
-void ui_set_box_b_color(UI_Box* box, V4F32 color);
-
-
-// TODO: There are some more there that you have defined and have not moved to the .h file yet
 
 // - Macros for automatic stack pushing and popping
 // Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.
@@ -345,14 +473,14 @@ void ui_set_box_b_color(UI_Box* box, V4F32 color);
 #define UI_AlignmentX(v)              DeferLoop(ui_push_alignment_x(v),                ui_pop_alignment_x())
 #define UI_AlignmentY(v)              DeferLoop(ui_push_alignment_y(v),                ui_pop_alignment_y())
 #define UI_HoverCursor(v)             DeferLoop(ui_push_hover_cursor(v),               ui_pop_hover_cursor())
+#define UI_PaddedBorder(v, c)         DeferLoop(ui_push_padded_border(v, c), ui_pop_padded_border)
+#define UI_Border(v, c)               DeferLoop(ui_push_border(v, c), ui_pop_border())
+#define UI_Padding(v)                 DeferLoop(ui_push_padding(v), ui_pop_padding())
 //
 #define UI_Width(v) UI_SizeX(v)
 #define UI_Height(v) UI_SizeY(v)
-#define UI_Padding(v) UI_PaddingLeft(v) UI_PaddingTop(v) UI_PaddingRight(v) UI_PaddingBottom(v)
 
-///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay
-//
 Clay_SizingAxis   __ui_clay_sizing_axis_from_ui_size (UI_Size ui_size);
 Clay_Padding      __ui_clay_padding_from_v4f32       (V4F32 padding);
 V4F32             __ui_v4f32_from_clay_padding       (Clay_Padding clay_padding);
@@ -365,7 +493,14 @@ Clay_String       __ui_clay_string_from_str8         (Str8 str);
 Rect              __ui_rect_from_clay_bounding_box   (Clay_BoundingBox bbox);
 Clay_BoundingBox  __ui_clay_bounding_box_from_rect   (Rect rect);
 V4F32             __ui_v4f32_from_clay_corner_radius (Clay_CornerRadius clay_crs);
-Clay_CornerRadius __ui_clay_corner_radius_from_v2f32 (V4F32 vec);
+Clay_CornerRadius __ui_clay_corner_radius_from_v4f32 (V4F32 vec);
+Clay_ElementId    __ui_clay_element_id_from_str8     (Str8 str);
+V2F32             __ui_v2f32_from_clay_dimensions    (Clay_Dimensions clay_dims);
+Clay_Dimensions   __ui_clay_dimensions_from_v2f32    (V2F32 vec);
+
+
+// - Error handler for clay
+void __ui_error_handler_for_clay(Clay_ErrorData errorText);
 
 #endif
 

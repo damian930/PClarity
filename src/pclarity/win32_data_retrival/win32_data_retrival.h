@@ -50,7 +50,7 @@ ProcessInfoListAppend(Arena* arena, ProcessInfoList* list, SYSTEM_PROCESS_INFORM
   node->create_time = Str8FromTime(arena, p->CreateTime);
   node->next        = nullptr;
 
-  QueuePushBack_Name(list, node, first, last, next);
+  QueuePushBack_Ex(list, node, first, last, next, is_zero_pointer, 0);
   ++list->count;
 }
 
