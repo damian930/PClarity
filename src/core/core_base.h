@@ -612,6 +612,7 @@ tu_specific RangeF32 rect_get_range_y      (Rect rect);
 tu_specific Rect     rect_padded           (Rect rect, F32 padd);
 tu_specific Rect     rect_padded_ex        (Rect rect, V4F32 padd);
 tu_specific Rect     rect_intersect_on_axis(Rect rect, Rect other, Axis2 axis);
+tu_specific Rect     rect_intersect        (Rect rect, Rect other);
 
 struct RangeV2F32 {
 	V2F32 min;

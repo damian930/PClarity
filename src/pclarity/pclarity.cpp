@@ -688,7 +688,8 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
       ui_spacer(ui_px(15));
 
       ui_text_f("UI Boxes in use right now: %lld", ui_get_state()->last_build_box_count);
-      ui_text_f("UI Generation: %lld", ui_get_state()->build_generation);
+      ui_text_f("UI Generation: %lld",             ui_get_state()->build_generation);
+      // ui_text_f("FPS: %lld",                       ui_get_state()->build_generation); // TODO:
     }
   }
 

@@ -1017,7 +1017,13 @@ void ui_draw()
       UI_Box* no_overdraw_parent = box->per_build_data.ancestor_with_no_overflow_drag_flag;
       if (!ui_is_null_box(no_overdraw_parent))
       {
-        d_push_scissor_rect(no_overdraw_parent->rect);
+        Rect scissor_rect = no_overdraw_parent->rect;
+        if (d_get_state()->current_scissor_rect_count > 0)
+        {
+          Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
+          scissor_rect = rect_intersect(no_overdraw_parent->rect, current_scissor_rect);
+        }
+        d_push_scissor_rect(scissor_rect);
       }
     }
 

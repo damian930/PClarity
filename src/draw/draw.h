@@ -145,7 +145,7 @@ R_Handle __d_get_current_render_target__defaults();
 
 void    d_push_scissor_rect(Rect rect);
 void    d_pop_scissor_rect();
-Rect    __d_get_current_scissor_rect__defaults();
+Rect    __d_get_current_scissor_rect__defaults(); // TODO: This api has to change, the ui_core api for stacks is nice
 #define D_ScissorRect(rect) DeferLoop(d_push_scissor_rect(rect), d_pop_scissor_rect())
 
 void        d_push_fill_mode(R_Fill_mode fill_mode);
