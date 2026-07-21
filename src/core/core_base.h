@@ -786,6 +786,8 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 #define IsMemZero(var)    __is_memory_zero((U8*)&(var), sizeof((var))) 
 #define IsZeroStruct(var) IsMemZero(var)
 
+#define MemCopy(dest, src, size)	memmove((dest), (src), (size))	// Note(S): Safer memcpy
+#define MemCopyStruct(dest, src)	MemCopy((dest), (src), sizeof(*(dest)))
 #define MemCopySafe(dest, src) \
 	do { \
 		StaticAssert(sizeof(dest) == sizeof(src), "Cant copy memory safely, the sizes of dest and src variables are not the equal."); \
