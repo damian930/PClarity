@@ -89,6 +89,8 @@ struct PCL_State {
   B32 is_command_window_open;
   PCL_Menu current_menu;
 
+  B32 show_debug_data;
+
   // Frame data
   Arena* frame_arena;
   PCL_Command_list defered_commands_to_start_of_next_frame;

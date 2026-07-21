@@ -133,6 +133,16 @@ void pcl_frame_update(PCL_State* pcl)
 
   pcl->gathered_process_data_this_frame = Win32QueryProcessList(pcl->frame_arena);
 
+  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+  {
+    if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__f1 && ev->key_event.went_down)
+    {
+      pcl->show_debug_data = ToggleBool(pcl->show_debug_data);
+      os_consume_frame_event(ev);
+      break;
+    }
+  }
+
   // Todo: Here you should order the thing about the process data once you start using arrays for Win32QueryProcessList
 }
 
@@ -415,85 +425,119 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                   ui_next_b_color(orange());
                   UI_Box* _box = ui_box_make(UI_Box_flag__has_background, {});
                 }
-                
-                // TODO: Use a helper here
-                U64 row_index = 0;
-                for (
+              
+                // Virtual list for table rows 
+                {
+                  U64 n_rows        = pcl->gathered_process_data_this_frame.count;
+                  F32 space_between = 2;
+                  F32 row_size      = ui_top_font_size() * ROW_HEIGHT_SCALER;
+                  F32 offset        = -ui_clip_offset_from_box(table_box).y;
+                  F32 vp            = ui_box_clip_data_from_box(table_box).viewport_dims.y;
+                  if (offset < 0.0f) { offset = 0.0f; }
+
+                  U64 first_visible_row_index = (U64)(offset / (row_size + space_between));
+                  U64 last_visible_row_index  = (U64)((offset + vp + 2*(row_size + space_between)) / (row_size + space_between));
+                  if (first_visible_row_index > 0) { first_visible_row_index -= 1; }
+                  clamp_u64_inplace(&first_visible_row_index, 0, n_rows);
+                  clamp_u64_inplace(&last_visible_row_index, 0, n_rows);
+
+                  F32 space_before_first_visible_row = (row_size + space_between) * first_visible_row_index;
+                  F32 space_for_visible_rows         = (row_size + space_between) * (last_visible_row_index - first_visible_row_index);
+                  F32 space_after_last_visible_row   = (row_size + space_between) * (n_rows - last_visible_row_index);
+
                   ProcessInfoNode* process_data = pcl->gathered_process_data_this_frame.first;
-                  process_data != 0;
-                  process_data = process_data->next, row_index += 1
-                ) {
-                  ui_next_width(ui_grow());
-                  ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
-                  ui_next_layout_x();
-                  ui_next_padded_border(1, transparent());
-                  UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__hoverable|UI_Box_flag__clickable, "Table row box %lld", row_index);
-                  
-                  UI_Actions row_actions = ui_actions_from_box(row_box);
-
-                  if (row_actions.went_down)
-                  {
-                    pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__select_row);
-                    pcl->data_for_commands.process_at_row_to_select_pid = process_data->pid;
-                  }
-                  
-                  B32 is_row_selected = (pcl->selected_row_data.is_selected && pcl->selected_row_data.pid == process_data->pid);
-                  
-                  V4F32 row_b_color = pcl_color_from_name(PCL_Color_name__main_background);
-                  {
-                    if (is_row_selected) { row_b_color = lerp_v4f32(row_b_color, red(), 0.25f); }
-                    else if (row_actions.is_hovered) { row_b_color = lerp_v4f32(row_b_color, red(), 0.15f); }
-                  }
-    
-                  ui_box_set_b_color(row_box, row_b_color);
-                  if (is_row_selected) { ui_box_set_border(row_box, v4f32_all(1), red()); }
-
-                  UI_Parent(row_box)
-                  {
-                    for EachIndex(header_index, pcl->table_data.header_count)
-                    {
-                      F32 flex_norm = pcl->table_data.headers[header_index].flex_value / headers_total_flex_value;
-      
-                      PCL_Table_header header = pcl->table_data.headers[header_index];
-
-                      ui_next_width(ui_px(flex_norm * space_for_headers));
-                      ui_next_height(ui_grow()); 
-                      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow, {}))
-                      {
-                        switch(header.kind)
-                        {
-                          default: { InvalidCodePath(); } break;
-      
-                          case PCL_Table_header_kind__NONE:
-                          {
-                            // DD: Empty
-                          } break;
-
-                          case PCL_Table_header_kind__pid:
-                          {
-                            ui_text_f("%d", process_data->pid);
-                          } break;
-
-                          case PCL_Table_header_kind__ppid:
-                          {
-                            ui_text_f("%d", process_data->ppid);
-                          } break;
-
-                          case PCL_Table_header_kind__startup_time:
-                          {
-                            ui_text(process_data->create_time);
-                          } break;
-                        }
+                  if (first_visible_row_index > 0) {
+                    for EachIndex(i, first_visible_row_index - 1) {
+                      if (process_data) { 
+                        process_data = process_data->next;
                       }
                     }
                   }
-                
-                  // DD: Little spacer between the rows
-                  if (process_data->next != 0)
+                  Assert(process_data, "Your count is invalid buddy"); 
+
+                  ui_next_width(ui_grow());
+                  ui_next_height(ui_px(space_before_first_visible_row));
+                  UI_Box* first_space_filler = ui_box_make(0, {});
+
+                  for (U64 i = first_visible_row_index; i < last_visible_row_index; i += 1, process_data = process_data->next)
                   {
-                    ui_spacer(ui_px(2));
+                    ui_next_width(ui_grow());
+                    ui_next_height(ui_px(row_size));
+                    ui_next_layout_x();
+                    ui_next_padded_border(1, transparent());
+                    UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__hoverable|UI_Box_flag__clickable, "Table row box %lld", i);
+                    
+                    UI_Actions row_actions = ui_actions_from_box(row_box);
+    
+                    if (row_actions.went_down)
+                    {
+                      pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__select_row);
+                      pcl->data_for_commands.process_at_row_to_select_pid = process_data->pid;
+                    }
+                    
+                    B32 is_row_selected = (pcl->selected_row_data.is_selected && pcl->selected_row_data.pid == process_data->pid);
+                    
+                    V4F32 row_b_color = pcl_color_from_name(PCL_Color_name__main_background);
+                    {
+                      if (is_row_selected) { row_b_color = lerp_v4f32(row_b_color, red(), 0.25f); }
+                      else if (row_actions.is_hovered) { row_b_color = lerp_v4f32(row_b_color, red(), 0.15f); }
+                    }
+      
+                    ui_box_set_b_color(row_box, row_b_color);
+                    if (is_row_selected) { ui_box_set_border(row_box, v4f32_all(1), red()); }
+    
+                    UI_Parent(row_box)
+                    {
+                      for EachIndex(header_index, pcl->table_data.header_count)
+                      {
+                        F32 flex_norm = pcl->table_data.headers[header_index].flex_value / headers_total_flex_value;
+        
+                        PCL_Table_header header = pcl->table_data.headers[header_index];
+    
+                        ui_next_width(ui_px(flex_norm * space_for_headers));
+                        ui_next_height(ui_grow()); 
+                        UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow, {})) // 
+                        {
+                          switch(header.kind)
+                          {
+                            default: { InvalidCodePath(); } break;
+        
+                            case PCL_Table_header_kind__NONE:
+                            {
+                              // DD: Empty
+                            } break;
+    
+                            case PCL_Table_header_kind__pid:
+                            {
+                              ui_text_f("%d", process_data->pid);
+                            } break;
+    
+                            case PCL_Table_header_kind__ppid:
+                            {
+                              ui_text_f("%d", process_data->ppid);
+                            } break;
+    
+                            case PCL_Table_header_kind__startup_time:
+                            {
+                              ui_text(process_data->create_time);
+                            } break;
+                          }
+                        }
+                      }
+                    }
+                  
+                    // DD: Little spacer between the rows
+                    if (process_data->next != 0)
+                    {
+                      ui_spacer(ui_px(space_between));
+                    }
                   }
+
+                  ui_next_width(ui_grow());
+                  ui_next_height(ui_px(space_after_last_visible_row));
+                  UI_Box* last_space_filler = ui_box_make(0, {});
                 }
+
               }
             }
             
@@ -625,6 +669,26 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
 
         }
       }
+    }
+  }
+
+  if (pcl->show_debug_data)
+  {
+    ui_next_width(ui_grow());
+    ui_next_height(ui_grow());
+    ui_next_b_color(black());
+    UI_Box* debug_floating_box = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
+    
+    UI_Parent(debug_floating_box)
+      UI_FontSize(24)
+    {
+      ui_next_font_color(nice_blue());
+      ui_text_f("DEBUG floating box: ");
+
+      ui_spacer(ui_px(15));
+
+      ui_text_f("UI Boxes in use right now: %lld", ui_get_state()->last_build_box_count);
+      ui_text_f("UI Generation: %lld", ui_get_state()->build_generation);
     }
   }
 
@@ -911,6 +975,7 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
 }
 
 // DD: This is test api, not sure about it yet
+// TODO: Have this be made in 1 axis, but then be scrolling another axis
 void pcl_scroll_bar_faster(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 box_to_scroll_id, Str8 scroll_bar_id, F32* out_new_scroll, B32* is_new_offset)
 {
   UI_Box_clip_data clip_data = ui_box_clip_data_from_id(box_to_scroll_id);
