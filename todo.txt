@@ -40,9 +40,14 @@ Tables
       still moves the offset a bit
 [ ] - Add a minimum size in pixels to the table in the main menu
 
-
-UI
+UI lib 
 --
+
+
+App UI 
+--
+[ ] - There is an assert breaking when a lot of headers are added to the table, look into it
+[ ] - Is there a way to have border + pading be its own separate thing. Maybe have non padded border be a flag since the default case is when the border is padded or some like that, not sure. But i also like to aply padding after the border as well. Think about it later. This is kind of minor, so dont worry about this too much.
 [ ] - Fix the bug with the scroll bar and the table where when the scroll bar is ui_grow() or ui_p_of_p() the table keeps getting bigger forever. This makes no sense.
 [ ] - To be able to have more headers you have to be able to only show the rows that are visible based on the viewport to the user, here is the link "https://www.nicbarker.com/virtual-scrolling"
 

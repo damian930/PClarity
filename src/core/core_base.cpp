@@ -141,6 +141,14 @@ Rect rect_intersect_on_axis(Rect rect, Rect other, Axis2 axis)
 	return rect_from_range_v2f32(new_range);
 }
 
+Rect rect_intersect(Rect rect, Rect other)
+{
+	Rect result_rect = rect;
+	result_rect = rect_intersect_on_axis(result_rect, other, Axis2__x);
+	result_rect = rect_intersect_on_axis(result_rect, other, Axis2__y);
+	return result_rect;
+}
+
 ///////////////////////////////////////////////////////////
 // - RangeV2F32
 //

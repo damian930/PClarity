@@ -47,6 +47,7 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__clip_x = (1 << 7), 
   UI_Box_flag__clip_y = (1 << 8), 
 
+  // TODO: Implement this into draw
   UI_Box_flag__dont_draw_overflow = (1 << 9),  
 
   UI_Box_flag__floating = (1 << 10),  
@@ -120,7 +121,7 @@ struct UI_Box {
 
   // Per build box condif // TODO: When done, lock these up under a name for a debug view 
   struct {
-    Str8 id;
+    Str8 str_for_key;
 
     UI_Box_flags flags;
     UI_Size size_on_axis[Axis2__COUNT];
@@ -136,6 +137,12 @@ struct UI_Box {
     V4F32 border_width;
     V4F32 border_color;
     V2F32 floating_fixed_pos;
+    //
+    // TODO: This should be a flag also
+    B32 has_fixed_dims;
+    V2F32 floating_fixed_dims;
+    //
+    // TODO: THis should be a flag
     B32 has_hover_cursor;
     OS_Cursor hover_cursor;
 
@@ -158,6 +165,9 @@ struct UI_Box {
     UI_Box* prev_sibling;
     UI_Box* parent;
     U64 children_count;
+  
+    // Additional data that we have to keep for drawing since clay linearises the drawing
+    UI_Box* ancestor_with_no_overflow_drag_flag;
   } per_build_data;
 
   // TODO: Put this somewhere better
@@ -249,8 +259,6 @@ struct UI_State {
   V2F32 window_dims_for_this_build;
   V2F32 mouse_pos_for_prev_build;
 
-  UI_Box* next_new_elements_parent_box; // Damian, TODO: What the fuck is this even
-
   // Hash table
   UI_Box_list hash_table_buckets[64];
 
@@ -259,6 +267,7 @@ struct UI_State {
   U64 count_of_free_boxes;
 
   // TODO: Move this 
+  // TODO: Have api accessort to these for convinience
   U64 this_build_box_count;
   U64 last_build_box_count;
 
@@ -362,7 +371,7 @@ UI_Box* ui_box_from_key(UI_Box_key key);
 // TODO: See if this is needed
 Str8 ui_box_id(UI_Box* box)
 {
-  return box->per_build_data.id;
+  return box->per_build_data.str_for_key;
 }
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
@@ -380,7 +389,6 @@ U64 ui_get_build_generation();
 Arena* ui_get_build_arena();
 V2F32 ui_get_mouse_pos();
 V2F32 ui_get_prev_mouse_pos();
-UI_Box* ui_get_current_parent();
 UI_Box* ui_get_root(); // TODO: This might need a better name that specifies weather this is from the prev build or the new build
 
 /*
@@ -438,6 +446,9 @@ void ui_pop_padded_border();
 // - Stack function helpers (layout)
 void ui_next_layout_x();
 void ui_next_layout_y();
+
+// - Stack function helpers (fixed floating position)
+void ui_next_floating_fixed_pos(V2F32 pos);
 
 // - Macros for automatic stack pushing and popping
 // Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.

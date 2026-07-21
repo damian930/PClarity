@@ -98,15 +98,90 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
-    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
-    {
-      if (ev->kind == OS_Event_kind__key && ev->key_event.key == Key__f1 && ev->key_event.went_down)
+    /*
+    // DD: Virtual scrolling test ui
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    { 
+      // todo: Try to make an api for this table here that would just grow into the thing that it has to grow into and then the called would just have the boxed to style and all that
+      // TODO: Start adding space between the rows
+
+      ui_next_floating_fixed_pos(v2f32(50, 50));
+      ui_next_padded_border(2, nice_green());
+      ui_next_b_color(nice_blue());
+      ui_next_width(ui_px(500));
+      ui_next_height(ui_px(250));
+      UI_Box* floater = ui_box_make(
+        UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_padding|
+          UI_Box_flag__floating|UI_Box_flag__clip,
+        Str8FromC("Floater"));
+      UI_Parent(floater)
       {
-        show_debug_stuff = ToggleBool(show_debug_stuff);
-        os_consume_frame_event(ev);
-        break;
+        U64 n_rows = 20;
+
+        F32 space_between = 10;
+        
+        F32 row_size = 50;
+        F32 offset = -ui_clip_offset_from_box(floater).y;
+        F32 vp     = ui_box_clip_data_from_box(floater).viewport_dims.y;
+
+        if (offset < 0.0f) { offset = 0.0f; }
+
+        U64 first_visible_row_index = (U64)(offset / (row_size + space_between));
+        U64 last_visible_row_index  = (U64)((offset + vp + 2*(row_size + space_between)) / (row_size + space_between));
+        if (first_visible_row_index > 0) { first_visible_row_index -= 1; }
+        clamp_u64_inplace(&first_visible_row_index, 0, n_rows);
+        clamp_u64_inplace(&last_visible_row_index, 0, n_rows);
+
+        F32 space_before_first_visible_row = (row_size + space_between) * first_visible_row_index;
+        F32 space_for_visible_rows         = (row_size + space_between) * (last_visible_row_index - first_visible_row_index);
+        F32 space_after_last_visible_row   = (row_size + space_between) * (n_rows - last_visible_row_index);
+
+        ui_next_width(ui_grow());
+        ui_next_height(ui_px(space_before_first_visible_row));
+        UI_Box* first_space_filler = ui_box_make(0, {});
+
+        for (U64 i = first_visible_row_index; i < last_visible_row_index; i += 1)
+        {
+          ui_next_width(ui_grow());
+          ui_next_height(ui_px(row_size)); // todo: Have this be adjustable
+          ui_next_b_color(brown());
+          ui_next_border(1, black());
+          ui_next_alignment_x(UI_Alignment_x__center);
+          ui_next_alignment_y(UI_Alignment_y__center);
+          UI_Box* row_box = ui_box_make(UI_Box_flag__has_background|UI_Box_flag__has_borders, {});
+          UI_Parent(row_box) 
+          {
+            ui_text_f("Text: %lld", i);
+          }
+
+          // todo: This is the new part
+          ui_spacer(ui_px(space_between));
+        }
+
+        ui_next_width(ui_grow());
+        ui_next_height(ui_px(space_after_last_visible_row));
+        UI_Box* last_space_filler = ui_box_make(0, {});
       }
+    
+      F32 scroll = 0.0f;
+      for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+      {
+        if (ev->kind == OS_Event_kind__wheel)
+        {
+          scroll = ev->wheel_event.scroll_data * 5.0f;
+          os_consume_frame_event(ev);
+          break;
+        }
+      }
+
+      F32 new_scroll = ui_clip_offset_from_box(floater).y + scroll;
+      ui_box_set_clip_offset_y(floater, new_scroll);
+
+      ui_next_font_size(32);
+      ui_next_font_color(magenta());
+      ui_text_f("Box count: %lld", ui_get_state()->last_build_box_count);
     }
+    */
 
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
@@ -224,6 +299,23 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         }
       }
 
+    }
+    */
+
+    /*
+    // DD: Overflow no draw test
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      ui_next_width(ui_px(50));
+      ui_next_height(ui_px(50));
+      ui_next_b_color(blue());
+      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow|UI_Box_flag__has_background, {}))
+      {
+        ui_next_width(ui_px(100));
+        ui_next_height(ui_px(100));
+        ui_next_b_color(red());
+        ui_box_make(UI_Box_flag__has_background, {});
+      }
     }
     */
 
