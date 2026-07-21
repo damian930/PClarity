@@ -1,8 +1,5 @@
 Current:
-[ ] - Scroll bar works when you drag the thumb, but the jumping of the thumb
-      when the outer area of the thumb is touched is bugging.
-      There is a very easy way to see if it is what it should be,
-      The bug is visible also, should not be hard to find.
+
 
 Testing (coverage)
 -----------
@@ -46,16 +43,8 @@ Tables
 
 UI
 --
-[ ] - Locate when you have duplicate id in a build and do some about it
-[ ] - Have a way to get inner content dim sum from box
-[ ] - Have scroll be passed between frames in ui boxed
-[ ] - Make the api for scroll way better
-[ ] - Have a way to get data fro scroll containers with clay and all that
-[ ] - Make the API for ellipsized labels better.
-      Right now you have to supply the size from the outside in a not very
-      intuitive way.
-[ ] - Add a scroll bar to the ui_widgets thing to just have a default way to have scroll bars quickly
-
+[ ] - Fix the bug with the scroll bar and the table where when the scroll bar is ui_grow() or ui_p_of_p() the table keeps getting bigger forever. This makes no sense.
+[ ] - To be able to have more headers you have to be able to only show the rows that are visible based on the viewport to the user
 
 Layers / Architecture
 ---------------------

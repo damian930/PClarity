@@ -136,7 +136,7 @@ void pcl_frame_update(PCL_State* pcl)
   // Todo: Here you should order the thing about the process data once you start using arrays for Win32QueryProcessList
 }
 
-void pcl_do_ui(FP_Font font, PCL_State* pcl)
+void pcl_build_ui(FP_Font font, PCL_State* pcl)
 {
   Assert(IsZeroStruct(pcl->defered_commands_to_start_of_next_frame)); 
 
@@ -300,7 +300,8 @@ void pcl_do_ui(FP_Font font, PCL_State* pcl)
             ui_next_width(ui_grow());
             ui_next_height(ui_grow());
             ui_next_layout_y();
-            UI_Box* table_box = ui_box_make(UI_Box_flag__clip, table_id); 
+            ui_next_b_color(black());
+            UI_Box* table_box = ui_box_make(UI_Box_flag__clip|UI_Box_flag__has_background, table_id); 
             
             UI_Parent(table_box)
             {
@@ -386,6 +387,8 @@ void pcl_do_ui(FP_Font font, PCL_State* pcl)
                     ui_next_width(ui_px(flex_norm * space_for_headers));
                     ui_next_height(ui_grow());
                     
+                    // if (header_index == 7) { BP; }
+
                     Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
                     B32 header_activated = pcl_ui_table_header(id, header);
 
@@ -496,28 +499,26 @@ void pcl_do_ui(FP_Font font, PCL_State* pcl)
             
             ui_spacer(ui_rem(0.25f));
 
-            // DD, Todo: Y slider to the left of the table
-            
             { // DD: Y Scroll bar for the table 
               UI_Box_clip_data table_clip_data = ui_box_clip_data_from_box(table_box);
-              if (table_clip_data.is_found) // TODO: Make it work even if you pass stupid values in
+              F32 out_new_scroll = 0.0f;
+              B32 is_new_offset  = false;
+              pcl_scroll_bar(
+                ui_px(50), /*ui_grow()*/ ui_px(250), Axis2__y, Str8FromC("Scroll bar for table"),
+                table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_clip_offset_from_box(table_box).y,
+                &out_new_scroll, &is_new_offset
+              );
+              if (is_new_offset) 
               {
-                F32 out_new_scroll = 0.0f;
-                B32 is_new_offset  = false;
-                pcl_scroll_bar(
-                  ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar for table"),
-                  table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_clip_offset_from_box(table_box).y,
-                  &out_new_scroll, &is_new_offset
-                );
-
-                if (is_new_offset) {
-                  ui_box_set_clip_offset_y(table_box, -out_new_scroll);
-                  // TODO: Does it make more sense to have this be defered till next frame to not interfere with boxes and such things ???
-                }
-                // OutputDebugStringF("OFFSET: %f \n", offset);
+                table_box->clip_offset_defered.y = -out_new_scroll;
+                table_box->is_defered_offset_present = true;
               }
-
             }
+
+            ui_spacer(ui_px(10));
+
+            ui_next_font_size(15);
+            ui_text_f("%lld", pcl->gathered_process_data_this_frame.count);
           }
 
 
@@ -528,6 +529,7 @@ void pcl_do_ui(FP_Font font, PCL_State* pcl)
 
           // TODO: Dont use table widht here
         }
+     
       }
       else {
         InvalidCodePath();
@@ -647,6 +649,7 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
 
   ui_box_set_b_color(box, b_color);
 
+  /*
   UI_Parent(box)
   {
     Str8 text_for_header_kind = {};
@@ -667,6 +670,7 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
     }
 
   }
+  */
 
   return actions.went_down;
 }
@@ -747,22 +751,14 @@ F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id)
   return new_value;
 }
 
-// TODO: Finish this code here for edge cases and use it for the table in the pcl code
-// TODO: Have min thumb here as well
 void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scroll_bar_id, F32 outer_vp_size, F32 outer_content_size, F32 outer_vp_offset, F32* out_new_scroll, B32* is_new_offset)
 {
-  // TODO: The api is bad in regerds that you dont really know weather you need to have the box that you wanna
-  // scroll dims or the contents of it or some like that, 
-  // make this better
-
   Assert(size_x.kind != UI_Size_kind__fit);
   Assert(size_y.kind != UI_Size_kind__fit);
 
-  // NOTE(Damian):
-  // Since logically all the vp and context sizes will be from the last frame,
-  // we then can just get actions based on the last frame, update the offsets
-  // then produce fresh scroll bar ui and then give the value to the called
-  // and he then builds fresh offset in for his ui
+  // DD: I dont thing that it metters much weather we make the ui for the prev frame data or update the data
+  //     and then make the scroll bar based on that data, so i will just use the later version.
+
   Scratch scratch = get_scratch(0, 0);
   
   Str8 before_thumb_box_id = str8_fmt(scratch.arena, "%.*s__before_thumb_box", Str8FmtArg(scroll_bar_id)); 
@@ -782,100 +778,107 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
   F32 max_thumb_offset = 0.0f;
   F32 thumb_size       = 0.0f;
 
-  if (scroll_bar_data.is_found 
+  if ( scroll_bar_data.is_found 
     && thumb_data.is_found 
     && before_thumb_box_data.is_found 
     && after_thumb_box_data.is_found
-    && outer_vp_size != 0.0f      // TODO: Handle this better
-    && outer_content_size != 0.0f // TODO: Handle this better
   ) {
-    #define THUMB_MIN_SIZE 5 // TODO: Dont do this like this
-    F32 scroll_bar_scroll_space = scroll_bar_data.rect.dims.v[scroll_axis];
-    F32 inner_space             = scroll_bar_data.inner_rect.dims.v[scroll_axis];
-    F32 max_thumb_size          = inner_space;
-    
-    thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
-    if (thumb_size > inner_space) { Handle(0); }
-    if (thumb_size < THUMB_MIN_SIZE) { thumb_size = THUMB_MIN_SIZE; }
-    F32 max_vp_offset = outer_content_size - outer_vp_size;
-    max_thumb_offset  = inner_space - thumb_size;
-    
-    thumb_offset = (outer_vp_offset / max_vp_offset) * max_thumb_offset;
-
-    struct Drag_data {
-      F32 inside_thumb_position_at_drag_start;
-    };
-
-    B32 dragged = false;
-    if (0) {}
-    else if (thumb_actions.went_down)
+    if (outer_vp_size == 0.0f || outer_content_size == 0.0f)
     {
-      UI_Box_data data = ui_box_data_from_id(thumb_id);
-      Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
-      // TODO: This drag api is not the best, but i dont know what i dont like about it
-      if (buffer->count == 0)
-      {
-        buffer = ui_box_drag_buffer_alloc_by_id(scroll_bar_id, sizeof(Drag_data));
-      }
-      Drag_data* drag_data = (Drag_data*)buffer->data;
-      drag_data->inside_thumb_position_at_drag_start = ui_get_mouse_pos().v[scroll_axis] - data.inner_rect.origin.v[scroll_axis];
+      // DD: Just making the thumb take the whole scroll bar in that case
+      thumb_size = scroll_bar_data.inner_rect.dims.v[scroll_axis];
     }
-    else if (before_thumb_box_actions.went_down || after_thumb_box_actions.went_down)
+    else 
     {
-      F32 mouse_relative_relative_to_slide_zone = ui_get_mouse_pos().v[scroll_axis] - scroll_bar_data.inner_rect.origin.v[scroll_axis];
-      F32 thumb_center_relative_to_thumb        = thumb_data.rect.dims.v[scroll_axis] / 2.0f;
-      F32 thumb_center_relative_to_slide_zone   = thumb_offset + thumb_center_relative_to_thumb;
+      F32 thumb_min_size          = 20;
+      F32 scroll_bar_scroll_space = scroll_bar_data.rect.dims.v[scroll_axis];
+      F32 inner_space             = scroll_bar_data.inner_rect.dims.v[scroll_axis];
+      F32 max_thumb_size          = inner_space;
+
+      thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
+      if (thumb_size > inner_space)    { thumb_size = inner_space; BreakPoint("DD: I wanna know when this finally happends"); }
+      if (thumb_size < thumb_min_size) { thumb_size = thumb_min_size; }
       
-      F32 offset_to_add_to_thumb_to_have_thumb_center_at_mouse = mouse_relative_relative_to_slide_zone - thumb_center_relative_to_slide_zone; 
-
-      F32 test_new_offset         = thumb_offset + offset_to_add_to_thumb_to_have_thumb_center_at_mouse;
-      F32 test_new_offset_clamped = clamp_f32(test_new_offset, 0.0f, max_thumb_offset);
+      F32 max_vp_offset = outer_content_size - outer_vp_size;
+      max_thumb_offset  = inner_space - thumb_size;
       
-      F32 diff = test_new_offset - test_new_offset_clamped;
-      F32 offset_we_can_add = offset_to_add_to_thumb_to_have_thumb_center_at_mouse - diff;
-
-      thumb_offset += offset_we_can_add;
-
-      F32 new_thumb_rect_pos_after_offset_change = thumb_offset;
+      thumb_offset = (outer_vp_offset / max_vp_offset) * max_thumb_offset;
   
-      // TODO: This drag api is not the best, but i dont know what i dont like about it
-      Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
-      if (buffer->count == 0)
+      struct Drag_data {
+        F32 inside_thumb_position_at_drag_start;
+      };
+  
+      B32 dragged = false;
+      if (0) {}
+      else // DD: Logic for thumb 
+      if (thumb_actions.went_down)
       {
-        buffer = ui_box_drag_buffer_alloc_by_id(scroll_bar_id, sizeof(Drag_data));
+        UI_Box_data data = ui_box_data_from_id(thumb_id);
+        Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
+        // TODO: This drag api is not the best, but i dont know what i dont like about it
+        if (buffer->count == 0)
+        {
+          buffer = ui_box_drag_buffer_alloc_by_id(scroll_bar_id, sizeof(Drag_data));
+        }
+        Drag_data* drag_data = (Drag_data*)buffer->data;
+        drag_data->inside_thumb_position_at_drag_start = ui_get_mouse_pos().v[scroll_axis] - data.inner_rect.origin.v[scroll_axis];
       }
-      Drag_data* drag_data = (Drag_data*)buffer->data;
-      drag_data->inside_thumb_position_at_drag_start = ui_get_mouse_pos().v[scroll_axis] - new_thumb_rect_pos_after_offset_change;
-
-      dragged = true;
-    }
-    else if (thumb_actions.is_down || before_thumb_box_actions.is_down || after_thumb_box_actions.is_down)
-    {
-      Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
-      Drag_data* drag_data = (Drag_data*)buffer->data;
-
-      // DD: Main dragging code
-      dragged = true;
-      UI_Box_data data         = ui_box_data_from_id(thumb_id);
-      F32 inside_thumb_pos_now = ui_get_mouse_pos().v[scroll_axis] - data.inner_rect.origin.v[scroll_axis];
-      F32 diff                 = inside_thumb_pos_now - drag_data->inside_thumb_position_at_drag_start;
-      thumb_offset += diff;
-    }
-    else if (thumb_actions.went_up || before_thumb_box_actions.went_up || after_thumb_box_actions.went_up)
-    {
-      ui_box_drag_buffer_release_by_id(scroll_bar_id);
-    }
-
-    thumb_offset = clamp_f32(thumb_offset, 0.0f, max_thumb_offset);
-
-    if (dragged)
-    {
-      *is_new_offset  = true;
-      *out_new_scroll = (thumb_offset / max_thumb_offset) * max_vp_offset;
+      else // DD: Logic for the space around the thumb
+      if (before_thumb_box_actions.went_down || after_thumb_box_actions.went_down)
+      {
+        F32 mouse_relative_to_slide_zone        = ui_get_mouse_pos().v[scroll_axis] - scroll_bar_data.inner_rect.origin.v[scroll_axis];
+        F32 thumb_center_relative_to_slide_zone = rect_center(thumb_data.rect).v[scroll_axis] - scroll_bar_data.inner_rect.origin.v[scroll_axis];
+        
+        F32 offset_to_add_to_thumb_to_have_thumb_center_at_mouse = mouse_relative_to_slide_zone - thumb_center_relative_to_slide_zone; 
+  
+        F32 test_new_offset         = thumb_offset + offset_to_add_to_thumb_to_have_thumb_center_at_mouse;
+        F32 test_new_offset_clamped = clamp_f32(test_new_offset, 0.0f, max_thumb_offset);
+        
+        F32 diff = test_new_offset - test_new_offset_clamped;
+        F32 offset_we_can_add = offset_to_add_to_thumb_to_have_thumb_center_at_mouse - diff;
+  
+        thumb_offset += offset_we_can_add;
+  
+        F32 new_thumb_offset_inside_slider_zone = thumb_offset;
+    
+        // TODO: This drag api is not the best, but i dont know what i dont like about it
+        Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
+        if (buffer->count == 0)
+        {
+          buffer = ui_box_drag_buffer_alloc_by_id(scroll_bar_id, sizeof(Drag_data));
+        }
+        Drag_data* drag_data = (Drag_data*)buffer->data;
+        drag_data->inside_thumb_position_at_drag_start = mouse_relative_to_slide_zone - new_thumb_offset_inside_slider_zone;
+  
+        dragged = true;
+      }
+      else // DD: Main dragging code
+      if (thumb_actions.is_down || before_thumb_box_actions.is_down || after_thumb_box_actions.is_down)
+      {
+        Data_buffer* buffer = ui_box_drag_buffer_by_id(scroll_bar_id);
+        Drag_data* drag_data = (Drag_data*)buffer->data;
+  
+        dragged = true;
+        UI_Box_data data         = ui_box_data_from_id(thumb_id);
+        F32 inside_thumb_pos_now = ui_get_mouse_pos().v[scroll_axis] - data.inner_rect.origin.v[scroll_axis];
+        F32 diff                 = inside_thumb_pos_now - drag_data->inside_thumb_position_at_drag_start;
+        thumb_offset += diff;
+      }
+      else // DD: Done dragging 
+      if (thumb_actions.went_up || before_thumb_box_actions.went_up || after_thumb_box_actions.went_up)
+      {
+        ui_box_drag_buffer_release_by_id(scroll_bar_id);
+      }
+  
+      thumb_offset = clamp_f32(thumb_offset, 0.0f, max_thumb_offset);
+  
+      if (dragged)
+      {
+        *is_new_offset  = true;
+        *out_new_scroll = (thumb_offset / max_thumb_offset) * max_vp_offset;
+      }
     }
   }
-  
-  // TODO: Store a point of drag inside thumb and drag relative to that
 
   ui_next_width(size_x);
   ui_next_height(size_y);
@@ -892,8 +895,7 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
   {
     ui_next_size_axis(scroll_axis, ui_px(thumb_offset));
     ui_next_size_axis(axis2_other(scroll_axis), ui_grow()); 
-    ui_next_b_color(blue());
-    UI_Box* before_thumb_box = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background, before_thumb_box_id);
+    UI_Box* before_thumb_box = ui_box_make(UI_Box_flag__clickable, before_thumb_box_id);
 
     ui_next_size_axis(scroll_axis, ui_px(thumb_size));
     ui_next_size_axis(axis2_other(scroll_axis), ui_grow()); 
@@ -902,11 +904,23 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
 
     ui_next_size_axis(scroll_axis, ui_px(max_thumb_offset - thumb_offset));
     ui_next_size_axis(axis2_other(scroll_axis), ui_grow()); 
-    ui_next_b_color(white());
-    UI_Box* after_thumb_box = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background, after_thumb_box_id);
+    UI_Box* after_thumb_box = ui_box_make(UI_Box_flag__clickable, after_thumb_box_id);
   }
   
   end_scratch(&scratch);
+}
+
+// DD: This is test api, not sure about it yet
+void pcl_scroll_bar_faster(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 box_to_scroll_id, Str8 scroll_bar_id, F32* out_new_scroll, B32* is_new_offset)
+{
+  UI_Box_clip_data clip_data = ui_box_clip_data_from_id(box_to_scroll_id);
+  clip_data = {};
+  pcl_scroll_bar(
+    size_x, size_y, scroll_axis, 
+    scroll_bar_id,  
+    clip_data.viewport_dims.v[scroll_axis], clip_data.content_dims.v[scroll_axis], -1.0f * clip_data.offset.v[scroll_axis],
+    out_new_scroll, is_new_offset
+  );
 }
 
 

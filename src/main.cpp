@@ -111,86 +111,124 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
+      static U64 col_count = 100;
+
+      ui_next_b_color(nice_green());
+      if (ui_button_f("Add").is_clicked) { col_count += 10; }
+      ui_next_b_color(red());
+      if (ui_button_f("Remove").is_clicked) { col_count -= 50; }
+
       ui_next_width(ui_grow());
       ui_next_height(ui_grow());
-      ui_next_padded_border(3, nice_green());
-      ui_next_padding(15);
-      ui_next_child_gap(5);
-      ui_next_layout_x();
-      UI_Box* top_box = ui_box_make(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap, {});
-      UI_Parent(top_box)
+      UI_Col()
       {
-        UI_Box* clip_box = ui_box_make(UI_Box_flag__clip, Str8FromC("Clip box id"));
-        UI_Parent(clip_box)
+        ui_next_width(ui_grow());
+        ui_next_height(ui_grow());
+        ui_next_padded_border(3, nice_green());
+        ui_next_padding(15);
+        ui_next_child_gap(5);
+        ui_next_layout_x();
+        UI_Box* top_box = ui_box_make(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap, {});
+        
+        UI_Parent(top_box)
         {
-          UI_Parent(ui_box_make(0, Str8FromC("id 1")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 2")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 3")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 4")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 5")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 11")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 12")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 13")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 14")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 15")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 111")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 122")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 133")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 144")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 155")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 1111")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 1222")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 1333")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 1444")))
-          UI_Parent(ui_box_make(0, Str8FromC("id 1555")))
+          UI_Col()
           {
-            UI_Row()
+            UI_Box* clip_box = ui_box_make(UI_Box_flag__clip, Str8FromC("Clip box id"));
+            UI_Parent(clip_box)
             {
-              for EachIndex(i, 25)
+              UI_Parent(ui_box_make(0, Str8FromC("id 1")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 2")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 3")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 4")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 5")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 11")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 12")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 13")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 14")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 15")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 111")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 122")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 133")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 144")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 155")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1111")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1222")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1333")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1444")))
+              UI_Parent(ui_box_make(0, Str8FromC("id 1555")))
               {
-                ui_next_width(ui_fit());
-                ui_next_height(ui_fit());
-                ui_next_padded_border(3, nice_blue());
-                ui_next_padding(10);
-                ui_next_child_gap(5);
-                ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
-                UI_Col()
+                UI_Row()
                 {
-                  for EachIndex(j, 25)
+                  for EachIndex(i, 25)
                   {
-                    UI_Wrapper()
+                    ui_next_width(ui_fit());
+                    ui_next_height(ui_fit());
+                    ui_next_padded_border(3, nice_blue());
+                    ui_next_padding(10);
+                    ui_next_child_gap(5);
+                    ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__has_child_gap);
+                    UI_Col()
                     {
-                      ui_next_width(ui_px(25));
-                      ui_next_height(ui_px(25));
-                      ui_next_b_color(red());
-                      UI_Box* red_box = ui_box_make(UI_Box_flag__has_background, {});
+                      for EachIndex(j, col_count)
+                      {
+                        UI_Wrapper()
+                        {
+                          ui_next_width(ui_px(25));
+                          ui_next_height(ui_px(25));
+                          ui_next_b_color(red());
+                          UI_Box* red_box = ui_box_make(UI_Box_flag__has_background, {});
+                        }
+                      }
                     }
                   }
                 }
               }
             }
-          }
-        }
-      
-        UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
-        if (box_clip_data.is_found)
-        {
-          B32 is_new_offset = false;
-          F32 new_offset = 0.0f;
-          pcl_scroll_bar(ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar"), box_clip_data.viewport_dims.y, box_clip_data.content_dims.y, -ui_clip_offset_from_box(clip_box).y, &new_offset, &is_new_offset);
-
-          if (is_new_offset)
-          {
-            ui_box_set_clip_offset_y(clip_box, -new_offset);
-          }
-        }
         
+            ui_spacer(ui_px(10));
+  
+            UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
+            if (box_clip_data.is_found)
+            {
+              B32 is_new_offset = false;
+              F32 new_offset = 0.0f;
+              
+              // todo: When outer vp size is 0, then jus thave the thumb be the full size of the scroll bar
+              // pcl_scroll_bar(ui_grow(), ui_px(50), Axis2__x, Str8FromC("Scroll bar x"), box_clip_data.viewport_dims.x, box_clip_data.content_dims.x, -ui_clip_offset_from_box(clip_box).x, &new_offset, &is_new_offset);
+              // TODO: Fix the bug here
+              pcl_scroll_bar_faster(ui_grow(), ui_px(100), Axis2__y, ui_box_id(clip_box), Str8FromC("Scroll bar x"), &new_offset, &is_new_offset);
+  
+              if (is_new_offset)
+              {
+                ui_box_set_clip_offset_y(clip_box, -new_offset);
+              }
+            }
+          }
+  
+  
+          UI_Box* clip_box = ui_box_from_key(ui_box_key_from_str8(Str8FromC("Clip box id")));
+          UI_Box_clip_data box_clip_data = ui_box_clip_data_from_box(clip_box);
+          if (box_clip_data.is_found)
+          {
+            B32 is_new_offset = false;
+            F32 new_offset = 0.0f;
+            pcl_scroll_bar(ui_px(50), ui_grow(), Axis2__y, Str8FromC("Scroll bar"), box_clip_data.viewport_dims.y, box_clip_data.content_dims.y, -ui_clip_offset_from_box(clip_box).y, &new_offset, &is_new_offset);
+  
+            if (is_new_offset)
+            {
+              ui_box_set_clip_offset_y(clip_box, -new_offset);
+            }
+          }
+          
+        }
       }
+
     }
     */
 
     pcl_frame_update(&pcl);
-    pcl_do_ui(font, &pcl);
+    pcl_build_ui(font, &pcl);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)

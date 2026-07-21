@@ -110,11 +110,13 @@ struct UI_Box_key {
 struct UI_Box {
   // Always present after creation
   U64 generation_when_created;
-  U64 generation_when_last_used;
+  U64 generation_when_last_created;
 
   UI_Box_key hash_table_key;
 
   // TODO: Add a way to have padding from the prev build box to have inner rect be calculated
+
+  Clay_ElementId prev_box_clay_id;
 
   // Per build box condif // TODO: When done, lock these up under a name for a debug view 
   struct {
@@ -167,6 +169,11 @@ struct UI_Box {
 
   // Result of this box in the previous build
   V2F32 clip_offset;
+  
+  // TODO: This is text
+  B32 is_defered_offset_present;  
+  V2F32 clip_offset_defered;
+
   // TODO: Add rect here as well and then just call it from the getters and such thing
   
   // Persistent across builds 
@@ -205,6 +212,7 @@ struct UI_Box_clip_data {
   B32 is_found;
   V2F32 viewport_dims;
   V2F32 content_dims;
+  V2F32 offset;
 };
 
 // This is separated into a separete file just cause its easier to have
@@ -249,6 +257,10 @@ struct UI_State {
   // Free list of boxes
   UI_Box* first_free_box;
   U64 count_of_free_boxes;
+
+  // TODO: Move this 
+  U64 this_build_box_count;
+  U64 last_build_box_count;
 
   struct {
     UI_Box_key box_key;
@@ -345,6 +357,13 @@ B32 ui_box_key_match(UI_Box_key key, UI_Box_key other);
 B32 ui_is_null_box_key(UI_Box_key key);
 UI_Box_key ui_box_key_from_str8(Str8 str);
 UI_Box* ui_box_from_key(UI_Box_key key);
+
+// - Other getters for convinience
+// TODO: See if this is needed
+Str8 ui_box_id(UI_Box* box)
+{
+  return box->per_build_data.id;
+}
 
 // - Size makers // TODO: This is not where it is here in the .cpp file, fix this
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);

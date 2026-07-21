@@ -603,7 +603,7 @@ tu_specific Rect     rect_make             (F32 x, F32 y, F32 width, F32 height)
 tu_specific Rect     rect_make_v           (V2F32 pos, V2F32 dims);
 tu_specific Rect     rect_from_center      (V2F32 center, V2F32 dims);
 tu_specific Rect     rect_from_range_v2f32 (RangeV2F32 range);
-tu_specific V2F32    rect_get_center       (Rect rect);
+tu_specific V2F32    rect_center       (Rect rect);
 tu_specific B32      rect_match            (Rect r1, Rect r2);
 tu_specific B32      rect_point_inside     (Rect r, V2F32 p);
 tu_specific RangeF32 rect_get_range        (Rect rect, Axis2 axis);

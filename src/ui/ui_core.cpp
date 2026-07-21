@@ -119,6 +119,9 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
     // if (!comp) { state->zero_box_mem_data = state->prev_build_box_mem_data; }
   }
 
+  state->last_build_box_count = state->this_build_box_count;
+  state->this_build_box_count = 0;
+
   // DD: Cleaning the cashe hash table 
   for EachIndex(bucket_index, ArrayCount(state->hash_table_buckets))
   {
@@ -131,7 +134,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
       next_box = box->next_in_bucket_or_free_list;
 
       // DD: If the box has not been "used" for a single build we remove it from the box cashe hash table
-      if ((box->generation_when_last_used + 1) != state->build_generation)
+      if ((box->generation_when_last_created + 1) != state->build_generation)
       {
         // DD: Removing the box from the bucket list
         DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_is_null_box, ui_null_box());
@@ -224,6 +227,14 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
     clay_config.id = Clay__HashString(__ui_clay_string_from_str8(root->per_build_data.id), 0, 0);
   }
 
+  if (root->generation_when_last_created - root->generation_when_created > 1)
+  {
+    // TODO: Remove this, this is test code
+    Assert(root->prev_box_clay_id.id == clay_config.id.id);
+  }
+  
+  root->prev_box_clay_id = clay_config.id;
+
   clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(root->per_build_data.size_on_axis[Axis2__x]);
   clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(root->per_build_data.size_on_axis[Axis2__y]);
   clay_config.layout.layoutDirection = (root->per_build_data.layout_direction == Axis2__x ?  CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM);
@@ -245,7 +256,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   clay_config.cornerRadius    = __ui_clay_corner_radius_from_v4f32(root->per_build_data.corner_radii); 
 
   clay_config.clip.horizontal  = root->per_build_data.clip_axis[Axis2__x];
-  clay_config.clip.vertical    = root->per_build_data.clip_axis[Axis2__x];
+  clay_config.clip.vertical    = root->per_build_data.clip_axis[Axis2__y];
   clay_config.clip.childOffset = { root->clip_offset.x, root->clip_offset.y };
   // TODO: What do we do about the offset, do we set it here or nah
 
@@ -299,7 +310,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
   ) {
     __ui_build_clay_element_tree_from_box_tree(child);
   }
-
+  
   Clay__CloseElement();
 }
 
@@ -336,11 +347,18 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
 {
   UI_State* state = ui_get_state();
   
-  UI_Box_key new_box_key      = ui_box_key_from_str8(id);
+  state->this_build_box_count += 1;
+
+  UI_Box_key new_box_key      = ui_box_key_from_str8(id); 
   UI_Box* box                 = ui_box_from_key(new_box_key);
   B32 is_box_new              = ui_is_null_box(box);
   B32 is_box_for_single_build = ui_is_null_box_key(new_box_key);
   
+  if (box->generation_when_last_created == state->build_generation)
+  {
+    BreakPoint("You got an id duplicate buddy");
+  }
+
   // DD: Allocating the box if new box 
   if (is_box_new)
   {
@@ -368,7 +386,7 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
 
     // DD: Setting up shared state for single build boxes and persistant boxes
     *box = __ui_g_null_box;
-    box->generation_when_created   = ui_get_build_generation();
+    box->generation_when_created = ui_get_build_generation();
 
     // DD: Setting up state for persistant build boxes and adding them to the box hash table
     if (!is_box_for_single_build)
@@ -382,10 +400,18 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
   }
   if (!is_box_for_single_build) { Assert(ui_box_key_match(box->hash_table_key, new_box_key)); }
   
-  box->generation_when_last_used = ui_get_build_generation();
+  box->generation_when_last_created = ui_get_build_generation();
   
   box->prev_build_flags   = box->per_build_data.flags;
   box->prev_build_padding = box->per_build_data.padding;
+
+  // TODO: This is test code
+  if (box->is_defered_offset_present)
+  {
+    box->clip_offset               = box->clip_offset_defered;
+    box->clip_offset_defered       = {};
+    box->is_defered_offset_present = false;
+  }
 
   // DD: Reallocating drag memory to the new build arena to not lose it
   box->dynamic_drag_memory = str8_copy(ui_get_build_arena(), box->dynamic_drag_memory);
@@ -533,7 +559,7 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
   if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
 
   UI_Box_data box_data = {};
-  if (box->generation_when_created < box->generation_when_last_used)
+  if (box->generation_when_created < box->generation_when_last_created)
   {
     box_data.is_found   = true;
     box_data.rect       = box->rect;
@@ -565,15 +591,17 @@ UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box)
   if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
 
   UI_Box_clip_data box_data = {};
-  if (box->generation_when_created < box->generation_when_last_used)
+  if (box->generation_when_created < box->generation_when_last_created)
   {
     Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(__ui_clay_element_id_from_str8(box->per_build_data.id));
+    // TODO: Uncomment this, this was commented to find a bug
     Assert(clay_scroll_data.found);
     if (clay_scroll_data.found)
     {
       box_data.is_found      = true;
       box_data.viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
       box_data.content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
+      box_data.offset        = box->clip_offset;
     }
   }
 
@@ -601,7 +629,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     box->actions_present = true; 
     return {}; 
   }
-  if (box->generation_when_created == box->generation_when_last_used) // DD: Box just got made this build
+  if (box->generation_when_created == box->generation_when_last_created) // DD: Box just got made this build
   {
     box->actions_present = true;
     return {};
@@ -857,12 +885,34 @@ B32 ui_is_null_box_key(UI_Box_key key)
 
 UI_Box_key ui_box_key_from_str8(Str8 str)
 {
-  UI_Box_key key = {};
-  for EachIndex(i, str.count) // TODO: Need a better way to make a key
+  if (str.count == 0) { return ui_null_box_key(); }
+
+  U64 hash = 0;
+  
+  U64 seed = 69;
+  U64 base = seed;
+
+  for (U64 i = 0; i < str.count; i++) 
   {
-    key.v += str.data[i];
+    base += str.data[i];
+    base += (base << 10);
+    base ^= (base >> 6);
   }
-  return key;
+  hash = base;
+  // hash += offset;
+  hash += (hash << 10);
+  hash ^= (hash >> 6);
+
+  hash += (hash << 3);
+  base += (base << 3);
+  hash ^= (hash >> 11);
+  base ^= (base >> 11);
+  hash += (hash << 15);
+  base += (base << 15);
+  
+  UI_Box_key box_key = {};
+  box_key.v = hash;   
+  return box_key;
 }
 
 UI_Box* ui_box_from_key(UI_Box_key key)
@@ -1043,8 +1093,8 @@ UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2)
 }
 UI_Size ui_px(F32 value)             { return ui_size_make(UI_Size_kind__px, value, 0.0f); }
 UI_Size ui_rem(F32 scale)            { return ui_px(ui_top_font_size() * scale); }                 
-UI_Size ui_fit_mm(F32 min, F32 max)  { return ui_size_make(UI_Size_kind__fit, min, max); } 
-UI_Size ui_grow_mm(F32 min, F32 max) { return ui_size_make(UI_Size_kind__grow, min, max); }         
+UI_Size ui_fit_mm(F32 min, F32 max)  { return ui_size_make(UI_Size_kind__fit, min, max); }  // DD: Not sure if these work, havent used these yet
+UI_Size ui_grow_mm(F32 min, F32 max) { return ui_size_make(UI_Size_kind__grow, min, max); } // DD: Not sure if these work, havent used these yet         
 UI_Size ui_fit()                     { return ui_size_make(UI_Size_kind__fit, 0.0f, 0.0f); } 
 UI_Size ui_grow()                    { return ui_size_make(UI_Size_kind__grow, 0.0f, 0.0f); }         
 UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent_of_parent, p, p); }         

@@ -110,7 +110,7 @@ Rect     rect_make            (F32 x, F32 y, F32 width, F32 height) { Rect r = {
 Rect     rect_make_v          (V2F32 pos, V2F32 dims)               { return rect_make(pos.x, pos.y, dims.x, dims.y); }
 Rect     rect_from_center     (V2F32 center, V2F32 dims)            { Rect r = {}; r.x = center.x - (dims.x / 2.0f); r.y = center.y - (dims.y / 2.0f); r.width = dims.x; r.height = dims.y; return r; }
 Rect     rect_from_range_v2f32(RangeV2F32 range)                    { return rect_make(range.min.x, range.min.y, range.max.x - range.min.x, range.max.y - range.min.y); }
-V2F32    rect_get_center      (Rect rect)                           { return v2f32(rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)); }
+V2F32    rect_center          (Rect rect)                           { return v2f32(rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)); }
 B32      rect_match           (Rect r1, Rect r2)                    { return (r1.x == r2.x && r1.y == r2.y && r1.width == r2.width && r1.height == r2.height); }
 B32      rect_point_inside    (Rect r, V2F32 v)                     { return (r.x <= v.x && v.x < r.x + r.width && r.y <= v.y && v.y < r.y + r.height); }
 RangeF32 rect_get_range       (Rect rect, Axis2 axis)               { return rangeF32(rect.origin.v[axis], rect.origin.v[axis] + rect.dims.v[axis]); }
