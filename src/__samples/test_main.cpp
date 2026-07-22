@@ -11,11 +11,9 @@
 #include "pclarity/pclarity.cpp"
 
 struct Node {
-  Node* first_child;
-  Node* last_child;
-  Node* next_sibling;
-  Node* prev_sibling;
+  Node* children[10];
   Node* parent;
+  U64 children_count;
   U64 data;
 };
 
@@ -47,7 +45,9 @@ void open_node(State* s, U64 value)
   {
     Node* parent = s->current_parent;
     node->parent = parent;
-    DllPushBack_Explicit_Ex(parent->first_child, parent->last_child, node, next_sibling, prev_sibling, is_zero_pointer, 0);
+
+    Assert(parent->children_count < ArrayCount(Node::children));
+    parent->children[parent->children_count++] = node;
   }
 
   s->current_parent = node;
@@ -67,43 +67,67 @@ void traverse_recursive_depth(Node* node)
 {
   if (node == 0) { return; }
   printf("%lld, ", node->data);
-  for (Node* child = node->first_child; child; child = child->next_sibling)
+  for EachIndex(i, node->children_count)
   {
-    traverse_recursive_depth(child);
+    traverse_recursive_depth(node->children[i]);
   }
-}
-
-Node* node_get_next_depth_first(Node* node)
-{
-  Node* next = 0;
-  if (node->first_child) { next = node->first_child; }
-  else if (node->next_sibling) { next = node->next_sibling; }
-  else 
-  {
-    for (Node* parent = node->parent; parent != 0; parent = parent->parent)
-    {
-      if (parent->next_sibling)
-      {
-        next = parent->next_sibling;
-        break;
-      }
-    }
-  }
-  return next;
 }
 
 void traverse_loop_depth(Node* node)
 {
+  Scratch scratch = get_scratch(0, 0);
+
+  struct Index_node {
+    U64 v;
+    Index_node* next;
+  };
+  Index_node* top_index_node = 0;
+
   Node* it_node = node;
   for (;it_node != 0;)
   {
     printf("%lld, ", it_node->data);
-    it_node = node_get_next_depth_first(it_node);
+
+    if (it_node->children_count != 0)
+    {
+      it_node = it_node->children[0];
+      Index_node* index_node = ArenaPush(scratch.arena, Index_node);
+      index_node->v = 0;
+      StackPush_Explicit(top_index_node, index_node);
+    }
+    else 
+    {
+      for (;it_node->parent;)
+      {
+        U64 it_node_index_inside_parent      = top_index_node->v;
+        U64 next_sibling_index_inside_parent = it_node_index_inside_parent + 1;
+        StackPop_Explicit(top_index_node);
+        if (next_sibling_index_inside_parent < it_node->parent->children_count)
+        {
+          it_node = it_node->parent->children[next_sibling_index_inside_parent];
+          Index_node* index_node = ArenaPush(scratch.arena, Index_node);
+          index_node->v = next_sibling_index_inside_parent;
+          StackPush_Explicit(top_index_node, index_node);
+          break;
+        }
+        else 
+        {
+          it_node = it_node->parent;
+        }
+      }
+
+      if (!it_node->parent) { it_node = 0; }
+    }
   }
+
+  end_scratch(&scratch);
 }
 
 int main()
 {
+  os_init();
+  allocate_thread_context();
+
   State* s = state_alloc();
 
   NODE(s, 0)
