@@ -182,6 +182,11 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   // Clay_ElementData or anything like that is from the prev buils, we
   // will be using it in our own build, to have access to the actual previous build
   // and not the one before last one, so we start Clay build here.
+  // TODO: See if there is a reason for this here, cause right now seems like we dont really need this here
+  // since we prestore all the data from the end_build func onward.
+  // Also look into having a single type for box_data and box_clip_data,
+  // might use fake ids or some like that to have data be made by clay and then have an ability
+  // to retrive it after build ends, storing the data that you need and then just resusing it next frame.
   Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
   Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
   Clay_UpdateScrollContainers(false, {}, {}); 

@@ -10,8 +10,159 @@
 #include "pclarity/pclarity.h"
 #include "pclarity/pclarity.cpp"
 
+struct Node {
+  Node* first_child;
+  Node* last_child;
+  Node* next_sibling;
+  Node* prev_sibling;
+  Node* parent;
+  U64 data;
+};
+
+struct State {
+  Arena* arena;
+
+  Node* root_node;
+  Node* current_parent;
+};
+
+State* state_alloc()
+{
+  Arena* arena = arena_alloc(Megabytes(4));
+  State* s = ArenaPush(arena, State);
+  s->arena = arena;
+  return s;
+}
+
+void open_node(State* s, U64 value)
+{
+  Node* node = ArenaPush(s->arena, Node);
+  node->data = value;
+
+  if (s->root_node == 0) 
+  {
+    s->root_node = node;
+  }
+  else 
+  {
+    Node* parent = s->current_parent;
+    node->parent = parent;
+    DllPushBack_Explicit_Ex(parent->first_child, parent->last_child, node, next_sibling, prev_sibling, is_zero_pointer, 0);
+  }
+
+  s->current_parent = node;
+}
+
+void close_node(State* s)
+{
+  if (s->current_parent)
+  {
+    s->current_parent = s->current_parent->parent;
+  }
+}
+
+#define NODE(s, value) DeferLoop(open_node(s, value), close_node(s))
+
+void traverse_recursive_depth(Node* node)
+{
+  if (node == 0) { return; }
+  printf("%lld, ", node->data);
+  for (Node* child = node->first_child; child; child = child->next_sibling)
+  {
+    traverse_recursive_depth(child);
+  }
+}
+
+Node* node_get_next_depth_first(Node* node)
+{
+  Node* next = 0;
+  if (node->first_child) { next = node->first_child; }
+  else if (node->next_sibling) { next = node->next_sibling; }
+  else 
+  {
+    for (Node* parent = node->parent; parent != 0; parent = parent->parent)
+    {
+      if (parent->next_sibling)
+      {
+        next = parent->next_sibling;
+        break;
+      }
+    }
+  }
+  return next;
+}
+
+void traverse_loop_depth(Node* node)
+{
+  Node* it_node = node;
+  for (;it_node != 0;)
+  {
+    printf("%lld, ", it_node->data);
+    it_node = node_get_next_depth_first(it_node);
+  }
+}
+
 int main()
 {
+  State* s = state_alloc();
+
+  NODE(s, 0)
+  {
+    NODE(s, 1);
+    NODE(s, 2)
+    {
+      NODE(s, 3);
+      NODE(s, 4)
+      {
+        NODE(s, 5);
+        NODE(s, 6);
+        NODE(s, 7);
+        NODE(s, 8);
+      }
+    }
+    NODE(s, 9)
+    {
+      NODE(s, 10)
+      {
+        NODE(s, 11);
+        NODE(s, 12);
+        NODE(s, 13);
+        NODE(s, 14);
+
+      }
+      NODE(s, 15)
+      {
+        NODE(s, 10000);
+        NODE(s, 17);
+        NODE(s, 18)
+        NODE(s, 19);
+
+      }
+      NODE(s, 20)
+      {
+        NODE(s, 21) 
+        { 
+          NODE(s, 22);
+        }
+        NODE(s, 23) 
+        { 
+          NODE(s, 24);
+        }  
+        NODE(s, 25) 
+        { 
+          NODE(s, 26);
+        }
+        NODE(s, 27) 
+        { 
+          NODE(s, 28);
+        }
+      }
+    }
+  }
+
+  traverse_recursive_depth(s->root_node); printf("\n");
+  traverse_loop_depth(s->root_node); printf("\n");
+
   return 0;
 }
 
