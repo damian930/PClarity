@@ -800,6 +800,7 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 	StaticAssert(sizeof(dest) == sizeof(src), "Cant comapre memory safely, the sizes of dest and src variables are not the equal."); \
 	if (result_b32_p) { *result_b32_p = MemCompare(dest, src, sizeof(dest)); }  \
 } while (0)
+
 // Damian: 
 // I tried so hard to have MemCompareSafe have this syntax: Comparison comp = MemCompareSafe(x, y);
 // But it cant be. First issue is that i cant use a comma operator like in defer loop to do the

@@ -98,8 +98,9 @@ popd
 ::       1) Download cloc.exe from this link "https://github.com/aldanial/cloc"
 ::       2) Run the following commands (cloc here is assumed to be accessible globally, otherwise you will get an error - if so, use the direct path to it)
 ::       cloc src
-::       - to have the line count per file add the following after the command                        : )
+::       - to have the line count per file add the following after the command                          --by_file: )
 ::       - to not count lines of code of the external dependencies add the following after the command: --exclude-dir=__third_party,__retired_code)
+::       (cloc src --by_file --exclude-dir=__third_party,__retired_code)
 :: * In bat files, when creating variables using the 'set' command, the variables are just text, kind of.
 ::       Then when comparing var to a value later we use '==' operator. 
 ::       It compares 2 strings, unless the values inside are numerical. 
