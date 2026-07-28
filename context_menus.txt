@@ -1,0 +1,196 @@
+Context Menu Feature Checklist (Ordered by Importance)
+
+[ ] 1. Opening
+    [ ] Right-click / contextmenu event
+    [ ] Programmatic opening
+    [ ] Keyboard (Context Menu key, Shift+F10)
+    [ ] Long press (touch)
+    [ ] Open from submenu item
+
+[ ] 2. Closing
+    [ ] Click outside
+    [ ] Escape key
+    [ ] Item selection
+    [ ] Window/app loses focus
+    [ ] Parent closes -> children close
+    [ ] Opening another root menu closes current one
+
+[ ] 3. Positioning
+    [ ] Open at cursor
+    [ ] Open relative to anchor element
+    [ ] Open at custom coordinates
+    [ ] Open relative to text selection/caret
+    [ ] Viewport clamping
+    [ ] Screen edge flipping
+    [ ] Scroll offset handling
+
+[ ] 4. Basic Menu Items
+    [ ] Normal item
+    [ ] Disabled item
+    [ ] Separator
+    [ ] Non-clickable label/header
+
+[ ] 5. Nested Menus (Submenus)
+    [ ] Unlimited nesting
+    [ ] Submenu arrow (>)
+    [ ] Hover to open
+    [ ] Keyboard opening
+    [ ] Proper submenu positioning
+    [ ] Flip left when near screen edge
+    [ ] Open/close delay
+
+[ ] 6. Keyboard Navigation
+    [ ] Up/Down navigation
+    [ ] Left/Right submenu navigation
+    [ ] Enter activation
+    [ ] Space activation
+    [ ] Home
+    [ ] End
+    [ ] Escape
+    [ ] Skip disabled items
+    [ ] Optional wrap-around navigation
+
+[ ] 7. Focus Management
+    [ ] Focus menu when opened
+    [ ] Restore previous focus on close
+    [ ] Focus follows keyboard navigation
+    [ ] Proper submenu focus transfer
+
+[ ] 8. Mouse Interaction
+    [ ] Hover highlighting
+    [ ] Click activation
+    [ ] Hover delay for submenus
+    [ ] Mouse leave behavior
+
+[ ] 9. Item States
+    [ ] Normal
+    [ ] Hovered
+    [ ] Focused
+    [ ] Pressed
+    [ ] Disabled
+    [ ] Active submenu parent
+
+[ ] 10. Icons
+    [ ] Leading icons
+    [ ] Reserved icon spacing
+    [ ] Submenu arrows
+    [ ] Shortcut alignment
+
+[ ] 11. Shortcut Labels
+    [ ] Display keyboard shortcuts
+    [ ] Right-aligned shortcut text
+
+[ ] 12. Checkbox Items
+    [ ] Checked state
+    [ ] Unchecked state
+    [ ] Optional stay-open behavior
+
+[ ] 13. Radio Items
+    [ ] Radio groups
+    [ ] Single selection
+
+[ ] 14. Dynamic Menus
+    [ ] Generate items at open time
+    [ ] Conditional visibility
+    [ ] Conditional disabling
+
+[ ] 15. Menu Events
+    [ ] Before open
+    [ ] Opened
+    [ ] Before close
+    [ ] Closed
+    [ ] Item highlighted
+    [ ] Item activated
+    [ ] Submenu opened
+    [ ] Submenu closed
+
+[ ] 16. Layering
+    [ ] Overlay rendering
+    [ ] Portal support
+    [ ] Proper z-index
+
+[ ] 17. Collision Handling
+    [ ] Prevent off-screen rendering
+    [ ] Horizontal flipping
+    [ ] Vertical flipping
+    [ ] Viewport padding
+
+[ ] 18. Scrolling
+    [ ] Max height
+    [ ] Internal scrolling
+    [ ] Mouse wheel
+    [ ] Trackpad scrolling
+
+[ ] 19. Typeahead Search
+    [ ] Jump to matching item while typing
+    [ ] Multi-character search
+    [ ] Timeout reset
+    [ ] Repeated-letter cycling
+
+[ ] 20. Accessibility
+    [ ] ARIA roles
+    [ ] Screen reader support
+    [ ] Keyboard-only usability
+    [ ] Disabled semantics
+
+[ ] 21. Animations
+    [ ] Open animation
+    [ ] Close animation
+    [ ] Submenu animation
+    [ ] Reduced-motion support
+
+[ ] 22. Context Awareness
+    [ ] Different menus for different targets
+    [ ] Multi-selection support
+    [ ] Read-only mode
+    [ ] Permission-aware items
+
+[ ] 23. Visual Layout
+    [ ] Padding
+    [ ] Margins
+    [ ] Rounded corners
+    [ ] Shadows
+    [ ] Minimum width
+    [ ] Maximum width
+    [ ] Text truncation
+    [ ] Icon alignment
+    [ ] Shortcut alignment
+
+[ ] 24. Menu Item Properties
+    [ ] Text
+    [ ] Secondary text
+    [ ] Icon
+    [ ] Shortcut
+    [ ] Checked state
+    [ ] Disabled state
+    [ ] Hidden state
+    [ ] Submenu
+    [ ] Identifier
+
+[ ] 25. Multiple Root Menus
+    [ ] Only one root menu open
+    [ ] Independent submenu chains
+
+[ ] 26. Async Content
+    [ ] Loading state
+    [ ] Error state
+    [ ] Retry state
+
+[ ] 27. Mobile Support
+    [ ] Long press
+    [ ] Larger touch targets
+    [ ] Mobile positioning
+    [ ] Tap outside to dismiss
+
+[ ] 28. Edge Cases
+    [ ] Empty menu
+    [ ] Loading menu
+    [ ] Error menu
+
+[ ] 29. Advanced Features
+    [ ] Searchable menus
+    [ ] Custom embedded controls
+    [ ] Virtualized menus
+    [ ] Recently used items
+    [ ] Tear-off menus
+    [ ] Favorite/pinned items

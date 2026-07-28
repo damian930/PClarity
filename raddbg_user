@@ -1,46 +1,33 @@
-// raddbg 0.9.27 user file
+// raddbg 0.9.26 user file
 
-recent_project:
-{
-  path: "build/main.exe"
-  name: ""
-}
 window:
 {
   size: 1486.400024 864.000000
+  split_x
+  pos: 166 104
+  monitor: "\\\\.\\DISPLAY1"
   panels:
   {
-    0.250000: selected watch: selected expression: "query:call_stack"
-    0.75:
+    0.426913: watch:
     {
-      text:
-      {
-        expression: "file:\"F:/PClarity/build/main.exe\".data"
-        project: ""
-        query: input: ""
-        cursor_line: 1
-        cursor_column: 1
-        mark_line: 1
-        mark_column: 1
-      }
-      text:
-      {
-        selected
-        expression: "file:\"F:/PClarity/src/main.cpp\".data"
-        auto: 1
-        project: ""
-        query: input: ""
-        cursor_line: 32
-        cursor_column: 1
-        mark_line: 32
-        mark_column: 1
-      }
+      expression: ""
+      selected
+      watch: os_init_succ
+      normal: 0.595665 0.404335
+    }
+    0.573087: selected getting_started text:
+    {
+      selected
+      expression: "file:\"F:/PClarity/src/main.cpp\".data"
+      auto: 1
+      project: ""
+      query: input: ""
+      cursor_line: 34
+      cursor_column: 2
+      mark_line: 34
+      mark_column: 2
     }
   }
-  split_x
-  pos: 248 108
-  monitor: "\\\\.\\DISPLAY1"
-  maximized
 }
 keybindings:
 {
@@ -141,9 +128,7 @@ keybindings:
   { goto_line g ctrl }
   { goto_address g alt }
   { search f ctrl }
-  { search slash }
   { search_backwards r ctrl }
-  { search_backwards slash ctrl }
   { find_next f3 }
   { find_prev f3 ctrl }
   { find_selected_thread f4 }
@@ -157,13 +142,14 @@ keybindings:
   { add_function_breakpoint f9 ctrl shift }
   { attach f6 shift }
   { open_palette f1 }
+  { open_palette p ctrl shift }
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
 }
-current_path: "F:/PClarity/build"
+current_path: ""
 debug_info:
 {
   path: "F:/PClarity/build/main.pdb"
-  timestamp: 66220849976482
+  timestamp: 66221022057282
   project: ""
 }

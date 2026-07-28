@@ -1,203 +1,10 @@
-// #include "core/core_include.h"
-// #include "core/core_include.cpp"
-
-#include "ui/ui_core.h"
-#include "ui/ui_core.cpp"
-
-#include "ui/widgets/ui_widgets.h"
-#include "ui/widgets/ui_widgets.cpp"
-
-#include "pclarity/pclarity.h"
-#include "pclarity/pclarity.cpp"
-
-struct Node {
-  Node* children[10];
-  Node* parent;
-  U64 children_count;
-  U64 data;
-};
-
-struct State {
-  Arena* arena;
-
-  Node* root_node;
-  Node* current_parent;
-};
-
-State* state_alloc()
-{
-  Arena* arena = arena_alloc(Megabytes(4));
-  State* s = ArenaPush(arena, State);
-  s->arena = arena;
-  return s;
-}
-
-void open_node(State* s, U64 value)
-{
-  Node* node = ArenaPush(s->arena, Node);
-  node->data = value;
-
-  if (s->root_node == 0) 
-  {
-    s->root_node = node;
-  }
-  else 
-  {
-    Node* parent = s->current_parent;
-    node->parent = parent;
-
-    Assert(parent->children_count < ArrayCount(Node::children));
-    parent->children[parent->children_count++] = node;
-  }
-
-  s->current_parent = node;
-}
-
-void close_node(State* s)
-{
-  if (s->current_parent)
-  {
-    s->current_parent = s->current_parent->parent;
-  }
-}
-
-#define NODE(s, value) DeferLoop(open_node(s, value), close_node(s))
-
-void traverse_recursive_depth(Node* node)
-{
-  if (node == 0) { return; }
-  printf("%lld, ", node->data);
-  for EachIndex(i, node->children_count)
-  {
-    traverse_recursive_depth(node->children[i]);
-  }
-}
-
-void traverse_loop_depth(Node* node)
-{
-  Scratch scratch = get_scratch(0, 0);
-
-  struct Index_node {
-    U64 v;
-    Index_node* next;
-  };
-  Index_node* top_index_node = 0;
-
-  Node* it_node = node;
-  for (;it_node != 0;)
-  {
-    printf("%lld, ", it_node->data);
-
-    if (it_node->children_count != 0)
-    {
-      it_node = it_node->children[0];
-      Index_node* index_node = ArenaPush(scratch.arena, Index_node);
-      index_node->v = 0;
-      StackPush_Explicit(top_index_node, index_node);
-    }
-    else 
-    {
-      for (;it_node->parent;)
-      {
-        U64 it_node_index_inside_parent      = top_index_node->v;
-        U64 next_sibling_index_inside_parent = it_node_index_inside_parent + 1;
-        StackPop_Explicit(top_index_node);
-        if (next_sibling_index_inside_parent < it_node->parent->children_count)
-        {
-          it_node = it_node->parent->children[next_sibling_index_inside_parent];
-          Index_node* index_node = ArenaPush(scratch.arena, Index_node);
-          index_node->v = next_sibling_index_inside_parent;
-          StackPush_Explicit(top_index_node, index_node);
-          break;
-        }
-        else 
-        {
-          it_node = it_node->parent;
-        }
-      }
-
-      if (!it_node->parent) { it_node = 0; }
-    }
-  }
-
-  end_scratch(&scratch);
-}
-
-int main()
-{
-  os_init();
-  allocate_thread_context();
-
-  State* s = state_alloc();
-
-  NODE(s, 0)
-  {
-    NODE(s, 1);
-    NODE(s, 2)
-    {
-      NODE(s, 3);
-      NODE(s, 4)
-      {
-        NODE(s, 5);
-        NODE(s, 6);
-        NODE(s, 7);
-        NODE(s, 8);
-      }
-    }
-    NODE(s, 9)
-    {
-      NODE(s, 10)
-      {
-        NODE(s, 11);
-        NODE(s, 12);
-        NODE(s, 13);
-        NODE(s, 14);
-
-      }
-      NODE(s, 15)
-      {
-        NODE(s, 10000);
-        NODE(s, 17);
-        NODE(s, 18)
-        NODE(s, 19);
-
-      }
-      NODE(s, 20)
-      {
-        NODE(s, 21) 
-        { 
-          NODE(s, 22);
-        }
-        NODE(s, 23) 
-        { 
-          NODE(s, 24);
-        }  
-        NODE(s, 25) 
-        { 
-          NODE(s, 26);
-        }
-        NODE(s, 27) 
-        { 
-          NODE(s, 28);
-        }
-      }
-    }
-  }
-
-  traverse_recursive_depth(s->root_node); printf("\n");
-  traverse_loop_depth(s->root_node); printf("\n");
-
-  return 0;
-}
-
-
 // void OutputDebugStringF(const char* fmt, ...);
 
-// #include "core/core_include.h"
-// #include "core/core_include.cpp"
+#include "core/core_include.h"
+#include "core/core_include.cpp"
 
-// #include "os/win32.h"
-// #include "os/win32.cpp"
+#include "os/win32.h"
+#include "os/win32.cpp"
 
 // #include "render/render.h"
 // #include "render/render.cpp"
@@ -214,33 +21,75 @@ int main()
 // #include "ui/widgets/ui_widgets.h"
 // #include "ui/widgets/ui_widgets.cpp"
 
-// void paint(R_Handle* window_frame_buffer)
-// {
-//   r_prepare_canvas(window_frame_buffer);
-//   d_begin_batching(*window_frame_buffer);
 
-//   r_clear_handle(*window_frame_buffer, black());
-//   Rect rect = {};
-//   rect.x      = os_get_client_area_dims().x / 2;
-//   rect.y      = os_get_client_area_dims().y / 2;
-//   rect.width  = 50;
-//   rect.height = 50;
-//   d_draw_rect(rect, nice_blue());
+int main()
+{
+  os_init();
+  allocate_thread_context();
 
-//   d_end_batching();
-//   r_submit(*window_frame_buffer, d_get_batch_list());
-//   r_present(*window_frame_buffer, false);
-// }
+  U64 arr[64] = { 0, 1, 2, 3, 4, 5 };
+  U64 count = 0;
+  for EachIndex(i, 5)
+  {
+    Assert(i < ArrayCount(arr));
+    arr[count++] = i;
+  }
+  
+  for EachIndex(i, count)
+  {
+    printf("%lld->", arr[i]);
+  } 
+  printf("\n");
+
+  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
+  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
+
+
+  for EachIndex(i, count)
+  {
+    printf("%lld->", arr[i]);
+  } 
+  printf("\n");
+
+  return 0;
+}
+
+// struct Node {
+//   Node* next;
+//   Node* prev;
+//   U64 value;
+// };
+
+// struct Node_list {
+//   Node* first;
+//   Node* last;
+//   U64 count;
+// };
+
+// struct State {
+//   Arena* state_arena;
+//   Node_list list;
+
+//   B32 is_delete_event;
+//   U64 delete_event_node_index_to_delete;
+// };
 
 // int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 // {
 //   // Layers we allocate for the runtime 
+//   profiler_init();
 //   allocate_thread_context();
 //   B32 os_init_succ = os_init();
-//   // r_init(); 
-//   // d_init();
-//   // ui_init();
-//   // fp_init();
+//   r_init(); 
+//   d_init();
+//   ui_init();
+//   fp_init();
 
 //   if (!os_init_succ) { return -1; }
 
@@ -286,28 +135,129 @@ int main()
 //   ///////////////////////////////////////////////////////////
 //   // - App loop
 //   //
-//   // R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
-//   // FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
+//   R_Handle window_frame_buffer_target = r_attach_window(win32_state->window);
+//   FP_Font font = fp_load_font(Str8FromC("../data/Roboto.ttf"), 32, rangeU64(0, (U64)u8_max + 1));
 
-//   // g_win32_redraw_on_resize_func = paint;
-//   // g_win32_handle_for_resize_draw = &window_frame_buffer_target;
+//   // State init
+//   State* state = 0;
+//   {
+//     Arena* arena = arena_alloc(Megabytes(4));
+//     state = ArenaPush(arena, State);
+//     state->state_arena = arena;
+
+//     for EachIndex(i, 64)
+//     {
+//       Node* node = ArenaPush(state->state_arena, Node);
+//       node->value = i;
+//       DllPushBack(&state->list, node);
+//       state->list.count += 1;
+//     }
+//   }
 
 //   for (;!os_window_should_close();)
 //   {
-//     F64 frame_start_time_sec = os_get_time_for_timing_sec();
-    
+//     Scratch scratch = get_scratch(0, 0);
+
 //     os_frame_begin();
-//     // paint(&window_frame_buffer_target);
+//     r_prepare_canvas(&window_frame_buffer_target);
+//     d_begin_batching(window_frame_buffer_target);
+
+//     { // State upate
+//       if (state->is_delete_event)
+//       {
+//         state->is_delete_event = false;
+
+//         Node* node = state->list.first;
+//         for EachIndex(i, state->delete_event_node_index_to_delete)
+//         { 
+//           node = node->next;
+//         }
+
+//         Assert(node);
+//         DllRemove(&state->list, node);
+//         state->list.count -= 1;
+//       }
+//     }
+
+//     // UI
+//     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+//     {
+//       ui_next_width(ui_fit());
+//       ui_next_height(ui_fit());
+//       ui_next_border(2, blue());
+//       ui_next_padding(10);
+//       UI_Parent(ui_box_make(UI_Box_flag__padded_border, {}))
+//       {
+//         Node* node = state->list.first;
+//         for EachIndex(node_index, state->list.count)
+//         {
+//           ui_next_width(ui_fit());
+//           ui_next_height(ui_fit());
+//           ui_next_border(1, green());
+//           ui_next_padding(5);
+//           ui_next_layout_x(); 
+//           UI_Box* node_box = ui_box_make_f(UI_Box_flag__padded_border|UI_Box_flag__clickable, "Node id %p", node);
+
+//           UI_Actions node_actions = ui_actions_from_box(node_box);
+//           if (node_actions.is_hovered) { ui_box_set_b_color(node_box, nice_green()); }
+//           if (node_actions.is_down) { ui_box_set_b_color(node_box, red()); }
+
+//           UI_Parent(node_box)
+//           {
+//             ui_text_f("%lld", node->value);
+//           }
+
+//           // todo: Open up a context menu with a delete button on which you will delete the node from the state list
+//           Str8 node_context_menu_id = str8_fmt(scratch.arena, "Node context menu id %p", node);
+//           if (node_actions.is_clicked)
+//           {
+//             ui_set_context_menu_key(node_context_menu_id, v2f32(200, 200));
+//           }
+
+//           if (ui_is_context_menu_with_id_open(node_context_menu_id))
+//           {
+//             ui_begin_context_menu(node_context_menu_id);
+//             {
+//               ui_next_width(ui_fit());
+//               ui_next_height(ui_fit());
+//               ui_next_b_color(white());
+//               UI_Box* context_menu = ui_box_make(UI_Box_flag__has_background, {});
+
+//               UI_Parent(context_menu)
+//               {
+//                 ui_next_font_size(64);
+//                 ui_next_font_color(magenta());
+//                 UI_Actions button = ui_button_f("Delete node %lld", node_index);
+//                 if (button.is_clicked)
+//                 {
+//                   state->is_delete_event = true;
+//                   state->delete_event_node_index_to_delete = node_index;
+//                   ui_reset_context_menu();
+//                 }
+//               }
+//             }
+//             ui_end_context_menu();
+//           }
+
+//           node = node->next;
+//         }
+//       }
+//     }
+
+//     r_clear_handle(window_frame_buffer_target, black());
+//     ui_draw();
+
+//     d_end_batching();
+//     r_submit(window_frame_buffer_target, d_get_batch_list());
+//     r_present(window_frame_buffer_target, false);
+  
 //     os_frame_end();
-
-//     F64 frame_end_time_sec = os_get_time_for_timing_sec();
-
-//     // OutputDebugStringF("Frame time sec: %f\n", frame_end_time_sec - frame_start_time_sec);
-//     // OutputDebugStringF("FPS:            %f\n", 1.0f/(frame_end_time_sec - frame_start_time_sec));
-//     // OutputDebugStringF("\n");
+  
+//     end_scratch(&scratch);
 //   }
 
-//   // Not releasing anything since who cares, the system will release all the stuff
+//   // Damian: Not releasing anything since who cares, the system will release all the stuff
+//   profiler_release();
 
 //   return 0;
 // }

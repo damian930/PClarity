@@ -42,6 +42,16 @@ void ui_spacer(UI_Size size);
 // - Images
 void ui_image(R_Handle texture, F32 width_px, F32 height_px);
 
+// DD, TODO: this is new and test code
+UI_Box* ui_floating_box(UI_Size size_x, UI_Size size_y, V2F32 offset)
+{
+  ui_next_width(size_x);
+  ui_next_height(size_x);
+  ui_next_floating_fixed_pos(offset);
+  UI_Box* box = ui_box_make(UI_Box_flag__floating, {});
+  return box;
+}
+
 ///////////////////////////////////////////////////////////
 // - Text edit
 //  

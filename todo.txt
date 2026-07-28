@@ -1,6 +1,3 @@
-Current:
-
-
 Testing (coverage)
 -----------
 [ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change
@@ -42,7 +39,8 @@ Tables
 
 UI lib 
 --
-
+[ ] - Context menu support
+      [ ] - Fix the bug where the cursor be changing when we have the context menu open and 
 
 App UI 
 --

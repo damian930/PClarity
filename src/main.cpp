@@ -92,6 +92,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   {
     ProfBeginGroupF("App frame %d", frame_counter);
 
+    if (pcl.close_the_app) { break; }
+
     F64 frame_start_time_sec = os_get_time_for_timing_sec();
     
     os_frame_begin();
@@ -356,6 +358,81 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         {
           ui_box_set_b_color(box, red());
         }
+      }
+    }
+    */
+
+    /*
+    // DD: Test build for some new ui features
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      struct Context_menu_state {
+        B32 was_open;
+        B32 is_open;
+        V2F32 initial_floater_offset;
+      };
+
+      Context_menu_state context_menus[64] = {};
+      U64 context_menu_count = 0;
+
+      UI_Row() UI_Spacered(ui_px(50))
+      UI_Col() UI_Spacered(ui_px(50))
+      {
+        ui_next_font_size(64);
+        ui_next_b_color(blue());
+        UI_Actions button = ui_button_f("Button");
+
+        static B32 was_open                 = false;
+        static B32 is_open                  = false;
+        static V2F32 initial_floater_offset = {};
+
+        was_open = is_open;
+        if (button.is_clicked) { is_open = !is_open; }
+
+        // if mouse gets down anywhere in the ui other that the context menu we close it
+        // we have to have a way to know where the mouse got down this frame
+
+        if (is_open)
+        {
+          if (!was_open) { initial_floater_offset = ui_get_mouse_pos(); }
+
+          ui_next_floating_fixed_pos(initial_floater_offset);
+          ui_next_floating_fixed_dims(v2f32(250, 250));
+          ui_next_b_color(white());
+          ui_next_floating_attach_point(UI_Floating_attach_point__root);
+          UI_Box* context_menu = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, Str8FromC("Context menu test 1"));
+        
+          UI_Parent(context_menu)
+          {
+            UI_FontColor(black())
+            UI_FontSize(24)
+            {
+              ui_next_b_color(nice_green());
+              if (ui_button_f("Close").is_clicked)
+              {
+                is_open = false;
+                initial_floater_offset = {};
+              }
+            }
+          }
+          
+          UI_Box_data menu_data = ui_box_data_from_box(context_menu);
+
+          if (menu_data.is_found)
+          {
+            for (OS_Event* ev = os_get_frame_event_list()->first; ev ; ev = ev->next)
+            {
+              if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.went_down)
+              {
+                V2F32 mouse_pos = ev->mouse_event.mouse_pos;
+                B32 press_inside = rect_point_inside(menu_data.rect, mouse_pos);
+                is_open = press_inside;
+                break;
+              }
+            }
+          }
+        }
+
       }
     }
     */

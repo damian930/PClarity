@@ -412,6 +412,7 @@ B32 is_zero_pointer(void* p) { return (p == 0); }
 #define DllPopFront(list_p)               DllPopFront_Ex(list_p, first, last, next, prev, is_zero_pointer, 0)
 #define DllPopBack(list_p)                DllPopBack_Ex(list_p, first, last, next, prev, is_zero_pointer, 0)
 #define DllPop(list_p, node_to_pop)       DllPop_Ex(list_p, node_to_pop, first, last, next, prev, is_zero_pointer, 0)
+#define DllRemove(list_p, node_to_pop)    DllPop(list_p, node_to_pop)
 
 #define SwapValues(Type, x, y) { Type temp = x; x = y; y = temp; }
 

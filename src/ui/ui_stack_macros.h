@@ -48,7 +48,9 @@
   EXPANSION(__UI_Floating_fixed_pos_y, F32, stack_floating_fixed_pos_y, 0.0f, ui_push_floating_fixed_pos_y, ui_next_floating_fixed_pos_y, ui_pop_floating_fixed_pos_y, ui_auto_pop_floating_fixed_pos_y, ui_top_floating_fixed_pos_y, 64, UI_FloatingFixedPosY) \
   \
   EXPANSION(__UI_Floating_fixed_dims_x, F32, stack_floating_fixed_dims_x, 0.0f, ui_push_floating_fixed_dims_x, ui_next_floating_fixed_dims_x, ui_pop_floating_fixed_dims_x, ui_auto_pop_floating_fixed_dims_x, ui_top_floating_fixed_dims_x, 64, UI_FloatingFixedDimsX) \
-  EXPANSION(__UI_Floating_fixed_dims_y, F32, stack_floating_fixed_dims_y, 0.0f, ui_push_floating_fixed_dims_y, ui_next_floating_fixed_dims_y, ui_pop_floating_fixed_dims_y, ui_auto_pop_floating_fixed_dims_y, ui_top_floating_fixed_dims_y, 64, UI_FloatingFixedDimsY)  
+  EXPANSION(__UI_Floating_fixed_dims_y, F32, stack_floating_fixed_dims_y, 0.0f, ui_push_floating_fixed_dims_y, ui_next_floating_fixed_dims_y, ui_pop_floating_fixed_dims_y, ui_auto_pop_floating_fixed_dims_y, ui_top_floating_fixed_dims_y, 64, UI_FloatingFixedDimsY) \
+  \
+  EXPANSION(__UI_Floating_attach_point, UI_Floating_attach_point, stack_floating_attach_point, UI_Floating_attach_point__parent, ui_push_floating_attach_point, ui_next_floating_attach_point, ui_pop_floating_attach_point, ui_auto_pop_floating_attach_point, ui_top_floating_attach_point, 64, UI_FloatingAttachPoint) 
 
 #define __UI_STACK_DEFINE_STACK_STRUCTS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   struct Stack_type_name { \
@@ -67,7 +69,10 @@
 #define __UI_STACK_DECLARE_PUSH_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, dfer_push_pop_macro_name) \
   void push_func_name(inner_data_type v);
 
-  #define __UI_STACK_DECLARE_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+#define __UI_STACK_DECLARE_SET_NEXT_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, dfer_push_pop_macro_name) \
+  void set_next_func_name(inner_data_type v);
+
+#define __UI_STACK_DECLARE_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
   inner_data_type pop_func_name();
 
 #define __UI_STACK_DECLARE_AUTO_POP_FUNC(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \

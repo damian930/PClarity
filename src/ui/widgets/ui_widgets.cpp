@@ -47,7 +47,8 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func);
 void ui_label(Str8 outer_str)
 {
   FP_Font font  = ui_top_font();
-  V2F32 str_dims = fp_measure_text(outer_str, font, ui_top_font_size());
+  F32 font_size = ui_top_font_size();
+  V2F32 str_dims = fp_measure_text(outer_str, font, font_size);
   
   ui_next_width(ui_px(str_dims.x));
   ui_next_height(ui_px(str_dims.y));
@@ -92,10 +93,10 @@ void ui_text_f(const char* fmt, ...)
 UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func)
 {
   UI_Box* box      = provided_data.box;
-  Str8 text        = box->per_build_data.text_extension.text;
-  FP_Font font     = box->per_build_data.text_extension.font;
-  F32 font_size    = box->per_build_data.text_extension.font_size;
-  V4F32 font_color = box->per_build_data.text_extension.font_color;
+  Str8 text        = box->per_build_config.text_extension.text;
+  FP_Font font     = box->per_build_config.text_extension.font;
+  F32 font_size    = box->per_build_config.text_extension.font_size;
+  V4F32 font_color = box->per_build_config.text_extension.font_color;
   d_draw_text(text, font, font_size, provided_data.final_box_rect.origin, font_color);
 }
 
@@ -108,10 +109,10 @@ UI_CUSTOM_DRAW_BOX_DEF(__ui_label_ellipsed_draw_func)
 
   Rect rect        = provided_data.final_box_rect;
   UI_Box* box      = provided_data.box;  
-  Str8 text        = box->per_build_data.text_extension.text;
-  FP_Font font     = box->per_build_data.text_extension.font;
-  F32 font_size    = box->per_build_data.text_extension.font_size;
-  V4F32 font_color = box->per_build_data.text_extension.font_color;
+  Str8 text        = box->per_build_config.text_extension.text;
+  FP_Font font     = box->per_build_config.text_extension.font;
+  F32 font_size    = box->per_build_config.text_extension.font_size;
+  V4F32 font_color = box->per_build_config.text_extension.font_color;
 
   Str8 final_str_to_draw = text;
 
@@ -185,6 +186,10 @@ void ui_text_ellipsed_f(const char* fmt, ...)
 //
 UI_Actions ui_button(Str8 id_and_text)
 {
+  F32 font_size    = ui_top_font_size();
+  FP_Font font     = ui_top_font();
+  V4F32 font_color = ui_top_font_color();
+
   ui_next_alignment_x(UI_Alignment_x__center);
   ui_next_alignment_y(UI_Alignment_y__center);
   UI_Box* button_box = ui_box_make(
@@ -192,7 +197,6 @@ UI_Actions ui_button(Str8 id_and_text)
     UI_Box_flag__has_borders|
     UI_Box_flag__has_background|
     UI_Box_flag__has_rounded_corners|
-    UI_Box_flag__hoverable|
     UI_Box_flag__clickable,
     id_and_text
   );
@@ -201,6 +205,10 @@ UI_Actions ui_button(Str8 id_and_text)
     // TODO: Use ellipsed text here
     // Str8 text = ui_get_text_part_from_str(id_and_text);
     Str8 text = id_and_text;
+  
+    ui_next_font_size(font_size);
+    ui_next_font(font);
+    ui_next_font_color(font_color);
     ui_text(text);
   }
   UI_Actions actions = ui_actions_from_box(button_box);
@@ -228,8 +236,8 @@ void ui_spacer(UI_Size size)
 {
   UI_Box* parent = ui_top_parent();
   if (0) {}
-  else if (parent->per_build_data.layout_direction == Axis2__x) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
-  else if (parent->per_build_data.layout_direction == Axis2__y) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
+  else if (parent->per_build_config.layout_direction == Axis2__x) { ui_next_width(size); ui_next_height(ui_px(0.0f)); }
+  else if (parent->per_build_config.layout_direction == Axis2__y) { ui_next_height(size); ui_next_width(ui_px(0.0f)); }
   ui_box_make(0, {});
 }
 
@@ -238,7 +246,7 @@ void ui_spacer(UI_Size size)
 //
 UI_CUSTOM_DRAW_BOX_DEF(__ui_image_draw_func)
 {
-  R_Handle texture = *((R_Handle*)provided_data.box->per_build_data.custom_draw_extension.data_for_draw_func);
+  R_Handle texture = *((R_Handle*)provided_data.box->per_build_config.custom_draw_extension.data_for_draw_func);
   Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
   d_draw_texture_pro(texture, provided_data.final_box_rect, texture_rect, white());
 }

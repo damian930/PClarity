@@ -22,46 +22,21 @@
 #pragma warning(default: 4244)
 #pragma warning(default: 4305)
 
+///////////////////////////////////////////////////////////
+// - State variables
+//
 UI_State* __ui_g_state = 0;
-
-UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
-{
-  BreakPoint(
-    "Hey big fella."
-    "I guess some went wrong since you are here,"
-    "but dont worry, I believe in you."
-  );
-}
-
-global UI_Box __ui_g_null_box = {};
-#define __UI_NULL_BOX_MEM_SET(box_p) \
-  do { \
-    (box_p)->per_build_data.custom_draw_extension.draw_func          = __ui_custom_draw_stub_func; \
-    (box_p)->per_build_data.custom_draw_extension.data_for_draw_func = 0;  \
-    (box_p)->per_build_data.first_child                              = &__ui_g_null_box; \
-    (box_p)->per_build_data.last_child                               = &__ui_g_null_box; \
-    (box_p)->per_build_data.next_sibling                             = &__ui_g_null_box; \
-    (box_p)->per_build_data.prev_sibling                             = &__ui_g_null_box; \
-    (box_p)->per_build_data.parent                                   = &__ui_g_null_box; \
-    (box_p)->per_build_data.ancestor_with_no_overflow_drag_flag      = &__ui_g_null_box; \
-    (box_p)->next_in_bucket_or_free_list                             = &__ui_g_null_box; \
-    (box_p)->prev_in_bucket                                          = &__ui_g_null_box; \
-  } while (0)
-
+UI_Box __ui_g_null_box = {};
 
 ///////////////////////////////////////////////////////////
-// - State
+// - State accessors
 //
-UI_State* ui_get_state()
-{
-  return __ui_g_state;
-}
+UI_State* ui_get_state() { return __ui_g_state; }
+void ui_set_state(UI_State* state) { __ui_g_state = state; }
 
-void ui_set_state(UI_State* state)
-{
-  __ui_g_state = state;
-}
-
+///////////////////////////////////////////////////////////
+// - State 
+//
 void ui_init()
 {
   Arena* state_arena = arena_alloc(Megabytes(8));
@@ -81,12 +56,11 @@ void ui_init()
     __ui_g_state->arena_for_clay = arena_for_clay;
   }
 
-  __ui_g_state->current_build_root_box = ui_null_box();
-  __ui_g_state->prev_build_root_box    = ui_null_box();
+  __ui_g_state->current_build_root_box = ui_box_null();
 
-  __ui_g_state->first_free_box = ui_null_box();
+  __ui_g_state->first_free_box = ui_box_null();
 
-  __UI_NULL_BOX_MEM_SET(&__ui_g_null_box);
+  __ui_box_set_to_null_mem(&__ui_g_null_box);
 }
 
 void ui_release()
@@ -98,6 +72,9 @@ void ui_release()
   arena_release(&__ui_g_state->arena_for_clay);
   arena_release(&__ui_g_state->state_arena);
   __ui_g_state = 0;
+
+  // DD: Clay gets release by itself
+  Clay_SetCurrentContext(0);
 }
 
 ///////////////////////////////////////////////////////////
@@ -110,26 +87,27 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   
   state->build_generation += 1;
 
-  { // DD: Making sure that null box has not been modified last frame by someone 
-    B32 comp = {};
-    UI_Box test_null_box = {}; __UI_NULL_BOX_MEM_SET(&test_null_box);
+  // DD: Making sure that null box has not been modified last frame by someone 
+  { 
+    B32 comp = false;
+    UI_Box test_null_box = {}; 
+    __ui_box_set_to_null_mem(&test_null_box);
     MemCompareSafe(__ui_g_null_box, test_null_box, &comp);
-    #if 1
-    Assert(comp); // DD: I was not able where we modify the value, might be in the stack push macros, but i am not sure
-    #endif 
-    // if (!comp) { state->zero_box_mem_data = state->prev_build_box_mem_data; }
+    Assert(comp); 
   }
 
   state->last_build_box_count = state->this_build_box_count;
   state->this_build_box_count = 0;
+
+  state->final_context_menu_key_for_prev_build = state->open_context_menu_box_key;
 
   // DD: Cleaning the cashe hash table 
   for EachIndex(bucket_index, ArrayCount(state->hash_table_buckets))
   {
     UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
     for (
-      UI_Box* box = bucket->first, *next_box = ui_null_box(); 
-      !ui_is_null_box(box); 
+      UI_Box* box = bucket->first, *next_box = ui_box_null(); 
+      !ui_box_is_null(box); 
       box = next_box
     ) {
       next_box = box->next_in_bucket_or_free_list;
@@ -138,12 +116,12 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
       if ((box->generation_when_last_created + 1) != state->build_generation)
       {
         // DD: Removing the box from the bucket list
-        DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_is_null_box, ui_null_box());
+        DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_box_is_null, ui_box_null());
         bucket->count -= 1;
 
         // DD: Nulling the box and adding the box to the state free list
-        __UI_NULL_BOX_MEM_SET(box);
-        StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_is_null_box, ui_null_box());
+        __ui_box_set_to_null_mem(box);
+        StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_box_is_null, ui_box_null());
         state->count_of_free_boxes += 1;
       }
     }
@@ -152,15 +130,14 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   // DD: This also removed all the boxes that were created for a single build since those are allocated on reused build arenas
   arena_clear(ui_get_build_arena());
   
-  state->final_hover_box                       = ui_null_box();
-  state->prev_build_root_box                   = state->current_build_root_box;
-  state->current_build_root_box                = ui_null_box();
-  state->render_commands_as_result_of_ui_build =  {};
-
+  state->final_hover_box                       = ui_box_null();
+  state->current_build_root_box                = ui_box_null();
+  state->render_commands_as_result_of_ui_build = Clay_RenderCommandArray{};
+  
   // DD: Resetting all the stacks
   #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
-    state->stacks.var_name_inside_state = {}; \
-    state->stacks.var_name_inside_state.default_value = default_expr; 
+          state->stacks.var_name_inside_state = {}; \
+          state->stacks.var_name_inside_state.default_value = default_expr; 
   __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
   #undef UI_RESET_STACKS
 
@@ -168,8 +145,28 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->mouse_pos_for_this_build   = mouse_pos;
   state->window_dims_for_this_build = window_dims;
 
+  // DD: Handling the closing of the context menu if pressed outside of it 
+  if (!ui_box_key_is_null(state->final_context_menu_key_for_prev_build))
+  {
+    UI_Box* prev_build_conetext_menu_box = ui_box_from_key(state->final_context_menu_key_for_prev_build);
+
+    if (!rect_point_inside(prev_build_conetext_menu_box->rect, mouse_pos))
+    {
+      for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+      {
+        if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.went_down)
+        {
+          state->open_context_menu_box_key = ui_box_key_null();
+          state->open_context_menu_offset  = {};
+          break;
+        }
+      }
+    } 
+  }
+
   ui_push_font(default_font);
 
+  // DD: Making of the root box for the ui
   ui_next_width(ui_px(window_dims.x));
   ui_next_height(ui_px(window_dims.y));
   state->current_build_root_box = ui_box_make(UI_Box_flag__NONE, Str8FromC("__UI_ROOT_BOX__"));
@@ -182,11 +179,8 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   // Clay_ElementData or anything like that is from the prev buils, we
   // will be using it in our own build, to have access to the actual previous build
   // and not the one before last one, so we start Clay build here.
-  // TODO: See if there is a reason for this here, cause right now seems like we dont really need this here
-  // since we prestore all the data from the end_build func onward.
-  // Also look into having a single type for box_data and box_clip_data,
-  // might use fake ids or some like that to have data be made by clay and then have an ability
-  // to retrive it after build ends, storing the data that you need and then just resusing it next frame.
+  // ==
+  // Right now(28th of July 2026) we only use Clay_PointerOver inside ui_actions_from_box
   Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
   Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
   Clay_UpdateScrollContainers(false, {}, {}); 
@@ -203,160 +197,21 @@ void ui_end_build()
 
   UI_State* state = ui_get_state();
 
-  // Ending Clay build
-  // TODO: DOnt used ids here for clay, just use the keys that you have and just pass them to caly or some like that
-  //       to remove the number of things that you have to do
+  // DD: Making clay boxes from our own box tree
   __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
-  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
-  state->render_commands_as_result_of_ui_build = clay_render_commands; 
-  __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
 
-  if (!ui_is_null_box(state->final_hover_box))
+  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
+  
+  __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
+  
+  state->render_commands_as_result_of_ui_build = clay_render_commands; 
+
+  if (!ui_box_is_null(state->final_hover_box))
   {
-    os_set_cursor(state->final_hover_box->per_build_data.hover_cursor);
+    os_set_cursor(state->final_hover_box->per_build_config.hover_cursor);
   }
 
   ProfEndGroup();
-}
-
-// TODO: Look into this here again
-// TODO: Need a better helper name here
-void __ui_build_clay_element_tree_from_box_tree(UI_Box* root)
-{
-  if (ui_is_null_box(root)) { return; }
-  UI_State* state = ui_get_state();
-
-  Clay__OpenElement();
-  Clay_ElementDeclaration clay_config = {};
-
-  // DD: Box might have a fake id and not have a key, but if a box has a key it has to have an id from which it was created
-  if (!ui_is_null_box_key(root->hash_table_key)) { Assert(root->per_build_data.str_for_key.count != 0); }
-
-  // DD: Making clay id
-  if (root->per_build_data.str_for_key.count != 0)
-  {
-    clay_config.id = Clay__HashString(__ui_clay_string_from_str8(root->per_build_data.str_for_key), 0, 0);
-  }
-
-  // TODO: Just use != in such cased, go over the code in this lib and fix this up
-  if (root->generation_when_last_created - root->generation_when_created > 1)
-  {
-    // TODO: Remove this, this is test code
-    Assert(root->prev_box_clay_id.id == clay_config.id.id);
-  }
-  
-  root->prev_box_clay_id = clay_config.id;
-
-  clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(root->per_build_data.size_on_axis[Axis2__x]);
-  clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(root->per_build_data.size_on_axis[Axis2__y]);
-  clay_config.layout.layoutDirection = (root->per_build_data.layout_direction == Axis2__x ?  CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM);
-  
-  clay_config.layout.padding  = __ui_clay_padding_from_v4f32(root->per_build_data.padding);
-  clay_config.layout.childGap = (U16)root->per_build_data.child_gap;
-  
-  if (0) {}
-  else if (root->per_build_data.alignment_on_x == UI_Alignment_x__left)   { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_LEFT; }
-  else if (root->per_build_data.alignment_on_x == UI_Alignment_x__center) { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_CENTER; }
-  else if (root->per_build_data.alignment_on_x == UI_Alignment_x__right)  { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_RIGHT; }
-
-  if (0) {}
-  else if (root->per_build_data.alignment_on_y == UI_Alignment_y__top)   { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_TOP; }
-  else if (root->per_build_data.alignment_on_y == UI_Alignment_y__center) { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_CENTER; }
-  else if (root->per_build_data.alignment_on_y == UI_Alignment_y__bottom)  { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_BOTTOM; }
-
-  clay_config.backgroundColor = __ui_clay_color_from_v4f32(root->per_build_data.b_color); 
-  clay_config.cornerRadius    = __ui_clay_corner_radius_from_v4f32(root->per_build_data.corner_radii); 
-
-  clay_config.clip.horizontal  = root->per_build_data.clip_axis[Axis2__x];
-  clay_config.clip.vertical    = root->per_build_data.clip_axis[Axis2__y];
-  clay_config.clip.childOffset = { root->clip_offset.x, root->clip_offset.y };
-  // TODO: What do we do about the offset, do we set it here or nah
-
-  clay_config.border = { __ui_clay_color_from_v4f32(root->per_build_data.border_color), __ui_clay_border_width_from_v4f32(root->per_build_data.border_width) };
-  
-  // TODO: Deal with the fact that clay doesnt allow for single axis float, Assert for now
-  if (root->per_build_data.flags & UI_Box_flag__floating)
-  {
-    clay_config.floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
-    clay_config.floating.attachTo           = CLAY_ATTACH_TO_PARENT;             // Damian: Not sure where i need this, so just const right now
-    clay_config.floating.clipTo             = CLAY_CLIP_TO_NONE;                 // Damian: Not sure where i need this, so just const right now
-    clay_config.floating.offset.x = root->per_build_data.floating_fixed_pos.x; 
-    clay_config.floating.offset.y = root->per_build_data.floating_fixed_pos.y; 
-    
-    if (root->per_build_data.has_fixed_dims)
-    {
-      // TODO: Look into expand and what it does
-      clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(ui_px(root->per_build_data.floating_fixed_dims.x));
-      clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(ui_px(root->per_build_data.floating_fixed_dims.y));
-    }
-
-    // Clay_Dimensions expand;
-    // uint32_t parentId;
-    // int16_t zIndex;
-    // Clay_FloatingAttachPoints attachPoints;
-    // Clay_PointerCaptureMode pointerCaptureMode;
-    // Clay_FloatingAttachToElement attachTo;
-    // Clay_FloatingClipToElement clipTo;
-  }
-
-  // DD: We dont use these
-  // config->aspectRatio = {};  
-  // config->image       = {};  
-
-  if ( root->per_build_data.custom_draw_extension.draw_func != 0 
-    && root->per_build_data.custom_draw_extension.draw_func != __ui_custom_draw_stub_func
-  ) {
-    clay_config.custom.customData = root;
-  }
-
-  // DD: Setting user data to be the box itself so we then can go back from clay_element to UI_Box if needed
-  clay_config.userData = root;
-
-  Clay__ConfigureOpenElementPtr(&clay_config);
-
-  if (Clay_Hovered())
-  {
-    if (root->per_build_data.has_hover_cursor)
-    {
-      state->final_hover_box = root;
-    }
-  }
-
-  // DD: Traversing the tree
-  for (
-    UI_Box* child = root->per_build_data.first_child; 
-    !ui_is_null_box(child); 
-    child = child->per_build_data.next_sibling
-  ) {
-    __ui_build_clay_element_tree_from_box_tree(child);
-  }
-  
-  Clay__CloseElement();
-}
-
-void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root)
-{
-  if (ui_is_null_box(root)) { return; }
-
-  // DD: Only doing this for the boxes that need the data, those are the boxed with str_for_key
-  if (root->per_build_data.str_for_key.count != 0)
-  {
-    Clay_ElementData clay_data = Clay_GetElementData(__ui_clay_element_id_from_str8(root->per_build_data.str_for_key));
-    Assert(clay_data.found);
-    if (clay_data.found)
-  {
-      root->rect = __ui_rect_from_clay_bounding_box(clay_data.boundingBox);
-    }
-  }
-
-  // DD: Recursing over the children
-  for (
-    UI_Box* child = root->per_build_data.first_child;
-    !ui_is_null_box(child);
-    child = child->per_build_data.next_sibling
-  ) {
-    __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(child);
-  }
 }
 
 ///////////////////////////////////////////////////////////
@@ -370,19 +225,19 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
 
   UI_Box_key new_box_key      = ui_box_key_from_str8(id); 
   UI_Box* box                 = ui_box_from_key(new_box_key);
-  B32 is_box_new              = ui_is_null_box(box);
-  B32 is_box_for_single_build = ui_is_null_box_key(new_box_key);
+  B32 is_box_new              = ui_box_is_null(box);
+  B32 is_box_for_single_build = ui_box_key_is_null(new_box_key);
   
   if (box->generation_when_last_created == state->build_generation)
   {
-    BreakPoint("You got an id duplicate buddy");
+    BreakPoint("You got a duplicate id buddy");
   }
 
   // DD: Allocating the box if new box 
   if (is_box_new)
   {
-    if (state->count_of_free_boxes == 0) { Assert(ui_is_null_box(state->first_free_box));  }
-    if (state->count_of_free_boxes != 0) { Assert(!ui_is_null_box(state->first_free_box)); }
+    if (state->count_of_free_boxes == 0) { Assert(ui_box_is_null(state->first_free_box));  }
+    if (state->count_of_free_boxes != 0) { Assert(!ui_box_is_null(state->first_free_box)); }
 
     // DD: Allocating the box
     if (is_box_for_single_build)
@@ -392,9 +247,9 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
     else 
     {
       box = state->first_free_box;
-      if(!ui_is_null_box(box))
+      if(!ui_box_is_null(box))
       {
-        StackPop_Explicit_Ex(state->first_free_box, next_in_bucket_or_free_list, ui_is_null_box);
+        StackPop_Explicit_Ex(state->first_free_box, next_in_bucket_or_free_list, ui_box_is_null);
         state->count_of_free_boxes -= 1;
       }
       else
@@ -404,8 +259,8 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
     }
 
     // DD: Setting up shared state for single build boxes and persistant boxes
-    *box = __ui_g_null_box;
-    box->generation_when_created = ui_get_build_generation();
+    __ui_box_set_to_null_mem(box);
+    box->generation_when_first_created = ui_get_build_generation();
 
     // DD: Setting up state for persistant build boxes and adding them to the box hash table
     if (!is_box_for_single_build)
@@ -413,7 +268,7 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
       box->hash_table_key = new_box_key;
       U64 bucket_index    = box->hash_table_key.v % 64;
       UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
-      DllPushBack_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_is_null_box, ui_null_box());
+      DllPushBack_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_box_is_null, ui_box_null());
       bucket->count += 1;
     }
   }
@@ -421,109 +276,129 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
   
   box->generation_when_last_created = ui_get_build_generation();
   
-  box->prev_build_flags   = box->per_build_data.flags;
-  box->prev_build_padding = box->per_build_data.padding;
+  box->data_from_previous_build.flags   = box->per_build_config.flags;
+  box->data_from_previous_build.padding = box->per_build_config.padding;
 
-  // TODO: This is test code
-  if (box->is_defered_offset_present)
+  if (box->defered_clip_offset.is_present)
   {
-    // BP;
-    box->clip_offset               = box->clip_offset_defered;
-    box->clip_offset_defered       = {};
-    box->is_defered_offset_present = false;
+    box->clip_offset = box->defered_clip_offset.offset;
+    box->defered_clip_offset = {};
   }
 
   // DD: Reallocating drag memory to the new build arena to not lose it
   box->dynamic_drag_memory = str8_copy(ui_get_build_arena(), box->dynamic_drag_memory);
 
   // DD: Resetting the per build data
-  box->per_build_data = __ui_g_null_box.per_build_data;
+  box->per_build_config = __ui_g_null_box.per_build_config;
   
   // DD: Putting the box in the build ui box tree
   {
-    // TODO: Do you need a double pointer here for real now ?
-    UI_Box** parent = &box->per_build_data.parent;
+    UI_Box** parent = &box->per_build_config.parent;
     *parent = ui_top_parent();
-    if (!ui_is_null_box(*parent))
+    if (!ui_box_is_null(*parent))
     {
-      DllPushBack_Explicit_Ex((*parent)->per_build_data.first_child, (*parent)->per_build_data.last_child, box, per_build_data.next_sibling, per_build_data.prev_sibling, ui_is_null_box, ui_null_box());
-      (*parent)->per_build_data.children_count += 1;
+      DllPushBack_Explicit_Ex((*parent)->per_build_config.first_child, (*parent)->per_build_config.last_child, box, per_build_config.next_sibling, per_build_config.prev_sibling, ui_box_is_null, ui_box_null());
+      (*parent)->per_build_config.children_count += 1;
     }
   }
 
-  // DD: Setting up the box
+  // DD, TODO: This is new stuff, work on this more 
+  box->prev_build_parent_context_menu_key = box->parent_context_menu_key;
+  box->parent_context_menu_key = ui_box_key_null(); //state->open_context_menu_box_key;
+  for (UI_Box* parent = box->per_build_config.parent; !ui_box_is_null(parent); parent = parent->per_build_config.parent)
+  {
+    if (ui_box_key_match(state->open_context_menu_box_key, parent->hash_table_key))
+    {
+      box->parent_context_menu_key = state->open_context_menu_box_key;
+      break;
+    }
+  }
+
+  // DD: Setting up the box config
   { 
-    box->per_build_data.str_for_key = str8_copy(ui_get_build_arena(), id);
+    box->per_build_config.str_for_key = str8_copy(ui_get_build_arena(), id);
     
-    box->per_build_data.flags                  = flags | ui_top_extra_flags();
-    box->per_build_data.size_on_axis[Axis2__x] = ui_top_size_x();
-    box->per_build_data.size_on_axis[Axis2__y] = ui_top_size_y();
-    box->per_build_data.layout_direction       = ui_top_layout();
+    box->per_build_config.flags                  = flags | ui_top_extra_flags();
+    box->per_build_config.size_on_axis[Axis2__x] = ui_top_size_x();
+    box->per_build_config.size_on_axis[Axis2__y] = ui_top_size_y();
+    box->per_build_config.layout_direction       = ui_top_layout();
 
-    if (box->per_build_data.flags & UI_Box_flag__has_padding)   { box->per_build_data.padding = ui_top_padding(); }
-    if (box->per_build_data.flags & UI_Box_flag__has_child_gap) { box->per_build_data.child_gap = ui_top_child_gap(); }
+    if (box->per_build_config.flags & UI_Box_flag__has_padding)   { box->per_build_config.padding = ui_top_padding(); }
+    if (box->per_build_config.flags & UI_Box_flag__has_child_gap) { box->per_build_config.child_gap = ui_top_child_gap(); }
 
-    box->per_build_data.alignment_on_x = ui_top_alignment_x();
-    box->per_build_data.alignment_on_y = ui_top_alignment_y();
+    box->per_build_config.alignment_on_x = ui_top_alignment_x();
+    box->per_build_config.alignment_on_y = ui_top_alignment_y();
 
-    if (box->per_build_data.flags & UI_Box_flag__has_background)      { box->per_build_data.b_color = ui_top_b_color(); }
-    if (box->per_build_data.flags & UI_Box_flag__has_rounded_corners) { box->per_build_data.corner_radii = ui_top_corner_radius(); }
+    if (box->per_build_config.flags & UI_Box_flag__has_background)      { box->per_build_config.b_color = ui_top_b_color(); }
+    if (box->per_build_config.flags & UI_Box_flag__has_rounded_corners) { box->per_build_config.corner_radii = ui_top_corner_radius(); }
 
-    if (box->per_build_data.flags & UI_Box_flag__clip_x) { box->per_build_data.clip_axis[Axis2__x] = true; }
-    if (box->per_build_data.flags & UI_Box_flag__clip_y) { box->per_build_data.clip_axis[Axis2__y] = true; }
+    if (box->per_build_config.flags & UI_Box_flag__clip_x) { box->per_build_config.clip_axis[Axis2__x] = true; }
+    if (box->per_build_config.flags & UI_Box_flag__clip_y) { box->per_build_config.clip_axis[Axis2__y] = true; }
 
-    if (box->per_build_data.flags & UI_Box_flag__has_borders) { 
-      box->per_build_data.border_width = ui_top_border_width(); 
-      box->per_build_data.border_color = ui_top_border_color(); 
+    if (box->per_build_config.flags & UI_Box_flag__has_borders) { 
+      box->per_build_config.border_width = ui_top_border_width(); 
+      box->per_build_config.border_color = ui_top_border_color(); 
     }
 
     // Damian: Right now we only have default behaviour on Floating
-    box->per_build_data.floating_fixed_pos  = v2f32(ui_top_floating_fixed_pos_x(), ui_auto_pop_floating_fixed_pos_y());    
+    box->per_build_config.floating_fixed_pos = v2f32(ui_top_floating_fixed_pos_x(), ui_auto_pop_floating_fixed_pos_y());    
     if (
       state->stacks.stack_floating_fixed_dims_x.count > 0 || state->stacks.stack_floating_fixed_dims_x.is_single_use_value_set ||
       state->stacks.stack_floating_fixed_dims_y.count > 0 || state->stacks.stack_floating_fixed_dims_y.is_single_use_value_set
     ) {
-      box->per_build_data.has_fixed_dims = true;
-      box->per_build_data.floating_fixed_dims = v2f32(ui_top_floating_fixed_dims_x(), ui_auto_pop_floating_fixed_dims_y());    
+      box->per_build_config.has_fixed_dims = true;
+      box->per_build_config.floating_fixed_dims = v2f32(ui_top_floating_fixed_dims_x(), ui_auto_pop_floating_fixed_dims_y());    
     }
 
-    box->per_build_data.text_extension.font       = ui_top_font();
-    box->per_build_data.text_extension.font_size  = ui_top_font_size();
-    box->per_build_data.text_extension.font_color = ui_top_font_color();
+    box->per_build_config.floating_attach_point = ui_top_floating_attach_point();
+
+    box->per_build_config.text_extension.font       = ui_top_font();
+    box->per_build_config.text_extension.font_size  = ui_top_font_size();
+    box->per_build_config.text_extension.font_color = ui_top_font_color();
 
     // Only having a non default cursor if there is one, disregard the default cursor
     if ( state->stacks.stack_hover_cursor.count > 0 
       || state->stacks.stack_hover_cursor.is_single_use_value_set
     )  {
-      box->per_build_data.hover_cursor = ui_top_hover_cursor();
-      if (box->per_build_data.hover_cursor != OS_Cursor__arrow) { box->per_build_data.has_hover_cursor = true; }
+      box->per_build_config.hover_cursor = ui_top_hover_cursor();
+      if (box->per_build_config.hover_cursor != OS_Cursor__arrow) { box->per_build_config.has_hover_cursor = true; }
     }
 
-    // TODO: COmment this
+    // DD: To not draw the overflow we have to scissor the final rect of the box.
+    // To get the rect from a box via clay we have to call Clay_GetElementData.
+    // Clay only gives it to us for boxes that have ids. 
+    // So, if we need the rect for the box that has UI_Box_flag__dont_draw_overflow,
+    // we have to make sure that we have it always. For this reason we generate an
+    // id for a box if it doesnt have it already
     {
-      if (box->per_build_data.flags & UI_Box_flag__dont_draw_overflow)
+      if (box->per_build_config.flags & UI_Box_flag__dont_draw_overflow)
       {
-        if (ui_is_null_box_key(box->hash_table_key))
+        if (ui_box_key_is_null(box->hash_table_key))
         {
-          box->per_build_data.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
+          box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
+          box->per_build_config.is_str_for_key_fake = true;
         }
       }
     }
 
-    // TODO: COmment this
+    // DD: Storing a link to the first parent that has no overdraw flag in the subtree above current
     {
-      UI_Box* parent = box->per_build_data.parent;
-      if ( parent->per_build_data.flags & UI_Box_flag__dont_draw_overflow 
-        || !ui_is_null_box(parent->per_build_data.ancestor_with_no_overflow_drag_flag)
-      ) { 
-        box->per_build_data.ancestor_with_no_overflow_drag_flag = parent;
+      UI_Box* parent = box->per_build_config.parent;
+      if (!ui_box_is_null(parent))
+      {
+        if ( parent->per_build_config.flags & UI_Box_flag__dont_draw_overflow 
+          || !ui_box_is_null(parent->per_build_config.ancestor_with_no_overflow_drag_flag)
+        ) { 
+          box->per_build_config.ancestor_with_no_overflow_drag_flag = parent;
+        }
       }
     }
+
   }
 
-  // TODO: Put this is a better place inside UI_Box
-  box->actions_present = false; 
-  box->actions         = {};
+  // DD: Resetting actions
+  box->actions_present = false;
+  __ui_actions_set_to_null_mem(&box->actions);
 
   // DD: Auto popping all the stacks
   #define __UI_AUTO_POP_ALL_THE_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
@@ -546,54 +421,20 @@ UI_Box* ui_box_make_f(UI_Box_flags flags, const char* fmt, ...)
   return box;
 }
 
-// TODO: This is not used right now
-Str8 __ui_get_id_part_from_str8(Str8 str)
-{
-  RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
-  RangeU64 range_for_triple_hash = str8_find(str, Str8FromC("###"), 0);
-
-  Str8 id_part = str;
-  if (rangeU64_count(range_for_triple_hash) > 0)
-  {
-    id_part = str8_substring(str, range_for_triple_hash.min, range_for_triple_hash.max);
-  }
-
-  return id_part;
-}
-
-// TODO: This is not used right now
-Str8 __ui_get_text_part_from_str8(Str8 str)
-{
-  RangeU64 range_for_double_hash = str8_find(str, Str8FromC("##"), 0);
-  RangeU64 range_for_triple_hash = str8_find(str, Str8FromC("###"), 0);
-
-  Str8 text_part = str;
-  if (rangeU64_count(range_for_triple_hash) > 0)
-  {
-    text_part = str8_substring(str, 0, range_for_triple_hash.min);
-  }
-  else if (rangeU64_count(range_for_double_hash) > 0)
-  {
-    text_part = str8_substring(str, 0, range_for_double_hash.min);
-  }
-
-  return text_part;
-}
-
 ///////////////////////////////////////////////////////////
 // - Box extension
 //
-void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func* custom_draw, void* data) // TODO: Need a better name when you are sure what this does and is
+void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_func* custom_draw, void* data) 
 {
-  box->per_build_data.custom_draw_extension.draw_func          = custom_draw;
-  box->per_build_data.custom_draw_extension.data_for_draw_func = (void*)data;
+  box->per_build_config.custom_draw_extension.draw_func          = custom_draw;
+  box->per_build_config.custom_draw_extension.data_for_draw_func = (void*)data;
 }
 
 void ui_extend_box_with_text(UI_Box* box, Str8 str)
 {
-  box->per_build_data.text_extension.text = str8_copy(ui_get_build_arena(), str);
+  box->per_build_config.text_extension.text = str8_copy(ui_get_build_arena(), str);
 
-  // Damian: These are already in the `text_extension`. 
+  // DD: These are already in the `text_extension`. 
   // box->text_extension.font_size = ui_top_font_size();
   // box->text_extension.font      = ui_top_font();
 }
@@ -603,18 +444,18 @@ void ui_extend_box_with_text(UI_Box* box, Str8 str)
 //
 UI_Box_data ui_box_data_from_box(UI_Box* box)
 {
-  if (ui_is_null_box(box))                     { return {}; }
-  if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
+  if (ui_box_is_null(box))                     { return {}; }
+  if (ui_box_key_is_null(box->hash_table_key)) { return {}; }
 
   UI_Box_data box_data = {};
-  if (box->generation_when_created < box->generation_when_last_created)
+  if (box->generation_when_first_created != box->generation_when_last_created)
   {
     box_data.is_found   = true;
     box_data.rect       = box->rect;
     box_data.inner_rect = box->rect;
-    if (box->prev_build_flags & UI_Box_flag__has_padding) 
+    if (box->per_build_config.flags & UI_Box_flag__has_padding) 
     {
-      V4F32 padding = v4f32_scale(box->prev_build_padding, -1.0f);
+      V4F32 padding = v4f32_scale(box->per_build_config.padding, -1.0f);
       box_data.inner_rect = rect_padded_ex(box_data.inner_rect, padding);
     }
   }
@@ -635,22 +476,16 @@ UI_Box_data ui_box_data_from_id(Str8 id)
 //
 UI_Box_clip_data ui_box_clip_data_from_box(UI_Box* box)
 {
-  if (ui_is_null_box(box))                     { return {}; }
-  if (ui_is_null_box_key(box->hash_table_key)) { return {}; }
+  if (ui_box_is_null(box))                     { return {}; }
+  if (ui_box_key_is_null(box->hash_table_key)) { return {}; }
 
   UI_Box_clip_data box_data = {};
-  if (box->generation_when_created < box->generation_when_last_created)
+  if (box->generation_when_first_created != box->generation_when_last_created)
   {
-    Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(__ui_clay_element_id_from_str8(box->per_build_data.str_for_key));
-    // TODO: Uncomment this, this was commented to find a bug
-    Assert(clay_scroll_data.found);
-    if (clay_scroll_data.found)
-    {
-      box_data.is_found      = true;
-      box_data.viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
-      box_data.content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
-      box_data.offset        = box->clip_offset;
-    }
+    box_data.is_found      = true;
+    box_data.viewport_dims = box->viewport_dims;
+    box_data.content_dims  = box->content_dims;
+    box_data.offset        = box->clip_offset;
   }
 
   return box_data;
@@ -669,23 +504,45 @@ UI_Box_clip_data ui_box_clip_data_from_id(Str8 id)
 //
 UI_Actions ui_actions_from_box(UI_Box* box)
 {
-  if (ui_is_null_box(box))                     { return {}; }
+  // TODO: Work on this more, there are some things that you dont understand about this right now, fix those
+
+  // TODO: ui_actions_from_box should not be using any data from per_build_data
+  //       since if we get this via id then we will have data for that from prev frame,
+  //       but then when we get that via box* we dont have that, since the new boxes
+  //       reset the per_build_data struct. This is a bug, redo this.
+
+  if (ui_box_is_null(box))                     { return ui_box_null()->actions; }
   if (box->actions_present)                    { return box->actions; }
-  if (ui_is_null_box_key(box->hash_table_key)) 
+  if (ui_box_key_is_null(box->hash_table_key)) 
   { 
     BreakPoint("You probably ment ther to be an id to this box thought"); 
     box->actions_present = true; 
-    return {}; 
+    return ui_box_null()->actions; 
   }
-  if (box->generation_when_created == box->generation_when_last_created) // DD: Box just got made this build
+  if (box->generation_when_first_created == box->generation_when_last_created) // DD: Box just got made this build
   {
     box->actions_present = true;
-    return {};
+    return ui_box_null()->actions;
   }
   
   UI_State* state = ui_get_state();
 
-  // Data to get
+  B32 is_context_menu_open     = !ui_box_key_is_null(state->final_context_menu_key_for_prev_build);
+  B32 is_child_of_context_menu = ui_box_key_match(box->prev_build_parent_context_menu_key, state->final_context_menu_key_for_prev_build);
+
+  B32 do_inputs_for_this_box = true;
+  if (is_context_menu_open && !is_child_of_context_menu)
+  {
+    // TODO, DD: This is for debug, remove this code
+    if (str8_match(box->per_build_config.str_for_key, Str8FromC("Table header 0"), 0))
+    {
+      int x = 0;
+    }
+    OutputDebugStringF("X \n");
+
+    do_inputs_for_this_box = false;
+  }
+
   B32 is_hovered                 = false;
   B32 is_down                    = false;
   B32 was_down                   = false;
@@ -694,102 +551,108 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 is_navigated               = false;
   V2F32 mouse_pos_when_went_down = {};
 
-  is_hovered = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_data.str_for_key)); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
+  if (do_inputs_for_this_box)
+  {
+    is_hovered = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_config.str_for_key)); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
 
-  B32 some_other_box_is_being_interacted_with = (
-    !ui_is_null_box_key(state->interacted_with_box_data.box_key) 
-    &&
-    !ui_box_key_match(state->interacted_with_box_data.box_key, box->hash_table_key)
-  );
+    B32 some_other_box_is_being_interacted_with = (
+      !ui_box_key_is_null(state->interacted_with_box_data.box_key) 
+      &&
+      !ui_box_key_match(state->interacted_with_box_data.box_key, box->hash_table_key)
+    );
 
-  // Damian:
-  // Either there is no active box or we are the active box
-  // Since interacted box data is retained across frame boundary, 
-  // we just load the retained state and possibly update it here.
-  // No need to load hover, we get it each frame just from the box rect.
-  if (
-    box->per_build_data.flags & UI_Box_flag__clickable 
-    &&
-    !some_other_box_is_being_interacted_with
-  ) {
-    was_down                = state->interacted_with_box_data.is_mouse_down;
-    left_box_while_was_down = state->interacted_with_box_data.did_mouse_leave_box_while_was_down;
-  
-    // Mouse is up, check if it goes down
-    if (is_hovered && !was_down) 
-    {
-      // note: This has a bit of de sync relative to the is_hovered bool since we test if is hovered based on a different mouse pos than the one that was when the mouse went down, most of the time this shoud be fine, but i am not sure about the other times
-      //       Might be nice to use mouse_pos from the prev frame or somethign like that, for now it should be fine
-      B32 mouse_left_went_down = false;
+    // Damian:
+    // Either there is no active box or we are the active box
+    // Since interacted box data is retained across frame boundary, 
+    // we just load the retained state and possibly update it here.
+    // No need to load hover, we get it each frame just from the box rect.
+    if (
+      box->per_build_config.flags & UI_Box_flag__clickable 
+      &&
+      !some_other_box_is_being_interacted_with
+    ) {
+      was_down                = state->interacted_with_box_data.is_mouse_down;
+      left_box_while_was_down = state->interacted_with_box_data.did_mouse_leave_box_while_was_down;
+    
+      // Mouse is up, check if it goes down
+      if (is_hovered && !was_down) 
       {
-        OS_Event_list* events = os_get_frame_event_list();
-        for (OS_Event* ev = events->first; ev; ev = ev->next)
+        // note: This has a bit of de sync relative to the is_hovered bool since we test if is hovered based on a different mouse pos than the one that was when the mouse went down, most of the time this shoud be fine, but i am not sure about the other times
+        //       Might be nice to use mouse_pos from the prev frame or somethign like that, for now it should be fine
+        B32 mouse_left_went_down = false;
         {
-          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_down)
+          OS_Event_list* events = os_get_frame_event_list();
+          for (OS_Event* ev = events->first; ev; ev = ev->next)
           {
-            mouse_left_went_down = true;
-            os_consume_frame_event(ev);
+            if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_down)
+            {
+              mouse_left_went_down = true;
+              os_consume_frame_event(ev);
+            }
           }
         }
+  
+        if (mouse_left_went_down)  
+        {
+          // We have a new interacted with box
+          Assert(!was_down);
+          Assert(!left_box_while_was_down);
+          Assert(!state->interacted_with_box_data.is_mouse_down);
+          Assert(!state->interacted_with_box_data.did_mouse_leave_box_while_was_down);
+          Assert(IsZeroStruct(state->interacted_with_box_data.pos_when_mouse_went_down));
+          Assert(ui_box_key_is_null(state->interacted_with_box_data.box_key));
+  
+          is_down = true;
+          mouse_pos_when_went_down = ui_get_mouse_pos();
+          state->interacted_with_box_data.is_mouse_down                      = true;
+          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
+          state->interacted_with_box_data.box_key                            = box->hash_table_key;
+          state->interacted_with_box_data.pos_when_mouse_went_down           = ui_get_mouse_pos();
+        }
       }
-
-      if (mouse_left_went_down)  
+      else if (was_down) 
       {
-        // We have a new interacted with box
-        Assert(!was_down);
-        Assert(!left_box_while_was_down);
-        Assert(!state->interacted_with_box_data.is_mouse_down);
-        Assert(!state->interacted_with_box_data.did_mouse_leave_box_while_was_down);
-        Assert(IsZeroStruct(state->interacted_with_box_data.pos_when_mouse_went_down));
-        Assert(ui_is_null_box_key(state->interacted_with_box_data.box_key));
-
         is_down = true;
-        mouse_pos_when_went_down = ui_get_mouse_pos();
-        state->interacted_with_box_data.is_mouse_down                      = true;
-        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
-        state->interacted_with_box_data.box_key                            = box->hash_table_key;
-        state->interacted_with_box_data.pos_when_mouse_went_down           = ui_get_mouse_pos();
+  
+        if (!is_hovered && is_down) { 
+          left_box_while_was_down = true; 
+          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = true;
+        }
+  
+        // todo: The events api sucks right now, but it works, i will make a better one at some point ))
+        B32 mouse_left_went_up = false;
+        {
+          OS_Event_list* events = os_get_frame_event_list();
+          for (OS_Event* ev = events->first; ev; ev = ev->next)
+          {
+            if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_up)
+            {
+              mouse_left_went_up = true;
+              os_consume_frame_event(ev);
+              break;
+            }
+          }
+        }
+  
+        if (mouse_left_went_up)
+        {
+          Assert(was_down);
+          Assert(state->interacted_with_box_data.is_mouse_down);
+  
+          is_down = false;
+          state->interacted_with_box_data.is_mouse_down                      = false;
+          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
+          state->interacted_with_box_data.pos_when_mouse_went_down           = v2f32(0, 0);
+          state->interacted_with_box_data.box_key                            = ui_box_key_null();
+        }
       }
     }
-    else if (was_down) 
+    else 
     {
-      is_down = true;
-
-      if (!is_hovered && is_down) { 
-        left_box_while_was_down = true; 
-        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = true;
-      }
-
-      // todo: The events api sucks right now, but it works, i will make a better one
-      B32 mouse_left_went_up = false;
-      {
-        OS_Event_list* events = os_get_frame_event_list();
-        for (OS_Event* ev = events->first; ev; ev = ev->next)
-        {
-          if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_up)
-          {
-            mouse_left_went_up = true;
-            os_consume_frame_event(ev);
-            break;
-          }
-        }
-      }
-
-      if (mouse_left_went_up)
-      {
-        Assert(was_down);
-        Assert(state->interacted_with_box_data.is_mouse_down);
-
-        is_down = false;
-        state->interacted_with_box_data.is_mouse_down                      = false;
-        state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
-        state->interacted_with_box_data.pos_when_mouse_went_down           = v2f32(0, 0);
-        state->interacted_with_box_data.box_key                            = ui_null_box_key();
-      }
+      UI_Box* interacted_with_box = ui_box_from_key(state->interacted_with_box_data.box_key);
+      int __var_to_put_a_break_point_on__ = 0;
     }
   }
-
-  if (!(box->per_build_data.flags & UI_Box_flag__hoverable)) { is_hovered = false; }
 
   UI_Actions result_actions = {};
   result_actions.is_hovered               = is_hovered;            
@@ -800,6 +663,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   result_actions.went_down                = !was_down && is_down;
   result_actions.went_up                  = was_down && !is_down;  
   result_actions.mouse_pos_when_went_down = mouse_pos_when_went_down;
+  result_actions.box                      = box;
 
   box->actions_present = true;
   box->actions = result_actions;
@@ -816,107 +680,30 @@ UI_Actions ui_actions_from_id(Str8 id)
 }
 
 ///////////////////////////////////////////////////////////
-// - Box fast actions
-//
-B32 ui_box_is_hovered(UI_Box* box)
-{
-  UI_Actions actions = ui_actions_from_box(box);
-  return actions.is_hovered;
-}
-
-///////////////////////////////////////////////////////////
 // - Box clip offset
 //
-// TODO: THis should be a getter not converter
-V2F32 ui_clip_offset_from_box(UI_Box* box)
+V2F32 ui_box_clip_offset(UI_Box* box)
 {
   V2F32 offset = {};
-  if (!ui_is_null_box(box))
+  if (!ui_box_is_null(box))
   {
     offset = box->clip_offset;
   }
   return offset;
 }
 
-V2F32 ui_clip_offset_from_id(Str8 id)
+V2F32 ui_box_clip_offset_by_id(Str8 id)
 {
   UI_Box_key key = ui_box_key_from_str8(id);
   UI_Box* box    = ui_box_from_key(key);
-  V2F32 offset   = ui_clip_offset_from_box(box);
+  V2F32 offset   = ui_box_clip_offset(box);
   return offset;
-}
-
-///////////////////////////////////////////////////////////
-// - Box setters
-//
-/*
-void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
-{
-  box->clip_offset.v[axis] = clip_offset;
-}
-
-void ui_box_set_clip_offset_x(UI_Box* box, F32 clip_offset)
-{
-  ui_box_set_clip_offset_for_axis(box, clip_offset, Axis2__x);
-}
-
-void ui_box_set_clip_offset_y(UI_Box* box, F32 clip_offset)
-{
-  ui_box_set_clip_offset_for_axis(box, clip_offset, Axis2__y);
-}
-
-void ui_box_set_clip_offset(UI_Box* box, V2F32 clip_offset)
-{
-  ui_box_set_clip_offset_x(box, clip_offset.x);
-  ui_box_set_clip_offset_y(box, clip_offset.y);
-}
-
-void ui_id_set_clip_offset_for_axis(Str8 id, F32 clip_offset, Axis2 axis) 
-{
-  UI_Box* this_buids_root = ui_get_root();
-  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
-  ui_box_set_clip_offset_for_axis(box, clip_offset, axis);
-}
-
-void ui_id_set_clip_offset_x(Str8 id, F32 clip_offset) 
-{
-  UI_Box* this_buids_root = ui_get_root();
-  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
-  ui_box_set_clip_offset_x(box, clip_offset);
-}
-
-void ui_id_set_clip_offset_y(Str8 id, F32 clip_offset) 
-{
-  UI_Box* this_buids_root = ui_get_root();
-  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
-  ui_box_set_clip_offset_y(box, clip_offset);
-}
-
-void ui_id_set_clip_offset(Str8 id, V2F32 clip_offset) 
-{
-  UI_Box* this_buids_root = ui_get_root();
-  UI_Box* box = ui_find_box_in_tree_by_id(this_buids_root, id);
-  ui_box_set_clip_offset(box, clip_offset);
-}
-*/
-
-///////////////////////////////////////////////////////////
-// - Null box
-//
-B32 ui_is_null_box(UI_Box* box)
-{
-  return (box == 0) || (box == &__ui_g_null_box);
-}
-
-UI_Box* ui_null_box()
-{
-  return &__ui_g_null_box;
 }
 
 ///////////////////////////////////////////////////////////
 // - Box key stuff
 //
-UI_Box_key ui_null_box_key()
+UI_Box_key ui_box_key_null()
 {
   UI_Box_key key = {};
   return key;
@@ -927,14 +714,15 @@ B32 ui_box_key_match(UI_Box_key key, UI_Box_key other)
   return (key.v == other.v);
 }
 
-B32 ui_is_null_box_key(UI_Box_key key)
+B32 ui_box_key_is_null(UI_Box_key key)
 {
-  return ui_box_key_match(key, ui_null_box_key());
+  return ui_box_key_match(key, ui_box_key_null());
 }
 
 UI_Box_key ui_box_key_from_str8(Str8 str)
 {
-  if (str.count == 0) { return ui_null_box_key(); }
+  // DD: This is a bit changed version of "CLAY_DLL_EXPORT Clay_ElementId Clay__HashString(Clay_String key, uint32_t offset, uint32_t seed);"
+  if (str.count == 0) { return ui_box_key_null(); }
 
   U64 hash = 0;
   
@@ -967,14 +755,14 @@ UI_Box_key ui_box_key_from_str8(Str8 str)
 UI_Box* ui_box_from_key(UI_Box_key key)
 {
   ProfBeginFunc();
-  if (ui_is_null_box_key(key)) { return ui_null_box(); }
+  if (ui_box_key_is_null(key)) { return ui_box_null(); }
   
   UI_State* state     = ui_get_state();
   U64 bucket_index    = key.v % ArrayCount(state->hash_table_buckets); 
   UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
   
-  UI_Box* result_box = ui_null_box();
-  for (UI_Box* box = bucket->first; !ui_is_null_box(box); box = box->next_in_bucket_or_free_list)
+  UI_Box* result_box = ui_box_null();
+  for (UI_Box* box = bucket->first; !ui_box_is_null(box); box = box->next_in_bucket_or_free_list)
   {
     if (ui_box_key_match(key, box->hash_table_key))
     {
@@ -988,19 +776,115 @@ UI_Box* ui_box_from_key(UI_Box_key key)
 }
 
 ///////////////////////////////////////////////////////////
+// - Box drag memory
+//
+Data_buffer* ui_box_drag_buffer(UI_Box* box)
+{
+  return &box->dynamic_drag_memory;
+}
+
+Data_buffer* ui_box_drag_buffer_by_id(Str8 id)
+{
+  UI_Box_key key      = ui_box_key_from_str8(id);
+  UI_Box* box         = ui_box_from_key(key);
+  Data_buffer* buffer = ui_box_drag_buffer(box);
+  return buffer;
+}
+
+Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc)
+{
+  box->dynamic_drag_memory = data_buffer_make(ui_get_build_arena(), size_to_alloc);
+  return &box->dynamic_drag_memory;
+}
+
+Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc)
+{
+  UI_Box_key key      = ui_box_key_from_str8(id);
+  UI_Box* box         = ui_box_from_key(key);
+  Data_buffer* buffer = ui_box_drag_buffer_alloc(box, size_to_alloc);
+  return buffer;
+}
+
+void ui_box_drag_buffer_release(UI_Box* box)
+{
+  box->dynamic_drag_memory = Data_buffer{};
+}
+
+void ui_box_drag_buffer_release_by_id(Str8 id)
+{
+  UI_Box_key key = ui_box_key_from_str8(id);
+  UI_Box* box    = ui_box_from_key(key);
+  ui_box_drag_buffer_release(box);
+}
+
+///////////////////////////////////////////////////////////
+// - Box setters (clip offset) 
+//
+void ui_box_set_b_color(UI_Box* box, V4F32 color)
+{
+  box->per_build_config.b_color = color;
+}
+
+void ui_box_set_border_width(UI_Box* box, V4F32 border_width)
+{
+  box->per_build_config.border_width = border_width;
+}
+
+void ui_box_set_border_color(UI_Box* box, V4F32 border_color)
+{
+  box->per_build_config.border_color = border_color;
+}
+
+void ui_box_set_border(UI_Box* box, V4F32 border_width, V4F32 border_color)
+{
+  ui_box_set_border_width(box, border_width);
+  ui_box_set_border_color(box, border_color);
+}
+
+void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
+{
+  box->clip_offset.v[axis] = clip_offset;
+}
+
+void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis)
+{
+  UI_Box_key key = ui_box_key_from_str8(id);
+  UI_Box* box = ui_box_from_key(key);
+  ui_box_set_clip_offset_for_axis(box, clip_offset, axis);
+}
+
+void ui_box_set_clip_offset_y(UI_Box* box, F32 offset)
+{
+  ui_box_set_clip_offset_for_axis(box, offset, Axis2__y);
+}
+
+void ui_box_set_clip_offset_x(UI_Box* box, F32 offset)
+{
+  ui_box_set_clip_offset_for_axis(box, offset, Axis2__x);
+}
+
+///////////////////////////////////////////////////////////
+// - Null box
+//
+B32 ui_box_is_null(UI_Box* box)
+{
+  return (box == 0) || (box == &__ui_g_null_box);
+}
+
+UI_Box* ui_box_null()
+{
+  return &__ui_g_null_box;
+}
+
+///////////////////////////////////////////////////////////
 // - UI drawing
 //
 void ui_draw()
 {
-  // TODO: Find a way to reliably have scissor rect pushing and popping for boxes
-  //       that have no_overdraw flag set
-
   UI_State* state = ui_get_state();
   Clay_RenderCommandArray render_commands = state->render_commands_as_result_of_ui_build;
 
   d_push_scissor_rect(rect_make(0.0f, 0.0f, state->window_dims_for_this_build.x, state->window_dims_for_this_build.y));
-
-  B32 got_green_border = false;
 
   for EachIndex(command_index, render_commands.length)
   {
@@ -1016,19 +900,21 @@ void ui_draw()
     Clay_RenderCommand command = render_commands.internalArray[command_index];
     Rect rect = __ui_rect_from_clay_bounding_box(command.boundingBox);
     
+    B32 pop_scissor_rect_after_this_command = false;
     if (command.userData != 0)
     { 
       UI_Box* box = (UI_Box*)command.userData;
-      UI_Box* no_overdraw_parent = box->per_build_data.ancestor_with_no_overflow_drag_flag;
-      if (!ui_is_null_box(no_overdraw_parent))
+      UI_Box* no_overdraw_parent = box->per_build_config.ancestor_with_no_overflow_drag_flag;
+      if (!ui_box_is_null(no_overdraw_parent))
       {
-        Rect scissor_rect = no_overdraw_parent->rect;
+        Rect scissor_rect = no_overdraw_parent->rect; // DD: Its okay to just use the rect here since this draw is called after ui_end_build which produces the final rect for boxes 
         if (d_get_state()->current_scissor_rect_count > 0)
         {
           Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
           scissor_rect = rect_intersect(no_overdraw_parent->rect, current_scissor_rect);
         }
         d_push_scissor_rect(scissor_rect);
+        pop_scissor_rect_after_this_command = true;
       }
     }
 
@@ -1042,7 +928,7 @@ void ui_draw()
         V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
         V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
 
-        F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
+        F32 softness = 0.0f; // DD: Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
         d_draw_rect_pro(rect, color, color, color, color, corner_radii, softness);
       } break;
 
@@ -1052,7 +938,7 @@ void ui_draw()
         V4F32 corner_rs    = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
         V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
 
-        F32 softness = 0.0f; // Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
+        F32 softness = 0.0f; // DD: Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
         
         if (border_width.v[RectEdge__left] > 0) 
         {
@@ -1108,7 +994,7 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
-        // Damian: Just making sure
+        // DD: Just making sure
         Assert((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData);
         if ((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData)
         {
@@ -1116,8 +1002,8 @@ void ui_draw()
           V4F32 clay_corner_r        = __ui_v4f32_from_clay_corner_radius(command.renderData.custom.cornerRadius);
           UI_Box* box_to_custom_draw = (UI_Box*)command.renderData.custom.customData;
   
-          UI_Box_custom_draw_func* draw_func = box_to_custom_draw->per_build_data.custom_draw_extension.draw_func;
-          void* draw_func_data               = box_to_custom_draw->per_build_data.custom_draw_extension.data_for_draw_func;
+          UI_Box_custom_draw_func* draw_func = box_to_custom_draw->per_build_config.custom_draw_extension.draw_func;
+          void* draw_func_data               = box_to_custom_draw->per_build_config.custom_draw_extension.data_for_draw_func;
 
           Assert(draw_func);
           if (draw_func)
@@ -1134,18 +1020,77 @@ void ui_draw()
       } break;
     }
     
-    if (command.userData != 0)
-    { 
-      UI_Box* box = (UI_Box*)command.userData;
-      UI_Box* no_overdraw_parent = box->per_build_data.ancestor_with_no_overflow_drag_flag;
-      if (!ui_is_null_box(no_overdraw_parent))
-      {
-        d_pop_scissor_rect();
-      }
+    if (pop_scissor_rect_after_this_command)
+    {
+      d_pop_scissor_rect();
     }
   }
 
   d_pop_scissor_rect();
+}
+
+///////////////////////////////////////////////////////////
+// - Context menu embedded support
+//
+void ui_set_context_menu_key(Str8 id, V2F32 offset)
+{
+  UI_State* state = ui_get_state();
+  UI_Box_key key = ui_box_key_from_str8(id);
+  state->open_context_menu_box_key = key;
+  state->open_context_menu_offset  = offset;
+}
+
+void ui_reset_context_menu()
+{
+  UI_State* state = ui_get_state();
+  state->open_context_menu_box_key = ui_box_key_null();
+  state->open_context_menu_offset  = V2F32{};
+  // Todo: do we have to reset the context menu box inside the state here as well ?
+}
+
+B32 ui_is_context_menu_with_id_open(Str8 id)
+{
+  UI_State* state = ui_get_state();
+  UI_Box_key key = ui_box_key_from_str8(id);
+  return ui_box_key_match(state->open_context_menu_box_key, key);
+}
+
+void ui_begin_context_menu(Str8 id)
+{
+  UI_State* state = ui_get_state();
+  UI_Box_key key = ui_box_key_from_str8(id);
+
+  if (ui_is_context_menu_with_id_open(id))
+  {
+    ui_push_parent(state->current_build_root_box);
+
+    ui_next_width(ui_fit());
+    ui_next_height(ui_fit());
+    ui_next_floating_fixed_pos(state->open_context_menu_offset);
+    UI_Box* context_menu_box = ui_box_make(UI_Box_flag__floating, id);
+
+    ui_push_parent(context_menu_box);
+
+    // DD: If we start a context menu this build that is difference from the 
+    // final context menu of the previous build, then we have to reset the 
+    // data for interactions 
+    if (!ui_box_key_match(state->final_context_menu_key_for_prev_build, key))
+    {
+      state->interacted_with_box_data = {};
+      state->interacted_with_box_data.box_key = ui_box_key_null();
+    }
+
+  }
+}
+
+void ui_end_context_menu(Str8 id)
+{
+  UI_State* state = ui_get_state();
+  if (ui_is_context_menu_with_id_open(id))
+  {
+    ui_pop_parent();
+    ui_pop_parent();
+  }
 }
 
 ///////////////////////////////////////////////////////////
@@ -1175,7 +1120,7 @@ UI_Size ui_grow()                    { return ui_size_make(UI_Size_kind__grow, 0
 UI_Size ui_p_of_p(F32 p)             { return ui_size_make(UI_Size_kind__percent_of_parent, p, p); }         
 
 ///////////////////////////////////////////////////////////
-// - Other
+// - Other/Misc
 //
 U64 ui_get_build_generation()
 {
@@ -1203,43 +1148,6 @@ UI_Box* ui_get_root()
 {
   return ui_get_state()->current_build_root_box;
 }
-
-// ================
-// === OLD CODE ===
-
-
-/*
-UI_Box* ui_find_box_in_tree_by_id(UI_Box* root, Str8 id)
-{
-  if (id.count == 0)               { return ui_null_box(); }
-  if (ui_is_null_box(root))        { return ui_null_box(); }
-  if (str8_match(root->id, id, 0)) { return root; }
-
-  UI_Box* found_box = ui_null_box();
-  for (UI_Box* child = root->first_child; !ui_is_null_box(child); child = child->next_sibling)
-  {
-    found_box = ui_find_box_in_tree_by_id(child, id);
-    if (!ui_is_null_box(found_box))
-    {
-      break;
-    }
-  }
-  return found_box;
-}
-
-UI_Box* ui_find_prev_build_box_by_id(Str8 id)
-{
-  if (id.count == 0) { return ui_null_box(); }
-  UI_Box* found_box = ui_find_box_in_tree_by_id(ui_get_state()->prev_build_root_box, id);
-  return found_box;
-}
-
-UI_Box* ui_find_prev_build_box_by_box(UI_Box* box)
-{
-  UI_Box* prev_frame_box = ui_find_prev_build_box_by_id(box->id);
-  return prev_frame_box;
-}
-*/
 
 ///////////////////////////////////////////////////////////
 // - Stack functions and helper
@@ -1438,7 +1346,7 @@ void ui_next_layout_x() { ui_next_layout(Axis2__x); }
 void ui_next_layout_y() { ui_next_layout(Axis2__y); }
 
 ///////////////////////////////////////////////////////////
-// - Stack function helpers (fixed floating position)
+// - Stack function helpers (fixed floating stuff)
 //
 void ui_next_floating_fixed_pos(V2F32 pos)
 {
@@ -1446,93 +1354,15 @@ void ui_next_floating_fixed_pos(V2F32 pos)
   ui_next_floating_fixed_pos_y(pos.y);
 }
 
-///////////////////////////////////////////////////////////
-// - Box setters, TODO: Move these above stacks to a better place in the file
-//
-void ui_box_set_b_color(UI_Box* box, V4F32 color)
+void ui_next_floating_fixed_dims(V2F32 dims)
 {
-  box->per_build_data.b_color = color;
-}
-
-void ui_box_set_border_width(UI_Box* box, V4F32 border_width)
-{
-  box->per_build_data.border_width = border_width;
-}
-
-void ui_box_set_border_color(UI_Box* box, V4F32 border_color)
-{
-  box->per_build_data.border_color = border_color;
-}
-
-void ui_box_set_border(UI_Box* box, V4F32 border_width, V4F32 border_color)
-{
-  ui_box_set_border_width(box, border_width);
-  ui_box_set_border_color(box, border_color);
-}
-
-void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
-{
-  box->clip_offset.v[axis] = clip_offset;
-}
-
-void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis)
-{
-  UI_Box_key key = ui_box_key_from_str8(id);
-  UI_Box* box = ui_box_from_key(key);
-  ui_box_set_clip_offset_for_axis(box, clip_offset, axis);
-}
-
-void ui_box_set_clip_offset_y(UI_Box* box, F32 offset)
-{
-  ui_box_set_clip_offset_for_axis(box, offset, Axis2__y);
-}
-
-void ui_box_set_clip_offset_x(UI_Box* box, F32 offset)
-{
-  ui_box_set_clip_offset_for_axis(box, offset, Axis2__x);
+  ui_next_floating_fixed_dims_x(dims.x);
+  ui_next_floating_fixed_dims_y(dims.y);
 }
 
 ///////////////////////////////////////////////////////////
-// - Box drag memory
-//
-Data_buffer* ui_box_drag_buffer(UI_Box* box)
-{
-  return &box->dynamic_drag_memory;
-}
-
-Data_buffer* ui_box_drag_buffer_by_id(Str8 id)
-{
-  UI_Box_key key      = ui_box_key_from_str8(id);
-  UI_Box* box         = ui_box_from_key(key);
-  Data_buffer* buffer = ui_box_drag_buffer(box);
-  return buffer;
-}
-
-Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc)
-{
-  box->dynamic_drag_memory = data_buffer_make(ui_get_build_arena(), size_to_alloc);
-  return &box->dynamic_drag_memory;
-}
-
-Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc)
-{
-  UI_Box_key key      = ui_box_key_from_str8(id);
-  UI_Box* box         = ui_box_from_key(key);
-  Data_buffer* buffer = ui_box_drag_buffer_alloc(box, size_to_alloc);
-  return buffer;
-}
-
-void ui_box_drag_buffer_release(UI_Box* box)
-{
-  box->dynamic_drag_memory = Data_buffer{};
-}
-
-void ui_box_drag_buffer_release_by_id(Str8 id)
-{
-  UI_Box_key key      = ui_box_key_from_str8(id);
-  UI_Box* box         = ui_box_from_key(key);
-  ui_box_drag_buffer_release(box);
-}
+// Private helpers
+///////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////
 // - Helpers to wrap around clay
@@ -1618,7 +1448,7 @@ Clay_BorderWidth __ui_clay_border_width_from_v4f32(V4F32 border)
   clay_border.right           = (U16)border.v[RectEdge__right];
   clay_border.top             = (U16)border.v[RectEdge__top];
   clay_border.bottom          = (U16)border.v[RectEdge__bottom];
-  clay_border.betweenChildren = {}; // Not sure if we need this, so not using this yet
+  clay_border.betweenChildren = {}; // DD: Not sure if we need this, so not using this yet
   return clay_border;
 }
 
@@ -1716,12 +1546,244 @@ Clay_Dimensions __ui_clay_dimensions_from_v2f32(V2F32 vec)
   return clay_dims;
 }
 
-///////////////////////////////////////////////////////////
-// - Move this to a better place
-//
+void __ui_box_set_to_null_mem(UI_Box* box)
+{
+  box->hash_table_key              = ui_box_key_null();
+
+  box->next_in_bucket_or_free_list = &__ui_g_null_box;
+  box->prev_in_bucket              = &__ui_g_null_box;
+
+  box->per_build_config.custom_draw_extension.draw_func = __ui_custom_draw_stub_func;
+
+  box->per_build_config.first_child  = &__ui_g_null_box;
+  box->per_build_config.last_child   = &__ui_g_null_box;
+  box->per_build_config.next_sibling = &__ui_g_null_box;
+  box->per_build_config.prev_sibling = &__ui_g_null_box;
+  box->per_build_config.parent       = &__ui_g_null_box;
+
+  box->per_build_config.ancestor_with_no_overflow_drag_flag = &__ui_g_null_box;
+
+  box->prev_build_parent_context_menu_key = ui_box_key_null();
+  box->parent_context_menu_key            = ui_box_key_null();
+
+  __ui_actions_set_to_null_mem(&box->actions);
+}
+
+void __ui_actions_set_to_null_mem(UI_Actions* actions)
+{
+  actions->box = &__ui_g_null_box;
+}
+
 void __ui_error_handler_for_clay(Clay_ErrorData errorText)
 {
-  BreakPoint();
+  BreakPoint(
+    "Hey big fella."
+    "I guess some went wrong since you are here,"
+    "but dont worry, I believe in you."
+  );
+}
+
+UI_CUSTOM_DRAW_BOX_DEF(__ui_custom_draw_stub_func)
+{
+  BreakPoint(
+    "Hey big fella."
+    "I guess some went wrong since you are here,"
+    "but dont worry, I believe in you."
+  );
+}
+
+UI_Box* __ui_next_box_in_box_tree_depth_first(UI_Box* box)
+{
+  // DD:
+  // This is for depth first iteration but dont in a loop like so:
+  //    for (UI_Box* box = root; !ui_box_is_null(box); box = __ui_next_box_in_box_tree_depth_first(box)) { _code_here_ }
+  // 
+  // In depth first we have 3 ways to go in 3 difference cases.
+  // 1. If we have a first child, then the next box is that child
+  // 2. If we dont have a first child, then we go to the next sibling
+  // 3. If we dont have a first child and we dont have the next sibling, then we have
+  //    to go to the next sibling of the first parent that has it.
+
+  if (ui_box_is_null(box)) { return ui_box_null(); }
+
+  UI_Box* next = ui_box_null();
+  if (!ui_box_is_null(box->per_build_config.first_child))
+  {
+    next = box->per_build_config.first_child;
+  }
+  else if (!ui_box_is_null(box->per_build_config.next_sibling))
+  {
+    next = box->per_build_config.next_sibling;
+  }
+  else  
+  {
+    for (UI_Box* parent = box->per_build_config.parent; !ui_box_is_null(parent); parent = parent->per_build_config.parent)
+    {
+      if (!ui_box_is_null(parent->per_build_config.next_sibling))
+      {
+        next = parent->per_build_config.next_sibling;
+        break;
+      }
+    }
+  }
+
+  return next;
+}
+
+void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
+{
+  if (ui_box_is_null(box)) { return; }
+  UI_State* state = ui_get_state();
+
+  if (!ui_box_key_is_null(box->hash_table_key)) 
+  {
+    Assert(box->per_build_config.str_for_key.count != 0); 
+    Assert(box->per_build_config.is_str_for_key_fake == false); 
+  }
+  
+  // DD: Setting up clay config from our own box state
+  Clay_ElementDeclaration clay_config = {};
+  {
+    // DD: Making clay id
+    if (box->per_build_config.str_for_key.count != 0)
+    {
+      clay_config.id = Clay__HashString(__ui_clay_string_from_str8(box->per_build_config.str_for_key), 0, 0);
+    }
+  
+    clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__x]);
+    clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__y]);
+    clay_config.layout.layoutDirection = (box->per_build_config.layout_direction == Axis2__x ?  CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM);
+    
+    clay_config.layout.padding  = __ui_clay_padding_from_v4f32(box->per_build_config.padding);
+    clay_config.layout.childGap = (U16)box->per_build_config.child_gap;
+
+    if (0) {}
+    else if (box->per_build_config.alignment_on_x == UI_Alignment_x__left)   { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_LEFT; }
+    else if (box->per_build_config.alignment_on_x == UI_Alignment_x__center) { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_CENTER; }
+    else if (box->per_build_config.alignment_on_x == UI_Alignment_x__right)  { clay_config.layout.childAlignment.x = CLAY_ALIGN_X_RIGHT; }
+  
+    if (0) {}
+    else if (box->per_build_config.alignment_on_y == UI_Alignment_y__top)   { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_TOP; }
+    else if (box->per_build_config.alignment_on_y == UI_Alignment_y__center) { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_CENTER; }
+    else if (box->per_build_config.alignment_on_y == UI_Alignment_y__bottom)  { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_BOTTOM; }
+  
+    clay_config.backgroundColor = __ui_clay_color_from_v4f32(box->per_build_config.b_color); 
+    clay_config.cornerRadius    = __ui_clay_corner_radius_from_v4f32(box->per_build_config.corner_radii); 
+  
+    clay_config.clip.horizontal  = box->per_build_config.clip_axis[Axis2__x];
+    clay_config.clip.vertical    = box->per_build_config.clip_axis[Axis2__y];
+    clay_config.clip.childOffset = { box->clip_offset.x, box->clip_offset.y };
+    
+    clay_config.border = { __ui_clay_color_from_v4f32(box->per_build_config.border_color), __ui_clay_border_width_from_v4f32(box->per_build_config.border_width) };
+    
+    if (box->per_build_config.flags & UI_Box_flag__floating)
+    {
+      clay_config.floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
+      clay_config.floating.clipTo             = CLAY_CLIP_TO_NONE;                 // Damian: Not sure where i need this, so just const right now
+      clay_config.floating.offset.x = box->per_build_config.floating_fixed_pos.x; 
+      clay_config.floating.offset.y = box->per_build_config.floating_fixed_pos.y; 
+      // TODO: Look into this, should we set the parent to be the root box of the build when we have UI_Floating_attach_point__root ?
+      //       Would that make more sense ?
+      if (0) {}
+      else if (box->per_build_config.floating_attach_point == UI_Floating_attach_point__parent) { clay_config.floating.attachTo = CLAY_ATTACH_TO_PARENT; }
+      else if (box->per_build_config.floating_attach_point == UI_Floating_attach_point__root)   { clay_config.floating.attachTo = CLAY_ATTACH_TO_ROOT; }
+      
+      if (box->per_build_config.has_fixed_dims)
+      {
+        // TODO: Look into expand and what it does
+        clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(ui_px(box->per_build_config.floating_fixed_dims.x));
+        clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(ui_px(box->per_build_config.floating_fixed_dims.y));
+      }
+    }
+    
+    if ( box->per_build_config.custom_draw_extension.draw_func != 0 
+      && box->per_build_config.custom_draw_extension.draw_func != __ui_custom_draw_stub_func
+    ) {
+      clay_config.custom.customData = box;
+    }
+    
+    clay_config.userData = box;
+    
+    // DD: We dont use these
+    // config->aspectRatio = {};  
+    // config->image       = {};  
+  }
+
+  // DD: Doing clay stuff to make clay ui element
+  {
+    Clay__OpenElement();
+    Clay__ConfigureOpenElementPtr(&clay_config);
+
+    // DD: Clay_Hovered() just returns if a mouse is over something, regardless of the fact that there might be something on top of it
+    if (Clay_Hovered() && box->per_build_config.has_hover_cursor)
+    {
+      B32 do_it = true;
+
+      // DD: If context menu is open then we only use the hovered cursors
+      // for the boxes that are a part of the context menu
+      if (!ui_box_key_is_null(state->open_context_menu_box_key))
+      {
+        do_it = false;
+        for (UI_Box* parent = box->per_build_config.parent; ui_box_is_null(parent); parent = parent->per_build_config.parent)
+        {
+          if (ui_box_key_match(parent->hash_table_key, state->open_context_menu_box_key))
+          {
+            do_it = true;
+            break;
+          }
+        }
+      }
+
+      if (do_it)
+      {
+        state->final_hover_box = box;
+      }
+    }
+
+    // DD: Doing children like EPSTINE
+    // DD: Doing this recursivelly and not via the recursion helper cause of clay Open/Close_Element
+    for (
+      UI_Box* child = box->per_build_config.first_child; 
+      !ui_box_is_null(child); 
+      child = child->per_build_config.next_sibling
+    ) {
+      __ui_build_clay_element_tree_from_box_tree(child);
+    }
+
+    Clay__CloseElement();
+  }
+
+}
+
+void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root)
+{
+  if (ui_box_is_null(root)) { return; }
+
+  for (UI_Box* it_box = root; !ui_box_is_null(it_box); it_box = __ui_next_box_in_box_tree_depth_first(it_box))
+  {
+    if (it_box->per_build_config.str_for_key.count != 0) 
+    {
+      Clay_ElementId clay_id = __ui_clay_element_id_from_str8(it_box->per_build_config.str_for_key);
+      Clay_ElementData clay_data = Clay_GetElementData(clay_id);
+      Assert(clay_data.found);
+      if (clay_data.found)
+      {
+        it_box->rect = __ui_rect_from_clay_bounding_box(clay_data.boundingBox);
+      }
+    
+      if ((it_box->per_build_config.flags & UI_Box_flag__clip_x) || (it_box->per_build_config.flags & UI_Box_flag__clip_y))
+      {
+        Clay_ScrollContainerData clay_scroll_data = Clay_GetScrollContainerData(clay_id);
+        Assert(clay_scroll_data.found);
+        if (clay_scroll_data.found)
+        {
+          it_box->viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
+          it_box->content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
+        }
+      }
+    }
+  }
+
 }
 
 #endif

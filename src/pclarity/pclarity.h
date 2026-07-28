@@ -31,6 +31,7 @@ enum PCL_Command {
   PCL_Command__close_the_app, // TODO:
   PCL_Command__new_main_font_size,
   PCL_Command__add_header_to_table,
+  PCL_Command__remove_header_from_table,
   PCL_Command__clear_table,
   PCL_Command__sort_by_header,
   PCL_Command__select_row,
@@ -89,6 +90,8 @@ struct PCL_State {
   B32 is_command_window_open;
   PCL_Menu current_menu;
 
+  B32 close_the_app;
+
   B32 show_debug_data;
 
   // Frame data
@@ -114,6 +117,7 @@ struct PCL_State {
   struct {
     F32 new_font_size;
     PCL_Table_header_kind table_header_kind_for_new_table_header;
+    U64 header_index_to_remove;
     U64 sort_by_header__header_index;
     S32 process_at_row_to_select_pid;
   } data_for_commands;
@@ -122,6 +126,13 @@ struct PCL_State {
     PCL_Table_header headers[PCL_TABLE_HEADER_MAX_COUNT];
     U64 header_count;
   } table_data;
+
+  // Damian: Test ui state for context menu
+  struct {
+    B32 is_open;
+    V2F32 offset;
+    Str8 id;
+  } context_menu_state;
 };
 
 // TODO: These should be the part of the PCL_State, i just havent moved them yet in there

@@ -11,6 +11,27 @@
 
 #include "pclarity/pclarity.h"
 
+U64 arr_shift_left_from_index(void* arr, U64 arr_count, U64 index_to_remove, U64 size_of_arr_entry)
+{
+  U64 new_count = arr_count;
+  if (new_count > 0 && index_to_remove < new_count)
+  {
+    if (new_count > 1)
+    {
+      for (U64 i = index_to_remove; i < new_count - 1; i += 1)
+      {
+        U8* arr_entry      = ((U8*)(arr)) + ((i + 0) * size_of_arr_entry);
+        U8* arr_next_entry = ((U8*)(arr)) + ((i + 1) * size_of_arr_entry);
+        memcpy(arr_entry, arr_next_entry, size_of_arr_entry);
+      }
+    }
+    new_count -= 1;
+  }
+  else { InvalidCodePath(); }
+  return new_count;
+}
+#define ArrShiftLeftFromIndex(arr_p, arr_count, index_to_remove) arr_shift_left_from_index(arr_p, arr_count, index_to_remove, sizeof(arr_p[0]))
+
 ///////////////////////////////////////////////////////////
 // - Main passes
 //
@@ -47,11 +68,16 @@ void pcl_frame_update(PCL_State* pcl)
   
       case PCL_Command__NONE: {} break;  
       
+      case PCL_Command__close_the_app: 
+      { 
+        pcl->close_the_app = true;
+      } break;
+
       case PCL_Command__go_to_settings: 
       { 
         pcl->current_menu = PCL_Menu__settings;
       } break;
-  
+
       case PCL_Command__go_to_home:
       {
         pcl->current_menu = PCL_Menu__home;
@@ -66,6 +92,16 @@ void pcl_frame_update(PCL_State* pcl)
       {
         PCL_Table_header_kind kind = pcl->data_for_commands.table_header_kind_for_new_table_header;
         pcl_add_header_into_table(pcl, kind, 1); 
+      } break;
+
+      case PCL_Command__remove_header_from_table:
+      {
+        U64 index = pcl->data_for_commands.header_index_to_remove;
+        pcl->data_for_commands.header_index_to_remove = 0;
+
+        U64 new_count = ArrShiftLeftFromIndex(pcl->table_data.headers, pcl->table_data.header_count, index);
+        pcl->table_data.header_count = new_count;
+        pcl->table_data.headers[pcl->table_data.header_count] = {};
       } break;
 
       case PCL_Command__clear_table:
@@ -153,8 +189,85 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
   ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
 
   ui_push_font_size(pcl->main_font_size);
-
   F32 icon_size = ui_top_font_size() * 3; // Damian: For now this is how it is, TODO
+
+  /*
+  if (pcl->context_menu_state.is_open)
+  {
+    B32 is_mouse_event = false;
+    for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+    {
+      if (ev->kind == OS_Event_kind__mouse)
+      {
+        is_mouse_event = true;
+        break;
+      }
+    }
+
+    // TODO: DO a drop down list and see the difference between it and a
+    //       context menu
+
+    if (is_mouse_event)
+    {
+      UI_Box_data data = ui_box_data_from_id(pcl->context_menu_state.id);
+      Assert(data.is_found);
+      if (!rect_point_inside(data.rect, ui_get_mouse_pos()))
+      {
+        pcl->context_menu_state = {};
+        
+        for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+        {
+          os_consume_frame_event(ev);
+        }
+      }
+    }
+
+  }
+
+  ui_next_b_color(red());
+  if (ui_button_f("Open context menu button").is_clicked)
+  {
+    if (!pcl->context_menu_state.is_open)
+    {
+      pcl->context_menu_state.is_open = true;
+      pcl->context_menu_state.offset  = ui_get_mouse_pos();
+      pcl->context_menu_state.id      = Str8FromC("Context menu box");
+    }
+  }
+  */
+
+  // ui_next_b_color(nice_green());
+  // UI_Actions button = ui_button_f("Close context menu");
+  
+  // Str8 context_menu_box_id = Str8FromC("Context menu box test id a");
+  
+  // todo: Here you just see what conetxt menu is open and just buidl that or
+  // you cahnge the key for the open context menu and then build the ui for thst in it
+
+  // Test api for context menu
+  // Str8 conext_menu_id = Str8FromC("Test context menu");
+  // UI_Box* context_menu_box = ui_box_null();
+  // if (button.went_down) 
+  // { 
+  //   ui_set_context_menu_key(conext_menu_id, ui_get_mouse_pos());
+  // }
+
+  // if (ui_is_context_menu_with_id_open(conext_menu_id))
+  // {
+  //   ui_begin_context_menu();
+  //   {
+  //     ui_next_b_color(black());
+  //     ui_next_width(ui_px(100));
+  //     ui_next_height(ui_px(100));
+  //     UI_Box* box = ui_box_make(UI_Box_flag__has_background, {});
+  //     UI_Parent(box)
+  //     {
+  //       ui_next_font_size(64);
+  //       ui_text_f("Text");
+  //     }
+  //   }
+  //   ui_end_context_menu();
+  // }
 
   ui_next_width(ui_p_of_p(1));
   ui_next_height(ui_p_of_p(1));
@@ -174,7 +287,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
       ui_next_padding(ui_top_font_size());
       ui_next_border(2, pcl_color_from_name(PCL_Color_name__item_selected));
       ui_next_hover_cursor(OS_Cursor__hand);
-      UI_Box* home_button = ui_box_make(UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail home button"));
+      UI_Box* home_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail home button"));
       UI_Parent(home_button)
       {
         ui_image(pcl_icon_home, icon_size, icon_size);
@@ -196,16 +309,16 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
       ui_next_padding(ui_top_font_size());
       ui_next_border(2, pcl_color_from_name(PCL_Color_name__item_selected));
       ui_next_hover_cursor(OS_Cursor__hand);
-      UI_Box* settings_button = ui_box_make(UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail setting button"));
+      UI_Box* settings_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail setting button"));
       UI_Parent(settings_button)
       {
         ui_image(pcl_icon_settings, icon_size, icon_size);
   
         UI_Actions settings_button_acts = ui_actions_from_box(settings_button);
-        if (settings_button_acts.is_clicked)
-        {
+        if (settings_button_acts.is_clicked) {
           pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__go_to_settings);
-        }
+        } 
+
         if (settings_button_acts.is_hovered) {
           ui_box_set_b_color(settings_button, pcl_color_from_name(PCL_Color_name__item_selected));
         }
@@ -346,7 +459,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                     ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
                     ui_next_hover_cursor(OS_Cursor__horizontal_resize);
                     ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2));
-                    UI_Box* resizer = ui_box_make_f(UI_Box_flag__floating|UI_Box_flag__hoverable|UI_Box_flag__clickable, "Data table resizer %lld", header_index);
+                    UI_Box* resizer = ui_box_make_f(UI_Box_flag__floating|UI_Box_flag__clickable, "Data table resizer %lld", header_index);
 
                     UI_Actions resizer_actions = ui_actions_from_box(resizer);
                     if (resizer_actions.is_down)
@@ -391,21 +504,42 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                   for EachIndex(header_index, pcl->table_data.header_count) 
                     ScratchLoop(scratch, 0, 0) 
                   {
-                    PCL_Table_header header    = pcl->table_data.headers[header_index];
-                    F32 flex_norm              = header.flex_value / headers_total_flex_value;
+                    U64 header_addr         = (U64)(pcl->table_data.headers + header_index);
+                    PCL_Table_header header = pcl->table_data.headers[header_index];
+                    F32 flex_norm           = header.flex_value / headers_total_flex_value;
                     
                     ui_next_width(ui_px(flex_norm * space_for_headers));
                     ui_next_height(ui_grow());
                     
-                    // if (header_index == 7) { BP; }
-
-                    Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+                    Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_addr);
                     B32 header_activated = pcl_ui_table_header(id, header);
 
+                    Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id %lld", header_addr);
                     if (header_activated)
                     {
-                      pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__sort_by_header);
-                      pcl->data_for_commands.sort_by_header__header_index = header_index;
+                      ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
+                    }
+
+                    if (ui_is_context_menu_with_id_open(header_context_menu_id))
+                      DeferLoop(ui_begin_context_menu(header_context_menu_id), ui_end_context_menu(header_context_menu_id))
+                    {
+                      UI_Col()
+                      {
+                        ui_next_padded_border(1, orange());
+                        ui_next_b_color(white());
+                        ui_next_font_color(black());
+                        UI_Actions button_actions = ui_button_f("Remove header");
+                        UI_Box* button_box = button_actions.box;
+                        if (button_actions.is_hovered) { ui_box_set_b_color(button_box, blue()); }
+                        if (button_actions.is_down) { ui_box_set_b_color(button_box, nice_blue()); }
+                        if (button_actions.is_clicked)
+                        {
+                          pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__remove_header_from_table);
+                          pcl->data_for_commands.header_index_to_remove = header_index;
+                          
+                          ui_reset_context_menu();
+                        }
+                      }
                     }
 
                     if (header_index != pcl->table_data.header_count - 1)
@@ -431,7 +565,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                   U64 n_rows        = pcl->gathered_process_data_this_frame.count;
                   F32 space_between = 2;
                   F32 row_size      = ui_top_font_size() * ROW_HEIGHT_SCALER;
-                  F32 offset        = -ui_clip_offset_from_box(table_box).y;
+                  F32 offset        = -ui_box_clip_offset(table_box).y;
                   F32 vp            = ui_box_clip_data_from_box(table_box).viewport_dims.y;
                   if (offset < 0.0f) { offset = 0.0f; }
 
@@ -465,7 +599,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                     ui_next_height(ui_px(row_size));
                     ui_next_layout_x();
                     ui_next_padded_border(1, transparent());
-                    UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__hoverable|UI_Box_flag__clickable, "Table row box %lld", i);
+                    UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__clickable, "Table row box %lld", i);
                     
                     UI_Actions row_actions = ui_actions_from_box(row_box);
     
@@ -549,13 +683,13 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
               B32 is_new_offset  = false;
               pcl_scroll_bar(
                 ui_px(50), /*ui_grow()*/ ui_px(250), Axis2__y, Str8FromC("Scroll bar for table"),
-                table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_clip_offset_from_box(table_box).y,
+                table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_box_clip_offset(table_box).y,
                 &out_new_scroll, &is_new_offset
               );
               if (is_new_offset) 
               {
-                table_box->clip_offset_defered.y = -out_new_scroll;
-                table_box->is_defered_offset_present = true;
+                table_box->defered_clip_offset.is_present = true; 
+                table_box->defered_clip_offset.offset.y = -out_new_scroll;
               }
             }
 
@@ -693,6 +827,23 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
     }
   }
 
+  /*
+  if (pcl->context_menu_state.is_open)
+  {
+    ui_next_width(ui_fit());
+    ui_next_height(ui_fit());
+    ui_next_b_color(white());
+    ui_next_floating_fixed_pos(pcl->context_menu_state.offset);
+    UI_Box* context_menu = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, pcl->context_menu_state.id);
+
+    UI_Parent(context_menu)
+    {
+      ui_next_font_color(blue());
+      ui_text_f("Context menu text");      
+    }
+  }
+  */
+
   ui_end_build();
 }
 
@@ -702,7 +853,6 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
   UI_Box* box = ui_box_make(
     UI_Box_flag__dont_draw_overflow|
     UI_Box_flag__has_background|
-    UI_Box_flag__hoverable|
     UI_Box_flag__clickable, 
     id
   );
@@ -714,7 +864,6 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
 
   ui_box_set_b_color(box, b_color);
 
-  /*
   UI_Parent(box)
   {
     Str8 text_for_header_kind = {};
@@ -735,7 +884,6 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
     }
 
   }
-  */
 
   return actions.went_down;
 }
@@ -861,7 +1009,7 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
       F32 max_thumb_size          = inner_space;
 
       thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
-      if (thumb_size > inner_space)    { thumb_size = inner_space; BreakPoint("DD: I wanna know when this finally happends"); }
+      if (thumb_size > inner_space)    { thumb_size = inner_space; /*BreakPoint("DD: I wanna know when this finally happends");*/ }
       if (thumb_size < thumb_min_size) { thumb_size = thumb_min_size; }
       
       F32 max_vp_offset = outer_content_size - outer_vp_size;
@@ -988,7 +1136,6 @@ void pcl_scroll_bar_faster(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, St
     out_new_scroll, is_new_offset
   );
 }
-
 
 
 
