@@ -135,7 +135,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->render_commands_as_result_of_ui_build = Clay_RenderCommandArray{};
   
   // DD: Resetting all the stacks
-  #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+  #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
           state->stacks.var_name_inside_state = {}; \
           state->stacks.var_name_inside_state.default_value = default_expr; 
   __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
@@ -401,7 +401,7 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
   __ui_actions_set_to_null_mem(&box->actions);
 
   // DD: Auto popping all the stacks
-  #define __UI_AUTO_POP_ALL_THE_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+  #define __UI_AUTO_POP_ALL_THE_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
     auto_pop_func_name();
   __UI_STACK_DATA_TABLE_EXPANSION(__UI_AUTO_POP_ALL_THE_STACKS)
   #undef __UI_AUTO_POP_ALL_THE_STACKS
@@ -1065,6 +1065,13 @@ void ui_draw()
 ///////////////////////////////////////////////////////////
 // - Context menu embedded support
 //
+B32 ui_is_context_menu_with_id_open(Str8 id)
+{
+  UI_State* state = ui_get_state();
+  UI_Box_key key = ui_box_key_from_str8(id);
+  return ui_box_key_match(state->open_context_menu_box_key, key);
+}
+
 void ui_set_context_menu_key(Str8 id, V2F32 offset)
 {
   UI_State* state = ui_get_state();
@@ -1079,13 +1086,6 @@ void ui_reset_context_menu()
   state->open_context_menu_box_key = ui_box_key_null();
   state->open_context_menu_offset  = V2F32{};
   // Todo: do we have to reset the context menu box inside the state here as well ?
-}
-
-B32 ui_is_context_menu_with_id_open(Str8 id)
-{
-  UI_State* state = ui_get_state();
-  UI_Box_key key = ui_box_key_from_str8(id);
-  return ui_box_key_match(state->open_context_menu_box_key, key);
 }
 
 void ui_begin_context_menu(Str8 id)

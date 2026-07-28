@@ -521,10 +521,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                       ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
                     }
 
-                    if (ui_is_context_menu_with_id_open(header_context_menu_id))
-                      UI_ContextMenu(header_context_menu_id)
-                    // if (ui_is_context_menu_with_id_open(header_context_menu_id))
-                      // DeferLoop(ui_begin_context_menu(header_context_menu_id), ui_end_context_menu(header_context_menu_id))
+                    UI_ContextMenu(header_context_menu_id)
                     {
                       UI_Col()
                       {

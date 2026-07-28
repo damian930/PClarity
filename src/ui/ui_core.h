@@ -139,8 +139,8 @@ struct UI_Box_key {
 
 struct UI_Box {
   // Main data that identifies a box. Always present after making of the box or its retrival
-  U64 generation_when_first_created;
-  U64 generation_when_last_created;
+  U64        generation_when_first_created;
+  U64        generation_when_last_created;
   UI_Box_key hash_table_key;
 
   // Persistent across builds (This is the thing that persists the boxes between builds)
@@ -148,56 +148,56 @@ struct UI_Box {
   UI_Box* prev_in_bucket;
 
   // Data that we get only after a build is done
-  Rect rect;
+  Rect  rect;
   V2F32 viewport_dims;
   V2F32 content_dims;
 
   // Stuff from prev build
   struct {
     UI_Box_flags flags;
-    V4F32 padding;
+    V4F32        padding;
   } data_from_previous_build;
 
   // Per build config
   struct {
     Str8 str_for_key;
-    B32 is_str_for_key_fake;
+    B32  is_str_for_key_fake;
 
     UI_Box_flags flags;
-    UI_Size size_on_axis[Axis2__COUNT];
-    Axis2 layout_direction;
+    UI_Size      size_on_axis[Axis2__COUNT];
+    Axis2        layout_direction;
     //
-    V4F32 padding;
-    F32 child_gap;
+    V4F32          padding;
+    F32            child_gap;
     UI_Alignment_x alignment_on_x;
     UI_Alignment_y alignment_on_y;
-    V4F32 b_color;
-    V4F32 corner_radii;
-    B32 clip_axis[Axis2__COUNT];
-    V4F32 border_width;
-    V4F32 border_color;
-    V2F32 floating_fixed_pos;
+    V4F32          b_color;
+    V4F32          corner_radii;
+    B32            clip_axis[Axis2__COUNT];
+    V4F32          border_width;
+    V4F32          border_color;
+    V2F32          floating_fixed_pos;
     //
     // TODO: This should be a flag also
-    B32 has_fixed_dims;
+    B32   has_fixed_dims;
     V2F32 floating_fixed_dims;
     //
     UI_Floating_attach_point floating_attach_point;
     //
     // TODO: THis should be a flag
-    B32 has_hover_cursor;
+    B32       has_hover_cursor;
     OS_Cursor hover_cursor;
 
     struct {
       UI_Box_custom_draw_func* draw_func; 
-      void* data_for_draw_func;
+      void*                    data_for_draw_func;
     } custom_draw_extension;
 
     struct {
-      Str8 text;
-      F32 font_size; // DD: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
+      Str8    text;
+      F32     font_size; // DD: This is the font size to draw the text in, right now we use manual scaling, so the size that the font was generated for is not used 
       FP_Font font;
-      V4F32 font_color;
+      V4F32   font_color;
     } text_extension;
   
     // Per build ui tree links
@@ -206,7 +206,7 @@ struct UI_Box {
     UI_Box* next_sibling;
     UI_Box* prev_sibling;
     UI_Box* parent;
-    U64 children_count;
+    U64     children_count;
   
     // Additional data that we have to keep for drawing since clay linearises the drawing
     UI_Box* ancestor_with_no_overflow_drag_flag;
@@ -219,11 +219,11 @@ struct UI_Box {
 
   V2F32 clip_offset;
   struct {
-    B32 is_present;
+    B32   is_present;
     V2F32 offset;
   } defered_clip_offset;
 
-  B32 actions_present; 
+  B32        actions_present; 
   UI_Actions actions;  
 
   UI_Box_key prev_build_parent_context_menu_key;
@@ -231,13 +231,13 @@ struct UI_Box {
 };
 
 struct UI_Box_data {
-  B32 is_found;
-  Rect rect;       // Rect for the box
-  Rect inner_rect; // Rect after we remove padding, this is the rect where the children are placed
+  B32  is_found;
+  Rect rect;       // Rect for   the box
+  Rect inner_rect; // Rect after we  remove padding, this is the rect where the children are placed
 };
 
 struct UI_Box_clip_data {
-  B32 is_found;
+  B32   is_found;
   V2F32 viewport_dims;
   V2F32 content_dims;
   V2F32 offset;
@@ -255,22 +255,22 @@ __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DEFINE_STACK_STRUCTS)
 struct UI_Box_list {
   UI_Box* first;
   UI_Box* last;
-  U64 count;
+  U64     count;
 };
 
 struct UI_State {
   Arena* state_arena;
   Arena* arena_for_clay; 
 
-  U64 build_generation;
+  U64    build_generation;
   Arena* build_arenas[2];
 
   // Hash table for persistant boxes
   UI_Box_list hash_table_buckets[64];
   
-  // Free list for persistant boxes
+  //          Free list for persistant boxes
   UI_Box* first_free_box;
-  U64 count_of_free_boxes;
+  U64     count_of_free_boxes;
 
   V2F32 mouse_pos_for_this_build;
   V2F32 window_dims_for_this_build;
@@ -286,9 +286,9 @@ struct UI_State {
   // Persistant, cross-frame state needed for mouse interactions  
   struct {
     UI_Box_key box_key;
-    B32 is_mouse_down;
-    B32 did_mouse_leave_box_while_was_down;
-    V2F32 pos_when_mouse_went_down;
+    B32        is_mouse_down;
+    B32        did_mouse_leave_box_while_was_down;
+    V2F32      pos_when_mouse_went_down;
   } interacted_with_box_data[UI_Mouse_button__COUNT];
 
   UI_Box* current_build_root_box; 
@@ -315,7 +315,7 @@ extern UI_Box __ui_g_null_box;
 
 // - State accessors
 UI_State* ui_get_state();
-void ui_set_state(UI_State* context);
+void      ui_set_state(UI_State* context);
 
 // - State
 void ui_init();
@@ -348,22 +348,22 @@ UI_Actions ui_actions_from_id(Str8 id);
 
 // - Box clip offset
 V2F32 ui_box_clip_offset(UI_Box* box);
-V2F32 ui_clip_offset_from_id(Str8 id);
+V2F32 ui_box_clip_offset_by_id(Str8 id); 
 
 // - Box key stuff
 UI_Box_key ui_box_key_null();
-B32 ui_box_key_match(UI_Box_key key, UI_Box_key other);
-B32 ui_box_key_is_null(UI_Box_key key);
+B32        ui_box_key_match(UI_Box_key key, UI_Box_key other);
+B32        ui_box_key_is_null(UI_Box_key key);
 UI_Box_key ui_box_key_from_str8(Str8 str);
-UI_Box* ui_box_from_key(UI_Box_key key);
+UI_Box*    ui_box_from_key(UI_Box_key key);
 
 // - Box drag memory
 Data_buffer* ui_box_drag_buffer(UI_Box* box);   
 Data_buffer* ui_box_drag_buffer_by_id(Str8 id); 
 Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc);
 Data_buffer* ui_box_drag_buffer_alloc_by_id(Str8 id, U64 size_to_alloc);
-void ui_box_drag_buffer_release(UI_Box* box);
-void ui_box_drag_buffer_release_by_id(Str8 id);
+void         ui_box_drag_buffer_release(UI_Box* box);
+void         ui_box_drag_buffer_release_by_id(Str8 id);
 
 // - Box setters (clip offset) 
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
@@ -372,19 +372,19 @@ void ui_box_set_clip_offset_y(UI_Box* box, F32 offset);
 void ui_box_set_clip_offset_x(UI_Box* box, F32 offset);
 
 // - Null box
-B32 ui_box_is_null(UI_Box* box);
+B32     ui_box_is_null(UI_Box* box);
 UI_Box* ui_box_null();
 
 // - UI drawing
 void ui_draw();
 
 // - Context menu embedded support
+B32  ui_is_context_menu_with_id_open(Str8 id);
 void ui_set_context_menu_key(Str8 id, V2F32 offset);
 void ui_reset_context_menu();
-B32 ui_is_context_menu_with_id_open(Str8 id);
 void ui_begin_context_menu(Str8 id);
 void ui_end_context_menu(Str8 id); 
-#define UI_ContextMenu(id) DeferLoop(ui_begin_context_menu(id), ui_end_context_menu(id))
+#define UI_ContextMenu(id) if (ui_is_context_menu_with_id_open(id)) DeferLoop(ui_begin_context_menu(id), ui_end_context_menu(id))
 
 // - Size makers 
 UI_Size ui_size_make(UI_Size_kind kind, F32 value1, F32 value2);
@@ -397,10 +397,10 @@ UI_Size ui_grow();
 UI_Size ui_p_of_p(F32 p);                 
 
 // - Other/Misc
-U64 ui_get_build_generation();
-Arena* ui_get_build_arena();
-V2F32 ui_get_mouse_pos();
-V2F32 ui_get_prev_mouse_pos();
+U64     ui_get_build_generation();
+Arena*  ui_get_build_arena();
+V2F32   ui_get_mouse_pos();
+V2F32   ui_get_prev_mouse_pos();
 UI_Box* ui_get_root(); 
 
 // - Stack funtions and helpers
@@ -412,10 +412,10 @@ __UI_STACK_DATA_TABLE_EXPANSION(__UI_STACK_DECLARE_SET_NEXT_FUNC)
 
 // - Stack function helpers (padding)
 V4F32 ui_top_padding();
-void ui_next_padding(F32 padding);
-void ui_push_padding(F32 padding); 
-void ui_pop_padding(); 
-void ui_next_padding_ex(F32 left, F32 right, F32 top, F32 down);
+void  ui_next_padding(F32 padding);
+void  ui_push_padding(F32 padding); 
+void  ui_pop_padding(); 
+void  ui_next_padding_ex(F32 left, F32 right, F32 top, F32 down);
 
 // - Stack function helpers (sizing)
 void ui_next_width(UI_Size size);
@@ -424,21 +424,21 @@ void ui_next_size_axis(Axis2 axis, UI_Size size);
 
 // - Stack function helpers (background color)
 V4F32 ui_top_b_color();
-void ui_next_b_color(V4F32 color);
-void ui_push_b_color(V4F32 color);
-void ui_pop_b_color();
+void  ui_next_b_color(V4F32 color);
+void  ui_push_b_color(V4F32 color);
+void  ui_pop_b_color();
 
 // - Stack function helpers (corner radius)
 V4F32 ui_top_corner_radius();
-void ui_next_corner_r(F32 r);
-void ui_push_corner_r(F32 r);
-void ui_pop_corner_r();
+void  ui_next_corner_r(F32 r);
+void  ui_push_corner_r(F32 r);
+void  ui_pop_corner_r();
 
 // - Stack function helpers (border width)
 V4F32 ui_top_border_width();
-void ui_next_border_width(F32 border);
-void ui_push_border_width(F32 border);
-void ui_pop_border_width();
+void  ui_next_border_width(F32 border);
+void  ui_push_border_width(F32 border);
+void  ui_pop_border_width();
 
 // - Stack function helpers (border)
 void ui_next_border(F32 width, V4F32 color);
@@ -464,7 +464,7 @@ void ui_next_floating_fixed_dims(V2F32 dims);
 //         then can go read the code for, which is the issue with macros - you dont really see the final code. 
 //         So gonna have to define the DeferLoop macros for push and pops manually
 // 
-// #define __UI_STACK_DEFINE_DEFER_PUSH_POP_MACROS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity, defer_push_pop_macro_name) \
+// #define __UI_STACK_DEFINE_DEFER_PUSH_POP_MACROS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
 //   #define defer_push_pop_macro_name(v) DeferLoop(push_func_name(v), pop_func_name())
 // #undef __UI_STACK_DEFINE_DEFER_PUSH_POP_MACROS
 //
@@ -489,13 +489,13 @@ void ui_next_floating_fixed_dims(V2F32 dims);
 #define UI_Parent(v)                  DeferLoop(ui_push_parent(v),                     ui_pop_parent())
 #define UI_Font(v)                    DeferLoop(ui_push_font(v),                       ui_pop_font())
 #define UI_FontSize(v)                DeferLoop(ui_push_font_size(v),                  ui_pop_font_size())
-#define UI_FontColor(v)               DeferLoop(ui_push_font_color(v),                  ui_pop_font_color())
+#define UI_FontColor(v)               DeferLoop(ui_push_font_color(v),                 ui_pop_font_color())
 #define UI_AlignmentX(v)              DeferLoop(ui_push_alignment_x(v),                ui_pop_alignment_x())
 #define UI_AlignmentY(v)              DeferLoop(ui_push_alignment_y(v),                ui_pop_alignment_y())
 #define UI_HoverCursor(v)             DeferLoop(ui_push_hover_cursor(v),               ui_pop_hover_cursor())
-#define UI_PaddedBorder(v, c)         DeferLoop(ui_push_padded_border(v, c), ui_pop_padded_border)
-#define UI_Border(v, c)               DeferLoop(ui_push_border(v, c), ui_pop_border())
-#define UI_Padding(v)                 DeferLoop(ui_push_padding(v), ui_pop_padding())
+#define UI_PaddedBorder(v, c)         DeferLoop(ui_push_padded_border(v, c),           ui_pop_padded_border)
+#define UI_Border(v, c)               DeferLoop(ui_push_border(v, c),                  ui_pop_border())
+#define UI_Padding(v)                 DeferLoop(ui_push_padding(v),                    ui_pop_padding())
 //
 #define UI_Width(v) UI_SizeX(v)
 #define UI_Height(v) UI_SizeY(v)
