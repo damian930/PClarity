@@ -288,18 +288,19 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
       ui_next_border(2, pcl_color_from_name(PCL_Color_name__item_selected));
       ui_next_hover_cursor(OS_Cursor__hand);
       UI_Box* home_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail home button"));
+      UI_Actions home_button_acts = ui_actions_from_box(home_button);
+      
       UI_Parent(home_button)
       {
         ui_image(pcl_icon_home, icon_size, icon_size);
-        
-        UI_Actions home_button_acts = ui_actions_from_box(home_button);
-        if (home_button_acts.is_clicked)
-        {
-          pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__go_to_home);
-        }
-        if (home_button_acts.is_hovered) {
-          ui_box_set_b_color(home_button, pcl_color_from_name(PCL_Color_name__item_selected));
-        }
+      }
+      
+      if (home_button_acts.is_clicked)
+      {
+        pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__go_to_home);
+      }
+      if (home_button_acts.is_hovered) {
+        ui_box_set_b_color(home_button, pcl_color_from_name(PCL_Color_name__item_selected));
       }
   
       ui_spacer(ui_grow());
@@ -512,16 +513,18 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                     ui_next_height(ui_grow());
                     
                     Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_addr);
-                    B32 header_activated = pcl_ui_table_header(id, header);
+                    UI_Actions header_actions = pcl_ui_table_header(id, header);
 
                     Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id %lld", header_addr);
-                    if (header_activated)
+                    if (header_actions.is_right_clicked)
                     {
                       ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
                     }
 
                     if (ui_is_context_menu_with_id_open(header_context_menu_id))
-                      DeferLoop(ui_begin_context_menu(header_context_menu_id), ui_end_context_menu(header_context_menu_id))
+                      UI_ContextMenu(header_context_menu_id)
+                    // if (ui_is_context_menu_with_id_open(header_context_menu_id))
+                      // DeferLoop(ui_begin_context_menu(header_context_menu_id), ui_end_context_menu(header_context_menu_id))
                     {
                       UI_Col()
                       {
@@ -847,7 +850,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
   ui_end_build();
 }
 
-B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
+UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header)
 {
   ui_next_layout_x();
   UI_Box* box = ui_box_make(
@@ -885,7 +888,7 @@ B32 pcl_ui_table_header(Str8 id, PCL_Table_header header)
 
   }
 
-  return actions.went_down;
+  return actions;
 }
 
 ///////////////////////////////////////////////////////////
@@ -952,6 +955,7 @@ F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id)
   UI_Actions slider_acts = ui_actions_from_box(slider_top_box);
   if (slider_acts.is_down)
   {
+    BP;
     UI_Box_data slider_box_data = ui_box_data_from_box(slider_top_box);
     if (slider_box_data.is_found)
     {

@@ -153,7 +153,7 @@ global V4F32 __pcl_g_color_values_for_names[PCL_Color_name__COUNT] = {
 PCL_State pcl_init();
 void pcl_frame_update(PCL_State* PCL);
 void pcl_build_ui(FP_Font font, PCL_State* PCL);
-B32 pcl_ui_table_header(Str8 id, PCL_Table_header header);
+UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header);
 
 // - Misc
 void pcl_add_header_into_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value);

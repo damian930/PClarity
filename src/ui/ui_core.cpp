@@ -543,125 +543,158 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     do_inputs_for_this_box = false;
   }
 
-  B32 is_hovered                 = false;
-  B32 is_down                    = false;
-  B32 was_down                   = false;
-  B32 left_box_while_was_down    = false;
-  B32 is_active                  = false;
-  B32 is_navigated               = false;
-  V2F32 mouse_pos_when_went_down = {};
+  // DD: Data to get
+  B32 is_hovered                                       = {};                                       
+  B32 is_down                 [UI_Mouse_button__COUNT] = {}; 
+  B32 was_down                [UI_Mouse_button__COUNT] = {}; 
+  B32 left_box_while_was_down [UI_Mouse_button__COUNT] = {}; 
+  B32 is_clicked              [UI_Mouse_button__COUNT] = {}; 
+  B32 went_down               [UI_Mouse_button__COUNT] = {}; 
+  B32 went_up                 [UI_Mouse_button__COUNT] = {}; 
+  V2F32 mouse_pos_when_went_down                       = {};
 
   if (do_inputs_for_this_box)
   {
     is_hovered = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_config.str_for_key)); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
 
-    B32 some_other_box_is_being_interacted_with = (
-      !ui_box_key_is_null(state->interacted_with_box_data.box_key) 
-      &&
-      !ui_box_key_match(state->interacted_with_box_data.box_key, box->hash_table_key)
-    );
-
-    // Damian:
-    // Either there is no active box or we are the active box
-    // Since interacted box data is retained across frame boundary, 
-    // we just load the retained state and possibly update it here.
-    // No need to load hover, we get it each frame just from the box rect.
-    if (
-      box->per_build_config.flags & UI_Box_flag__clickable 
-      &&
-      !some_other_box_is_being_interacted_with
-    ) {
-      was_down                = state->interacted_with_box_data.is_mouse_down;
-      left_box_while_was_down = state->interacted_with_box_data.did_mouse_leave_box_while_was_down;
-    
-      // Mouse is up, check if it goes down
-      if (is_hovered && !was_down) 
-      {
-        // note: This has a bit of de sync relative to the is_hovered bool since we test if is hovered based on a different mouse pos than the one that was when the mouse went down, most of the time this shoud be fine, but i am not sure about the other times
-        //       Might be nice to use mouse_pos from the prev frame or somethign like that, for now it should be fine
-        B32 mouse_left_went_down = false;
-        {
-          OS_Event_list* events = os_get_frame_event_list();
-          for (OS_Event* ev = events->first; ev; ev = ev->next)
-          {
-            if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_down)
-            {
-              mouse_left_went_down = true;
-              os_consume_frame_event(ev);
-            }
-          }
-        }
-  
-        if (mouse_left_went_down)  
-        {
-          // We have a new interacted with box
-          Assert(!was_down);
-          Assert(!left_box_while_was_down);
-          Assert(!state->interacted_with_box_data.is_mouse_down);
-          Assert(!state->interacted_with_box_data.did_mouse_leave_box_while_was_down);
-          Assert(IsZeroStruct(state->interacted_with_box_data.pos_when_mouse_went_down));
-          Assert(ui_box_key_is_null(state->interacted_with_box_data.box_key));
-  
-          is_down = true;
-          mouse_pos_when_went_down = ui_get_mouse_pos();
-          state->interacted_with_box_data.is_mouse_down                      = true;
-          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
-          state->interacted_with_box_data.box_key                            = box->hash_table_key;
-          state->interacted_with_box_data.pos_when_mouse_went_down           = ui_get_mouse_pos();
-        }
-      }
-      else if (was_down) 
-      {
-        is_down = true;
-  
-        if (!is_hovered && is_down) { 
-          left_box_while_was_down = true; 
-          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = true;
-        }
-  
-        // todo: The events api sucks right now, but it works, i will make a better one at some point ))
-        B32 mouse_left_went_up = false;
-        {
-          OS_Event_list* events = os_get_frame_event_list();
-          for (OS_Event* ev = events->first; ev; ev = ev->next)
-          {
-            if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == Mouse_button__left && ev->mouse_event.went_up)
-            {
-              mouse_left_went_up = true;
-              os_consume_frame_event(ev);
-              break;
-            }
-          }
-        }
-  
-        if (mouse_left_went_up)
-        {
-          Assert(was_down);
-          Assert(state->interacted_with_box_data.is_mouse_down);
-  
-          is_down = false;
-          state->interacted_with_box_data.is_mouse_down                      = false;
-          state->interacted_with_box_data.did_mouse_leave_box_while_was_down = false;
-          state->interacted_with_box_data.pos_when_mouse_went_down           = v2f32(0, 0);
-          state->interacted_with_box_data.box_key                            = ui_box_key_null();
-        }
-      }
-    }
-    else 
+    for EachEnumRange(button, UI_Mouse_button, UI_Mouse_button__left, UI_Mouse_button__COUNT)
     {
-      UI_Box* interacted_with_box = ui_box_from_key(state->interacted_with_box_data.box_key);
-      int __var_to_put_a_break_point_on__ = 0;
+      B32 proceed_with_this_button = false;
+      if (button == UI_Mouse_button__left && (box->per_build_config.flags & UI_Box_flag__left_clickable)) { proceed_with_this_button = true; }
+      if (button == UI_Mouse_button__right && (box->per_build_config.flags & UI_Box_flag__right_clickable)) { proceed_with_this_button = true; }
+
+      if (!proceed_with_this_button) { continue; }
+
+      // UI_Box_key* box_key                            = &state->interacted_with_box_data[button].box_key;
+      // B32*        is_mouse_down                      = &state->interacted_with_box_data[button].is_mouse_down;
+      // B32*        did_mouse_leave_box_while_was_down = &state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down;
+      // V2F32*      pos_when_mouse_went_down           = &state->interacted_with_box_data[button].pos_when_mouse_went_down;
+
+      B32 some_other_box_is_being_interacted_with = (
+        !ui_box_key_is_null(state->interacted_with_box_data[button].box_key) 
+        &&
+        !ui_box_key_match(state->interacted_with_box_data[button].box_key, box->hash_table_key)
+      );
+
+      // DD:
+      // Either there is no active box or we are the active box
+      // Since interacted box data is retained across frame boundary, 
+      // we just load the retained state and possibly update it here.
+      // No need to load hover, we get it each frame just from the box rect.
+      if (
+        ((box->per_build_config.flags & UI_Box_flag__left_clickable) || (box->per_build_config.flags & UI_Box_flag__right_clickable))
+        &&
+        !some_other_box_is_being_interacted_with
+      ) {
+        was_down[button]                = state->interacted_with_box_data[button].is_mouse_down;
+        left_box_while_was_down[button] = state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down;
+      
+        // DD: Mouse is up, check if it goes down
+        if (is_hovered && !was_down[button]) 
+        {
+          B32 mouse_left_went_down = false;
+          {
+            OS_Event_list* events = os_get_frame_event_list();
+            for (OS_Event* ev = events->first; ev; ev = ev->next)
+            {
+              Mouse_button event_mouse_button = Mouse_button__left;
+              if (button == UI_Mouse_button__right) { event_mouse_button = Mouse_button__right; }
+
+              if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == event_mouse_button && ev->mouse_event.went_down)
+              {
+                mouse_left_went_down = true;
+                os_consume_frame_event(ev);
+              }
+            }
+          }
+    
+          if (mouse_left_went_down)  
+          {
+            // We have a new interacted with box
+            Assert(!was_down[button]);
+            Assert(!left_box_while_was_down[button]);
+            Assert(!state->interacted_with_box_data[button].is_mouse_down);
+            Assert(!state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down);
+            Assert(IsZeroStruct(state->interacted_with_box_data[button].pos_when_mouse_went_down));
+            Assert(ui_box_key_is_null(state->interacted_with_box_data[button].box_key));
+    
+            is_down[button] = true;
+            mouse_pos_when_went_down = ui_get_mouse_pos();
+            state->interacted_with_box_data[button].is_mouse_down                      = true;
+            state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down = false;
+            state->interacted_with_box_data[button].box_key                            = box->hash_table_key;
+            state->interacted_with_box_data[button].pos_when_mouse_went_down           = ui_get_mouse_pos();
+          }
+        }
+        else if (was_down[button]) 
+        {
+          is_down[button] = true;
+    
+          if (!is_hovered && is_down[button]) { 
+            left_box_while_was_down[button] = true; 
+            state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down = true;
+          }
+    
+          // todo: The events api sucks right now, but it works, i will make a better one at some point ))
+          B32 mouse_left_went_up = false;
+          {
+            Mouse_button event_mouse_button = Mouse_button__left;
+            if (button == UI_Mouse_button__right) { event_mouse_button = Mouse_button__right; }
+
+            OS_Event_list* events = os_get_frame_event_list();
+            for (OS_Event* ev = events->first; ev; ev = ev->next)
+            {
+              if (ev->kind == OS_Event_kind__mouse && ev->mouse_event.button == event_mouse_button && ev->mouse_event.went_up)
+              {
+                mouse_left_went_up = true;
+                os_consume_frame_event(ev);
+                break;
+              }
+            }
+          }
+    
+          if (mouse_left_went_up)
+          {
+            Assert(was_down[button]);
+            Assert(state->interacted_with_box_data[button].is_mouse_down);
+    
+            is_down[button] = false;
+            state->interacted_with_box_data[button].is_mouse_down                      = false;
+            state->interacted_with_box_data[button].did_mouse_leave_box_while_was_down = false;
+            state->interacted_with_box_data[button].pos_when_mouse_went_down           = v2f32(0, 0);
+            state->interacted_with_box_data[button].box_key                            = ui_box_key_null();
+          }
+        }
+      }
+
     }
   }
 
   UI_Actions result_actions = {};
-  result_actions.is_hovered               = is_hovered;            
-  result_actions.is_down                  = is_down;               
-  result_actions.was_down                 = was_down;              
-  result_actions.left_box_while_was_down  = left_box_while_was_down;
-  result_actions.is_clicked               = was_down && !is_down && !left_box_while_was_down;
-  result_actions.went_down                = !was_down && is_down;
-  result_actions.went_up                  = was_down && !is_down;  
+  result_actions.is_hovered = is_hovered;
+
+  result_actions.is_left_down                  = is_down[UI_Mouse_button__left];
+  result_actions.was_left_down                 = was_down[UI_Mouse_button__left];
+  result_actions.left_left_box_while_was_down  = left_box_while_was_down[UI_Mouse_button__left];
+  result_actions.is_left_clicked               = was_down[UI_Mouse_button__left] && !is_down[UI_Mouse_button__left] && !left_box_while_was_down[UI_Mouse_button__left];
+  result_actions.left_went_down                = !was_down[UI_Mouse_button__left] && is_down[UI_Mouse_button__left];
+  result_actions.left_went_up                  = was_down[UI_Mouse_button__left] && !is_down[UI_Mouse_button__left];
+
+  result_actions.is_right_down                 = is_down[UI_Mouse_button__right];
+  result_actions.was_right_down                = was_down[UI_Mouse_button__right];
+  result_actions.right_left_box_while_was_down = left_box_while_was_down[UI_Mouse_button__right];
+  result_actions.is_right_clicked              = was_down[UI_Mouse_button__right] && !is_down[UI_Mouse_button__right] && !left_box_while_was_down[UI_Mouse_button__right];
+  result_actions.right_went_down               = !was_down[UI_Mouse_button__right] && is_down[UI_Mouse_button__right];
+  result_actions.right_went_up                 = was_down[UI_Mouse_button__right] && !is_down[UI_Mouse_button__right];
+  
+  result_actions.is_down                 = result_actions.is_left_down;
+  result_actions.was_down                = result_actions.was_left_down;
+  result_actions.left_box_while_was_down = result_actions.left_left_box_while_was_down;
+
+  result_actions.is_clicked = result_actions.is_left_clicked;
+  result_actions.went_down  = result_actions.left_went_down;
+  result_actions.went_up    = result_actions.left_went_up;
+
   result_actions.mouse_pos_when_went_down = mouse_pos_when_went_down;
   result_actions.box                      = box;
 
@@ -1076,8 +1109,11 @@ void ui_begin_context_menu(Str8 id)
     // data for interactions 
     if (!ui_box_key_match(state->final_context_menu_key_for_prev_build, key))
     {
-      state->interacted_with_box_data = {};
-      state->interacted_with_box_data.box_key = ui_box_key_null();
+      for EachIndex(i, ArrayCount(state->interacted_with_box_data)) 
+      {
+        state->interacted_with_box_data[i] = {};
+        state->interacted_with_box_data[i].box_key = ui_box_key_null();
+      }
     }
 
   }

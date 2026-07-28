@@ -47,7 +47,12 @@ enum UI_Box_flag : U32 {
 
   UI_Box_flag__floating = (1 << 10),  
   
-  UI_Box_flag__clickable  = (1 << 11),  
+  UI_Box_flag__left_clickable  = (1 << 11),  
+  UI_Box_flag__right_clickable = (1 << 12),  
+
+  // ============================================
+
+  UI_Box_flag__clickable = UI_Box_flag__left_clickable|UI_Box_flag__right_clickable,
 
   UI_Box_flag__padded_border = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
   UI_Box_flag__clip          = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
@@ -88,20 +93,43 @@ struct UI_Provided_data_for_custom_draw {
 #define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data)
 typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func);
 
+enum UI_Mouse_button : U32 {
+  UI_Mouse_button__left,
+  UI_Mouse_button__right,
+  UI_Mouse_button__COUNT,
+};
+
 struct UI_Actions {
   // Lower level actions
-  B32 is_hovered;              // This is fine for all the boxes, id is not needed, no state is needed
-  B32 is_down;                 // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 was_down;                // Cross frame state is needed, id to track if the box is the same between frames is needed
-  B32 left_box_while_was_down; // Cross frame state is needed, id to track if the box is the same between frames is needed
+  B32 is_hovered;                                       
   //
+  B32 is_left_down;
+  B32 was_left_down;
+  B32 left_left_box_while_was_down;
+  //
+  B32 is_right_down;
+  B32 was_right_down;
+  B32 right_left_box_while_was_down;
+
   // Composed for quick use
-  B32 is_clicked; // These are composed, so we need cross frame state and id
-  B32 went_down;  // These are composed, so we need cross frame state and id
-  B32 went_up;    // These are composed, so we need cross frame state and id
+  B32 is_left_clicked;
+  B32 left_went_down;
+  B32 left_went_up;
+  //
+  B32 is_right_clicked;
+  B32 right_went_down;
+  B32 right_went_up;
+  //
+  B32 is_down;
+  B32 was_down;
+  B32 left_box_while_was_down;
+  //
+  B32 is_clicked;
+  B32 went_down;
+  B32 went_up;
 
+  // Misc
   V2F32 mouse_pos_when_went_down;
-
   UI_Box* box;
 };
 
@@ -261,7 +289,7 @@ struct UI_State {
     B32 is_mouse_down;
     B32 did_mouse_leave_box_while_was_down;
     V2F32 pos_when_mouse_went_down;
-  } interacted_with_box_data;
+  } interacted_with_box_data[UI_Mouse_button__COUNT];
 
   UI_Box* current_build_root_box; 
 
