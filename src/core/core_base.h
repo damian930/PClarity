@@ -790,7 +790,8 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 #define MemCopySafe(dest, src) \
 	do { \
 		StaticAssert(sizeof(dest) == sizeof(src), "Cant copy memory safely, the sizes of dest and src variables are not the equal."); \
-		memcpy(&dest, &src, sizeof(dest)); \
+		memmove(&dest, &src, sizeof(dest)); \
+		/*memcpy(&dest, &src, sizeof(dest));*/ \
 	} while(0)
 
 #define MemCompare(dest, src, size) (memcmp(&dest, &src, size) == 0 ? true : false)
