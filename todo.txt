@@ -7,8 +7,8 @@ App
 [x] - Document how drawing works in the shader, cause its kind of 2 in 1 and might be confusing over time
 [x] - Fix the bug when you pass in b color be transparent and the border then doesnt get draws since when mixing then it makes a 0 color
 [x] - Be able to just have a box with border and it be smoothed on the outside and inside if roudned with no background
-[ ] - Add support for smoothing, both outside and inside
-[ ] - Have spall be an optional thing when compiling, just like asan
+[x] - Add support for smoothing, both outside and inside
+[x] - Have spall be an optional thing when compiling, just like asan
 
 Performance
 -----------

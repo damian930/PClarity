@@ -7,6 +7,7 @@
 ::  - clean                           (Cleans the build directory before building into it)
 ::  - strict                          (Turns off some warning messages that are silences for debug build by default)
 ::  - asan                            (Turns on address sanitization)
+::  - spall                           (Turns on spall profiler)
 ::  - dont_assert_handle_later_macros (Allows HandleLater macros to compile in relese build. Its for testing purposes, should not be used in the finals release build)
 ::  (Any combination of these might be used together)
 :: There migth also be more notes about the build file at the end of the build file. 
@@ -27,6 +28,9 @@ echo ===========================================================================
 
 :: Getting command line arguments
 for %%a in (%*) do set "%%a=1"
+
+:: Predecaring preprocessor defines for later additions
+set pre_processor_defines=
 
 :: Type of build
 if not "%release%"=="1" set debug=1
@@ -50,11 +54,14 @@ if "%strict%"==""       set errors_to_ignore=/wd4189 /wd4100 /wd4505 %errors_to_
 if "%strict%"=="1"      set errors_to_ignore=%errors_to_alway_ignore%
 
 :: ASAN ebabled/disabled
-if "%asan%"=="1" set asan=1 | echo [asan]
+if "%asan%"=="1" set asan=1 & echo [asan]
+
+:: Spall profiler
+if "%spall%"=="1" set spall=1 & echo [spall] & set pre_processor_defines=%pre_processor_defines% /D"CORE_PROFILER__SPALL"
 
 :: Pre processor defines
-if "%debug%"=="1"                           set pre_processor_defines=/D"DEBUG_MODE"
-if "%release%"=="1"                         set pre_processor_defines=/D"RELEASE_MODE"
+if "%debug%"=="1"                           set pre_processor_defines=%pre_processor_defines% /D"DEBUG_MODE"
+if "%release%"=="1"                         set pre_processor_defines=%pre_processor_defines% /D"RELEASE_MODE"
 if "%dont_assert_handle_later_macros%"=="1" set pre_processor_defines=%pre_processor_defines% /D"DONT_ASSERT_HANDLE_LATER_MACROS" && echo [UNRESOLVED_HANDLE_LATERs]
 
 :: Common compiler flags
