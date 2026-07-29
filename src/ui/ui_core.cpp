@@ -991,11 +991,30 @@ void ui_draw()
         V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
 
         F32 softness = 0.0f; // DD: Keeping softness as a var thought used only once for later search when we get to having softness used in rendering
-        d_draw_rect_pro(rect, color, color, color, color, corner_radii, softness);
+        V4F32 vertex_colors[4] = { color, color, color, color };
+        
+        Assert(command.userData != 0);
+        if (command.userData)
+        {
+          UI_Box* box = (UI_Box*)(command.userData);
+          if (box->per_build_config.flags & UI_Box_flag__has_borders)
+          {
+            V4F32 borders      = box->per_build_config.border_width;
+            V4F32 border_color = box->per_build_config.border_color;
+            Assert(
+              borders.x == borders.y &&
+              borders.y == borders.z &&
+              borders.z == borders.w
+            );
+            d_add_rect_command(rect, vertex_colors, corner_radii, borders.x, softness, border_color);
+          }
+        }
+
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
+        /*
         V4F32 border_color = __ui_v4f32_from_clay_color(command.renderData.border.color);
         V4F32 corner_rs    = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
         V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
@@ -1025,6 +1044,7 @@ void ui_draw()
           Rect bottom_border_rect = rect_make(rect.x, rect.y + rect.height - border_width.v[RectEdge__bottom], rect.width, border_width.v[RectEdge__bottom]);
           d_draw_rect_pro(bottom_border_rect, border_color, border_color, border_color, border_color, corner_rs, softness);
         }
+        */
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:

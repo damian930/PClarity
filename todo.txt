@@ -4,6 +4,10 @@ App
       which results in a visible bug
 [x] - Fix the bug with ids for headers since when you remove them they get reused, and so the data is a bit fucked up
 [ ] - Have spall be an optional thing when compiling, just like asan
+[ ] - Fix the bug when you pass in b color be transparent and the border then doesnt get draws since when mixing then it makes a 0 color
+[ ] - Fix the bug when drawing clay rect and clay border that you cant draw a borderw if you dont have a background
+[ ] - Be able to just have a box with border and it be smoothed on the outside and inside if roudned with no background
+[ ] - Add support for smoothing, both outside and inside
 
 Performance
 -----------

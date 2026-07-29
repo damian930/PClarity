@@ -740,6 +740,7 @@ tu_specific V4F32 taupe_u()       { return v4f32(146, 124, 102, 255);  }
 tu_specific V4F32 magenta_u()     { return v4f32(253, 61,  181, 255);  } 
 tu_specific V4F32 brown_u()       { return v4f32(111, 78, 55, 255 );   } 
 tu_specific V4F32 golden_u()      { return v4f32(239,191,4, 255 );     } 
+tu_specific V4F32 nice_red_u()    { return v4f32(192, 56, 64, 255);    } 
 tu_specific V4F32 nice_green_u()  { return v4f32(120, 171, 128, 255);  } 
 tu_specific V4F32 nice_blue_u()   { return v4f32(97,  175, 239, 255 ); } 
 // TODO: Add nice red from the images in telegram 	
@@ -759,7 +760,8 @@ tu_specific V4F32 orange()      { return _F_COLOR_FROM_U_COLOR(orange_u());     
 tu_specific V4F32 taupe()       { return _F_COLOR_FROM_U_COLOR(taupe_u());       }
 tu_specific V4F32 magenta()     { return _F_COLOR_FROM_U_COLOR(magenta_u());     }
 tu_specific V4F32 brown()       { return _F_COLOR_FROM_U_COLOR(brown_u());       }
-tu_specific V4F32 golden()      { return _F_COLOR_FROM_U_COLOR(golden_u());        } 
+tu_specific V4F32 golden()      { return _F_COLOR_FROM_U_COLOR(golden_u());      }
+tu_specific V4F32 nice_red()    { return _F_COLOR_FROM_U_COLOR(nice_red_u());    }
 tu_specific V4F32 nice_green()  { return _F_COLOR_FROM_U_COLOR(nice_green_u());  }
 tu_specific V4F32 nice_blue()   { return _F_COLOR_FROM_U_COLOR(nice_blue_u());   }
 

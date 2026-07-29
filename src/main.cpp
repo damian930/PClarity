@@ -310,8 +310,28 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     */
 
-    pcl_frame_update(&pcl);
-    pcl_build_ui(font, &pcl, prev_frame_fps);
+    // /* 
+    // Testing rounded corners
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      ui_next_floating_fixed_pos(v2f32(0, 0));
+      ui_next_floating_fixed_dims(v2f32(250, 250));
+      // ui_next_b_color(nice_blue());
+      ui_next_b_color(black());
+      ui_next_corner_r(125);
+      ui_next_border(10, nice_red());
+      UI_Box* floater = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background|UI_Box_flag__has_rounded_corners|UI_Box_flag__has_borders, {});
+
+      UI_Parent(floater)
+      {
+
+      }
+
+    }
+    // */
+
+    // pcl_frame_update(&pcl);
+    // pcl_build_ui(font, &pcl, prev_frame_fps);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
