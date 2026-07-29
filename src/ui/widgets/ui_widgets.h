@@ -561,21 +561,24 @@ void ui_aply_text_ops(UI_Text_op_list text_op_list, U8* text_buffer, U64 max_tex
 }
  
 // Damian: This shows the text in the buffer and gives the user the means to update the data when they choose to 
-/*
 UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_x, U8* text_buffer, U64 text_buffer_size, U64 buffer_max_count, U64 cursor_pos, U64 section_pos, Str8 edit_box_id)
 {
   FP_Font font                 = ui_top_font();
   F32 cursor_size              = 2.0f;
   Str8 text_buffer_str         = str8_manual_view(text_buffer, text_buffer_size);
-  F32 font_height              = fp_font_height(font);
+  F32 font_height              = fp_font_height(font) * (ui_top_font_size() / font.size);
+  V4F32 font_color             = ui_top_font_color();
   
+  ui_push_font_color(font_color);
+
   // TODO: I am only creating the box here and not later cause the api doesn allow 
   //       for prev frame box data queriying from ids and not box pointer yet
   ui_next_width(size_x);
   ui_next_height(ui_px(font_height));
   ui_next_layout_x();
   ui_next_hover_cursor(OS_Cursor__text_selection);
-  UI_Box* edit_box = ui_box_make(edit_box_id, UI_Box_flag__clip);
+  ui_next_padding(cursor_size);
+  UI_Box* edit_box = ui_box_make(UI_Box_flag__clip|UI_Box_flag__has_padding, edit_box_id);
   
   UI_Box_data edit_box_data    = ui_box_data_from_box(edit_box); 
   UI_Actions edit_box_actions  = ui_actions_from_box(edit_box);
@@ -588,12 +591,12 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
   if (edit_box_data.is_found)
   {
     F32 prev_edit_box_width = edit_box_data.rect.width;
-    F32 prev_clip_offset = ui_clip_offset_from_box(edit_box).x;
+    F32 prev_clip_offset = ui_box_clip_offset(edit_box).x;
     new_clip_offset = prev_clip_offset;
 
     // TODO: Here we do the new offset to later set it
     // Checking if cursor is to the right of the box now
-    if (str_before_cursor_size_in_px > -1.0f * prev_clip_offset + prev_edit_box_width) 
+    if (str_before_cursor_size_in_px > -prev_clip_offset + prev_edit_box_width) 
     {
       // Finding a cursor string substring that fits into the edit box from the end of the cursor string
       RangeU64 str_range_that_fits = rangeU64(str_before_cursor.count, str_before_cursor.count);
@@ -637,7 +640,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
     ui_next_width(ui_fit());
     ui_next_height(ui_px(font_height));
     ui_next_layout_x();
-    UI_Box* cursor_section_box = ui_box_make({}, UI_Box_flag__clip|UI_Box_flag__floating);
+    UI_Box* cursor_section_box = ui_box_make(UI_Box_flag__clip|UI_Box_flag__floating, {});
     ui_box_set_clip_offset_x(cursor_section_box, new_clip_offset); 
     UI_Parent(cursor_section_box)
     {
@@ -666,7 +669,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
         ui_next_width(ui_px(section_start == section_end ? cursor_size : space_inside_section + cursor_size));
         ui_next_height(ui_px(font_height));
         ui_next_b_color(rgba_from_hex(0x96fa00FF)); // TODO: This should be suplied from the outside
-        UI_Box* cursor_box = ui_box_make({}, UI_Box_flag__has_background);
+        UI_Box* cursor_box = ui_box_make(UI_Box_flag__has_background, {});
         UI_Parent(cursor_box) 
         {
           if (section_start != section_end) {
@@ -693,7 +696,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
         B32 begin_section_at_new_cursor = false;
         U64 new_cursor_pos              = cursor_pos;
         {
-          F32 new_cursor_pos_in_px_in_text = ui_get_mouse_pos().x - edit_box_data.rect.x - ui_clip_offset_from_box(edit_box).x;
+          F32 new_cursor_pos_in_px_in_text = ui_get_mouse_pos().x - edit_box_data.rect.x - ui_box_clip_offset(edit_box).x;
           F32 accumulated_offset = 0.0f;
           for EachIndex(i, text_buffer_str.count)
           {
@@ -728,8 +731,10 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
       result_text_op_list = ui_text_op_list_from_os_event_list(arena, os_get_frame_event_list());
     }
   }
+ 
+  ui_pop_font_color();
+
   return result_text_op_list;
 }
-*/
 
 #endif

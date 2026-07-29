@@ -57,7 +57,7 @@ enum UI_Box_flag : U32 {
 
   UI_Box_flag__clickable = UI_Box_flag__left_clickable|UI_Box_flag__right_clickable,
 
-  UI_Box_flag__padded_border = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
+  UI_Box_flag__has_padded_border = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
   UI_Box_flag__clip          = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
 };
 typedef U32 UI_Box_flags;

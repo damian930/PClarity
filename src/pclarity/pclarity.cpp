@@ -359,6 +359,42 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
       }
       else if (pcl->current_menu == PCL_Menu__home)
       {
+        Str8 filter_str_for_names = {};
+
+        // TODO: Here you should add a text edit thing
+        ui_next_width(ui_px(250));
+        ui_next_height(ui_fit());
+        ui_next_border(1, red());
+        ui_next_padding(10);
+        ui_next_b_color(white());
+        UI_Parent(ui_box_make(UI_Box_flag__has_background|UI_Box_flag__has_padded_border, {}))
+        {
+          ScratchLoop(scratch, 0, 0)
+          {
+            static U8 text_buffer[255]   = {};
+            static U64 text_buffer_count = 0;
+            static U64 cursor_pos        = 0;
+            static U64 section_pos       = 0;
+
+            ui_next_font_color(black());
+            UI_Text_op_list text_op_list = ui_text_edit_box(
+              scratch.arena, 
+              true, 
+              ui_grow(), 
+              text_buffer, 
+              text_buffer_count, ArrayCount(text_buffer), 
+              cursor_pos, section_pos,
+              Str8FromC("Edit box test id for test box")
+            );
+  
+            ui_aply_text_ops(text_op_list, text_buffer, ArrayCount(text_buffer), &text_buffer_count, &cursor_pos, &section_pos, Null, Null);
+          
+            filter_str_for_names = str8_manual_view(text_buffer, text_buffer_count);
+          }
+        }
+
+        ui_spacer(ui_rem(0.25));
+
         ui_next_font_size(32);
         ui_next_font_color(magenta());
         ui_text_f("Application data");
@@ -622,6 +658,20 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                   ) {
                     DD_ProcessInfo* process_data = &pcl->gathered_process_data_this_frame.arr[process_data_index];
 
+                    B32 is_data_filtered_out = false;
+                    ScratchLoop(scratch, 0, 0)
+                    {
+                      Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
+                      if (display_name.count == 0) { display_name= DD_GetExeNameForPid(scratch.arena, process_data->pid); }
+
+                      if (filter_str_for_names.count != 0)
+                      {
+                        is_data_filtered_out = !str8_is_substring(display_name, filter_str_for_names, Str8_match__ignore_case|Str8_match__normalise_slash);
+                      }
+                    }
+
+                    if (is_data_filtered_out) { continue; }
+
                     ui_next_width(ui_grow());
                     ui_next_height(ui_px(row_size));
                     ui_next_layout_x();
@@ -737,8 +787,6 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
             ui_next_font_size(15);
             ui_text_f("%lld", pcl->gathered_process_data_this_frame.count);
           }
-
-
 
           // TODO: Horizontal sider at the bottom
 
