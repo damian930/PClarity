@@ -237,6 +237,46 @@ Win32QueryProcessArray(Arena* arena)
   return result;
 }
 
+// NOTE(S): if using functions that are only available in newer Windows versions, dynamically import function.
+// And that's a big IF.
+#pragma comment(lib, "ntdll") 
+
+// Note(S): Code Sample
+#if 0
+#define Str8Varg(S) (int)((S).count), ((S).data)     // use this for variadic functions where the format specifier is "%.*s" meaning an int value (width) is provided before the char string.
+int main()
+{
+  // TODO(S): Support Unicode!
+  allocate_thread_context();
+  B32 os_init_succ = os_init();
+  if (!os_init_succ) { return -1; }
+  OS_State* win32_state = os_get_state();
+  
+  Arena* frame_arena = arena_alloc(Gigabytes(64));
+  for (;!os_window_should_close();)
+  {
+    ProcessInfoArray p = Win32QueryProcessArray(frame_arena); // <-- USE THIS FUNCTION
+
+    for (int i{}; i < p.count; ++i)
+    {
+      printf("Display Name: %.*s Image name: %.*s\n",
+            Str8Varg(p[i].display_name), Str8Varg(p[i].image_name));
+    }
+    arena_clear(frame_arena);
+
+    // TODO(S): Implement proper timer
+    Sleep(2000);
+  }
+
+  return 0;
+  
+}
+#endif
+
+///////////////////////////////////////////////////////////
+// DD TEST STUFF 
+///////////////////////////////////////////////////////////
+
 struct DD_ProcessInfo {
   S32 pid;
   S32 ppid;
@@ -290,41 +330,24 @@ DD_ProcessInfoArray DD_Win32QueryProcessArray(Arena* arena)
   return result_arr;
 }
 
-// NOTE(S): if using functions that are only available in newer Windows versions, dynamically import function.
-// And that's a big IF.
-#pragma comment(lib, "ntdll") 
-
-// Note(S): Code Sample
-#if 0
-#define Str8Varg(S) (int)((S).count), ((S).data)     // use this for variadic functions where the format specifier is "%.*s" meaning an int value (width) is provided before the char string.
-int main()
+#include "psapi.h"
+Str8 DD_GetExeNameForPid(Arena* arena, S32 pid)
 {
-  // TODO(S): Support Unicode!
-  allocate_thread_context();
-  B32 os_init_succ = os_init();
-  if (!os_init_succ) { return -1; }
-  OS_State* win32_state = os_get_state();
+  Str8 result_str = {};
   
-  Arena* frame_arena = arena_alloc(Gigabytes(64));
-  for (;!os_window_should_close();)
+  HANDLE process_handle = OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, FALSE, (U32)pid);
+  if (process_handle) ScratchLoop(scratch, &arena, 1)
   {
-    ProcessInfoArray p = Win32QueryProcessArray(frame_arena); // <-- USE THIS FUNCTION
-
-    for (int i{}; i < p.count; ++i)
+    Data_buffer buffer = data_buffer_make(scratch.arena, 255);
+    DWORD res = GetModuleBaseNameA(process_handle, Null, (char*)buffer.data, (U32)buffer.count);
+    if (res != 0)
     {
-      printf("Display Name: %.*s Image name: %.*s\n",
-            Str8Varg(p[i].display_name), Str8Varg(p[i].image_name));
+      result_str = str8_copy(arena, str8_substring(buffer, 0, res));
     }
-    arena_clear(frame_arena);
-
-    // TODO(S): Implement proper timer
-    Sleep(2000);
   }
-
-  return 0;
-  
+  CloseHandle(process_handle);
+  return result_str;
 }
-#endif
 
 
 #endif WIN32_DATA_RETRIVAL_H

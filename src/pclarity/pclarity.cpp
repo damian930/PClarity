@@ -672,6 +672,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                             {
                               Scratch scratch = get_scratch(0, 0);
                               Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
+                              if (display_name.count == 0) { display_name= DD_GetExeNameForPid(scratch.arena, process_data->pid); }
                               ui_text(display_name);
                               end_scratch(&scratch);
                             } break;
