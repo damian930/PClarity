@@ -54,7 +54,6 @@ UI_Box* ui_floating_box(UI_Size size_x, UI_Size size_y, V2F32 offset)
 
 // - Color pickers (Saturation + Value)
 void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsv, F32* out_opt_new_sat, F32* out_opt_new_val);
-
 void __ui_color_picker_sv_square_draw_func(UI_Box* box);
 
 ///////////////////////////////////////////////////////////

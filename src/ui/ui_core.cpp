@@ -1454,6 +1454,12 @@ void ui_next_floating_fixed_dims(V2F32 dims)
   ui_next_floating_fixed_dims_y(dims.y);
 }
 
+void ui_next_floating_fixed_rect(Rect rect)
+{
+  ui_next_floating_fixed_pos(rect.origin);
+  ui_next_floating_fixed_dims(rect.dims);
+}
+
 ///////////////////////////////////////////////////////////
 // Private helpers
 ///////////////////////////////////////////////////////////

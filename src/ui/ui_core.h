@@ -456,6 +456,7 @@ void ui_next_layout_y();
 // - Stack function helpers (fixed floating stuff)
 void ui_next_floating_fixed_pos(V2F32 pos);
 void ui_next_floating_fixed_dims(V2F32 dims);
+void ui_next_floating_fixed_rect(Rect rect);
 
 // - Macros for automatic stack pushing and popping
 // Damian: I would like to do something like that, have a macro that generates macros, but that is not possible in c/cpp.

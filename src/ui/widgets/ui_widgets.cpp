@@ -270,10 +270,9 @@ struct __UI_Color_picker_sv_data {
   V4F32 colors[UV__COUNT];
 };
 
-/*
 void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsva, F32* out_opt_new_sat, F32* out_opt_new_val)
 {
-  // note:
+  // DD:
   // this picker is for sv, meaning for saturation and value, these are hsv values, not rgb
   // the value goes bottom-up in the color picker
   // the saturation goes left-right in the color picker
@@ -293,53 +292,57 @@ void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsva, F32
   // Setting up the color picke box
   ui_next_width(size_x);
   ui_next_height(size_y);
-  UI_Box* color_picker_box = ui_box_make(0, id);
+  UI_Box* color_picker_box = ui_box_make(
+    UI_Box_flag__has_padded_border|
+    UI_Box_flag__left_clickable, 
+    id
+  );
 
-  V4F32 pure_hsv = v4f32(hsva.hue, 1.0f, 1.0f, 1.0f);
-  
-  __UI_Color_picker_sv_data* draw_data = ArenaPush(ui_get_build_arena(), __UI_Color_picker_sv_data);
-  draw_data->colors[UV__top_left]     = white(); 
-  draw_data->colors[UV__top_right]    = black();
-  draw_data->colors[UV__bottom_left]  = rgba_from_hsva(pure_hsv);
-  draw_data->colors[UV__bottom_right] = black();
-  ui_extend_box_with_custom_draw_function(color_picker_box, __ui_color_picker_sv_square_draw_func, draw_data);
-  
-  UI_Box_data box_data = ui_get_box_data_prev_frame_from_box(color_picker_box);
+  UI_Box_data color_picker_data = ui_box_data_from_box(color_picker_box);
   V2F32 mouse          = ui_get_mouse_pos();
   F32 circle_diameter  = 10.0f;
 
-  F32 circle_x_offset = 0.0f;
-  F32 circle_y_offset = 0.0f;
-  if (box_data.found)
-  {
-    // Reverse lerp
-    F32 x_t = hsva.saturation;
-    F32 y_t = hsva.value ;
-    clamp_f32_inplace(&x_t, 0.0f, 1.0f);
-    clamp_f32_inplace(&y_t, 0.0f, 1.0f);
-
-    circle_x_offset = (range_v2f32_dims(box_data.on_screen_bbox).x * x_t) - (circle_diameter / 2.0f);
-    circle_y_offset = (range_v2f32_dims(box_data.on_screen_bbox).y * (1.0f - y_t)) - (circle_diameter / 2.0f);
-  }
-
-  // Color picker tree
   UI_Parent(color_picker_box)
   {
-    UI_Col() 
-    {
-      ui_spacer(ui_px(circle_y_offset));
-      UI_Row()
-      {
-        ui_spacer(ui_px(circle_x_offset));
+    ui_next_width(ui_grow());
+    ui_next_height(ui_grow());
+    UI_Box* _color_picker_box_for_custom_draw = ui_box_make(UI_Box_flag__dont_draw_overflow, {});
+  
+    V4F32 pure_hsv = v4f32(hsva.hue, 1.0f, 1.0f, 1.0f);
+    
+    __UI_Color_picker_sv_data* draw_data = ArenaPush(ui_get_build_arena(), __UI_Color_picker_sv_data);
+    draw_data->colors[UV__top_left]     = white(); 
+    draw_data->colors[UV__top_right]    = rgba_from_hsva(pure_hsv);
+    draw_data->colors[UV__bottom_left]  = black();
+    draw_data->colors[UV__bottom_right] = black();
+    ui_extend_box_with_custom_draw_function(_color_picker_box_for_custom_draw, __ui_color_picker_sv_square_draw_func, draw_data);
 
-        ui_set_next_size_x(ui_px(circle_diameter));
-        ui_set_next_size_y(ui_px(circle_diameter));
-        ui_set_next_corner_r(v4f32_all(1));
-        ui_set_next_border(3, white());
-        ui_set_next_softness(1.5f);
-        UI_Box* circle_picker = ui_box_make(Str8FromC("White circle for the picker"), UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners);
-      }
+    F32 circle_x_offset = 0.0f;
+    F32 circle_y_offset = 0.0f;
+    if (color_picker_data.is_found)
+    {
+      // Reverse lerp
+      F32 x_t = hsva.saturation;
+      F32 y_t = hsva.value ;
+      clamp_f32_inplace(&x_t, 0.0f, 1.0f);
+      clamp_f32_inplace(&y_t, 0.0f, 1.0f);
+
+      // TODO: Might have to use inner rect here, look into this
+      circle_x_offset = (color_picker_data.inner_rect.width * x_t) - (circle_diameter / 2.0f);
+      circle_y_offset = (color_picker_data.inner_rect.height * (1.0f - y_t)) - (circle_diameter / 2.0f);
     }
+
+    UI_Parent(_color_picker_box_for_custom_draw)
+    {
+      ui_next_floating_fixed_pos(v2f32(circle_x_offset, circle_y_offset));
+      ui_next_floating_fixed_dims(v2f32(circle_diameter, circle_diameter));
+      ui_next_border(2, white());
+      ui_next_corner_r(f32_max_decimal);
+      ui_next_inner_softness(2);
+      ui_next_outer_softness(2);
+      UI_Box* picking_circle_floating_parent = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, {});
+    }
+
   }
 
   // Updating the colors 
@@ -348,10 +351,11 @@ void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsva, F32
   UI_Actions actions = ui_actions_from_box(color_picker_box);
   if (actions.is_down) 
   {
-    if (box_data.found)
+    if (color_picker_data.is_found)
     {
-      F32 picker_relative_x = (mouse.x - box_data.on_screen_bbox.min.x) / (range_v2f32_dims(box_data.on_screen_bbox).x);
-      F32 picker_relative_y = 1.0f - ((mouse.y - box_data.on_screen_bbox.min.y) / (range_v2f32_dims(box_data.on_screen_bbox).y)); // Flipping the Y since color picker is bottom_left->up and the screen is top_left->down
+      // TODO: Mighte have to use inner rect here, look into this
+      F32 picker_relative_x = (mouse.x - color_picker_data.inner_rect.x) / (color_picker_data.inner_rect.width);
+      F32 picker_relative_y = 1.0f - ((mouse.y - color_picker_data.inner_rect.y) / (color_picker_data.inner_rect.height)); // Flipping the Y since color picker is bottom_left->up and the screen is top_left->down
       clamp_f32_inplace(&picker_relative_x, 0.0f, 1.0f);
       clamp_f32_inplace(&picker_relative_y, 0.0f, 1.0f);
 
@@ -367,9 +371,8 @@ void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsva, F32
 void __ui_color_picker_sv_square_draw_func(UI_Box* box)
 {
   __UI_Color_picker_sv_data* data = (__UI_Color_picker_sv_data*)box->per_build_config.custom_draw_extension.data_for_draw_func;
-  Rect rect = box->rect; 
+  Rect rect = box->rect;
   d_draw_rect_pro(rect, data->colors[UV__x0y0], data->colors[UV__x1y0], data->colors[UV__x0y1], data->colors[UV__x1y1], v4f32_all(0.0f), 0.0f, 0.0f);
 }
-*/
 
 #endif

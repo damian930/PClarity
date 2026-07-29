@@ -310,10 +310,34 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     */
 
-    /*
+    // /*
     // Testing rounded corners
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
+      static V4F32 color_hsva = hsva_from_rgba(golden());
+      
+      F32 new_sat = 0.0f;
+      F32 new_val = 0.0f;
+      ui_next_padded_border(5, nice_red());
+      ui_color_picker_sv(
+        Str8FromC("Color picker id"), 
+        ui_px(250),
+        ui_px(250),
+        color_hsva, 
+        &new_sat, &new_val
+      );
+
+      color_hsva.saturation = new_sat;
+      color_hsva.value      = new_val;
+
+      ui_spacer(ui_px(25));
+
+      ui_next_width(ui_px(50));
+      ui_next_height(ui_px(50));
+      ui_next_b_color(rgba_from_hsva(color_hsva));
+      UI_Box* colored_box = ui_box_make(UI_Box_flag__has_background, {});
+
+      /*
       ui_next_floating_fixed_pos(v2f32(100, 100));
       ui_next_floating_fixed_dims(v2f32(250, 250));
       ui_next_b_color(nice_blue());
@@ -346,11 +370,12 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         ui_next_font_size(64);
         ui_text_f("Some text here");
       }
+      */
     }
-    */
+    // */
 
-    pcl_frame_update(&pcl);
-    pcl_build_ui(font, &pcl, prev_frame_fps);
+    // pcl_frame_update(&pcl);
+    // pcl_build_ui(font, &pcl, prev_frame_fps);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
