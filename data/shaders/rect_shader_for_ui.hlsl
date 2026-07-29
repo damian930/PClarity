@@ -112,51 +112,60 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
   float2 pos_norm = (pos_px - pixel_input.rect_origin) / pixel_input.rect_dims; 
 
   // DD: Getting the final color for the pixels from the colors of the 4 corners
-  float4 top_color    = lerp(pixel_input.vertex_color[UV__top_left], pixel_input.vertex_color[UV__top_right], pos_norm.x);
-  float4 bottom_color = lerp(pixel_input.vertex_color[UV__bottom_left], pixel_input.vertex_color[UV__bottom_right], pos_norm.x);
-  float4 final_color  = lerp(top_color, bottom_color, pos_norm.y);
+  float4 top_color        = lerp(pixel_input.vertex_color[UV__top_left], pixel_input.vertex_color[UV__top_right], pos_norm.x);
+  float4 bottom_color     = lerp(pixel_input.vertex_color[UV__bottom_left], pixel_input.vertex_color[UV__bottom_right], pos_norm.x);
+  float4 background_color = lerp(top_color, bottom_color, pos_norm.y);
 
   float radius_in_px = clamp(pixel_input.corner_radius, 0.0, (min(pixel_input.rect_dims.x, pixel_input.rect_dims.y) / 2.0));
   
   float sdf_pixel_to_rect = sdf_rounded_rect(pixel_input.rect_origin, pixel_input.rect_dims, pos_px, radius_in_px);
 
-  float2 rect_origin_after_border = pixel_input.rect_origin + pixel_input.border_thickness;
-  float2 rect_dims_after_border   = pixel_input.rect_dims - (2 * pixel_input.border_thickness);
-  if ( 
-       pixel_input.border_thickness != 0.0 
-    && (-pixel_input.border_thickness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
-  ) {
-    final_color = pixel_input.border_color;
-  }
+  float4 final_color = background_color;
   
-  float softness = pixel_input.softness;
-  softness = 5;
-  
-  // Smooth fill -> border transition (replaces the hard if)
+  float outer_softness = 2;
+  float inner_softness = 2;
+
+  float outer_smoothing = 1.0;
+  float inner_smoothing = 1.0;
+
   if (pixel_input.border_thickness != 0.0)
   {
-    // TODO: Only mix here with the rgb part of the color, disregard the alpha, for the mix
-    // cause if you have zero alpha, it will just make you be 0. Fix this bug
-
-    softness = 2;
-    // float border_mix = smoothstep(-softness, 0.0, inner_sdf);
-    float inner_sdf  = sdf_pixel_to_rect + pixel_input.border_thickness;
-    float t          = saturate(inner_sdf / softness + 1.0); // 0..1
-    float k          = 1; // higher = more drastic curve near the end
-    float border_mix = (exp(k * t) - 1.0) / (exp(k) - 1.0);
-    final_color      = lerp(final_color, pixel_input.border_color, border_mix);
+    // todo: Here you do the border thing from the outside and then inside and produce a new color
+    // todo: Just try smooth step here
+    if (pixel_input.corner_radius == 0.0)
+    {
+      if (-pixel_input.border_thickness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0f)
+      {
+        final_color = pixel_input.border_color;
+      }
+    }
+    else 
+    {
+      float inner_sdf  = sdf_pixel_to_rect + pixel_input.border_thickness;
+      float smoothstep_res = smoothstep(-inner_softness, 0.0, inner_sdf);
+      if (background_color.a != 0.0f)
+      {
+        final_color = lerp(background_color, pixel_input.border_color, smoothstep_res);
+      }
+      else
+      {
+        final_color     = pixel_input.border_color;
+        inner_smoothing = smoothstep_res;
+      }
+    }
   }
 
-  softness = 5;
-  if (radius_in_px != 0.0)
+  if (pixel_input.corner_radius != 0.0)
   {
-    if (sdf_pixel_to_rect > 0.0) { discard; }
-
-    if (-softness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
-    { 
-      float smoothing = smoothstep(0.0, -softness, sdf_pixel_to_rect);
-      final_color.a *= smoothing;
+    if (0) {}
+    else if (sdf_pixel_to_rect > 0.0) { outer_smoothing = 0.0f; }
+    else if (-outer_softness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
+    {
+      outer_smoothing = smoothstep(0.0, -outer_softness, sdf_pixel_to_rect);
     }
+
+    final_color.a *= outer_smoothing;
+    final_color.a *= inner_smoothing;
   }
 
   return final_color;
