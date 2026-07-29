@@ -145,6 +145,9 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->mouse_pos_for_this_build   = mouse_pos;
   state->window_dims_for_this_build = window_dims;
 
+  Assert(!state->remove_context_menu_when_closing_it);
+  state->remove_context_menu_when_closing_it = false;
+
   // DD: Handling the closing of the context menu if pressed outside of it 
   if (!ui_box_key_is_null(state->final_context_menu_key_for_prev_build))
   {
@@ -196,6 +199,39 @@ void ui_end_build()
   ui_pop_parent();
 
   UI_State* state = ui_get_state();
+
+  // TODO: This is new stuff
+  {
+    if (!ui_box_key_is_null(state->open_context_menu_box_key))
+    {
+      UI_Box* context_menu_box = ui_box_from_key(state->open_context_menu_box_key);
+      Assert(!ui_box_is_null(context_menu_box));
+      if (!ui_box_is_null(context_menu_box))
+      {
+        if (context_menu_box->generation_when_last_created != ui_get_build_generation())
+        {
+          state->open_context_menu_box_key = ui_box_key_null();
+          state->open_context_menu_offset  = V2F32{};
+        }
+      }
+    }
+
+    // TODO: Inside the context menu box into the root box if context menu box is present
+    if (!ui_box_key_is_null(state->open_context_menu_box_key))
+    {
+      UI_Box* root = ui_get_root();
+      UI_Box* context_menu_box = ui_box_from_key(state->open_context_menu_box_key);
+      
+      Assert(!ui_box_is_null(context_menu_box));
+      if (!ui_box_is_null(context_menu_box))
+      {
+        context_menu_box->per_build_config.parent = root;
+        DllPushBack_Explicit_Ex(root->per_build_config.first_child, root->per_build_config.last_child, context_menu_box, per_build_config.next_sibling, per_build_config.prev_sibling, ui_box_is_null, ui_box_null());
+        root->per_build_config.children_count += 1;
+      }
+    }
+  }
+
 
   // DD: Making clay boxes from our own box tree
   __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
@@ -533,13 +569,6 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 do_inputs_for_this_box = true;
   if (is_context_menu_open && !is_child_of_context_menu)
   {
-    // TODO, DD: This is for debug, remove this code
-    if (str8_match(box->per_build_config.str_for_key, Str8FromC("Table header 0"), 0))
-    {
-      int x = 0;
-    }
-    OutputDebugStringF("X \n");
-
     do_inputs_for_this_box = false;
   }
 
@@ -1082,10 +1111,9 @@ void ui_set_context_menu_key(Str8 id, V2F32 offset)
 
 void ui_reset_context_menu()
 {
+  // todo: If there is no context menu in the end of the frame, then dont draw it
   UI_State* state = ui_get_state();
-  state->open_context_menu_box_key = ui_box_key_null();
-  state->open_context_menu_offset  = V2F32{};
-  // Todo: do we have to reset the context menu box inside the state here as well ?
+  state->remove_context_menu_when_closing_it = true;
 }
 
 void ui_begin_context_menu(Str8 id)
@@ -1095,7 +1123,7 @@ void ui_begin_context_menu(Str8 id)
 
   if (ui_is_context_menu_with_id_open(id))
   {
-    ui_push_parent(state->current_build_root_box);
+    ui_push_parent(ui_box_null());
 
     ui_next_width(ui_fit());
     ui_next_height(ui_fit());
@@ -1109,6 +1137,9 @@ void ui_begin_context_menu(Str8 id)
     // data for interactions 
     if (!ui_box_key_match(state->final_context_menu_key_for_prev_build, key))
     {
+      Assert(state->remove_context_menu_when_closing_it == false, "DD: This is not a bug, i just wanna know if we even write code that makes this be the case");
+      state->remove_context_menu_when_closing_it = false;
+
       for EachIndex(i, ArrayCount(state->interacted_with_box_data)) 
       {
         state->interacted_with_box_data[i] = {};
@@ -1126,6 +1157,13 @@ void ui_end_context_menu(Str8 id)
   {
     ui_pop_parent();
     ui_pop_parent();
+
+    if (state->remove_context_menu_when_closing_it)
+    {
+      state->remove_context_menu_when_closing_it = false;
+      state->open_context_menu_box_key           = ui_box_key_null();
+      state->open_context_menu_offset            = V2F32{};
+    }
   }
 }
 
@@ -1816,6 +1854,48 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
           it_box->viewport_dims = __ui_v2f32_from_clay_dimensions(clay_scroll_data.scrollContainerDimensions);
           it_box->content_dims  = __ui_v2f32_from_clay_dimensions(clay_scroll_data.contentDimensions);
         }
+      }
+    }
+  }
+
+}
+
+///////////////////////////////////////////////////////////
+// NEW STUFF
+///////////////////////////////////////////////////////////
+
+void ui_scroll_box_with_wheel(UI_Box* box, F32 multiplier)
+{
+  V2F32 scroll = {};
+  B32 scroll_happend = false;
+  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+  {
+    if (ev->kind == OS_Event_kind__wheel)
+    {
+      scroll_happend = true;
+      Axis2 axis = Axis2__y;
+      if (ev->wheel_event.modifiers & OS_Event_modifier__shift) { axis = Axis2__x; }
+      scroll.v[axis] += ev->wheel_event.scroll_data * multiplier;
+      os_consume_frame_event(ev);
+    }
+  }
+
+  UI_Box_clip_data clip_data = ui_box_clip_data_from_box(box);
+  if (scroll_happend && clip_data.is_found)
+  {
+    for EachEnumRange(axis, Axis2, Axis2__x, Axis2__COUNT)
+    {
+      UI_Box_flag clip_flag = UI_Box_flag__clip_x;
+      if (axis == Axis2__y) { clip_flag = UI_Box_flag__clip_y; }
+      
+      if (box->per_build_config.flags & clip_flag)
+      {
+        V2F32 current_offset = ui_box_clip_offset(box);
+        V2F32 new_offset     = v2f32_add(current_offset, scroll);
+        F32 max_offset       = clip_data.content_dims.v[axis] - clip_data.viewport_dims.v[axis];
+        F32 min_offset       = 0.0f;
+        clamp_f32_inplace(&new_offset.v[axis], -max_offset, -min_offset);
+        ui_box_set_clip_offset_for_axis(box, new_offset.v[axis], axis);
       }
     }
   }

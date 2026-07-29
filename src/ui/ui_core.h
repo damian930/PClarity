@@ -50,6 +50,9 @@ enum UI_Box_flag : U32 {
   UI_Box_flag__left_clickable  = (1 << 11),  
   UI_Box_flag__right_clickable = (1 << 12),  
 
+  // DD, Todo: These are new flags, 
+  // UI_Box_flag__use_automatic_wheel_scroll = (1 << 13), 
+
   // ============================================
 
   UI_Box_flag__clickable = UI_Box_flag__left_clickable|UI_Box_flag__right_clickable,
@@ -307,6 +310,7 @@ struct UI_State {
 
   UI_Box_key open_context_menu_box_key; 
   V2F32 open_context_menu_offset;
+  B32 remove_context_menu_when_closing_it;
 };
 
 // - State variables

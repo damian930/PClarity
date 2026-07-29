@@ -427,6 +427,24 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
             ui_next_b_color(black());
             UI_Box* table_box = ui_box_make(UI_Box_flag__clip|UI_Box_flag__has_background, table_id); 
             
+            static U64 prev_header_count = 0;
+            if (prev_header_count != 0 && prev_header_count > pcl->table_data.header_count)
+            {
+              // BP;
+            }
+            prev_header_count = pcl->table_data.header_count;
+            // OutputDebugStringF("%lld \n", pcl->table_data.header_count);
+
+            // UI_Box_data table_box_data = ui_box_data_from_box(table_box);
+            // if (table_box_data.is_found)
+            // {
+            //   static F32 prev_height = 0.0f;
+            //   Rect rect = table_box_data.rect;
+            //   if (prev_height != 0.0f && rect.height == 0.0f) { BP; }
+            //   // OutputDebugStringF("Table rect: x:%f y:%f width:%f height:%f \n", rect.x, rect.y, rect.width, rect.height);
+            //   prev_height = rect.height;
+            // }
+
             UI_Parent(table_box)
             {
               UI_Box_data table_box_data = ui_box_data_from_box(table_box);
@@ -505,17 +523,16 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                   for EachIndex(header_index, pcl->table_data.header_count) 
                     ScratchLoop(scratch, 0, 0) 
                   {
-                    U64 header_addr         = (U64)(pcl->table_data.headers + header_index);
                     PCL_Table_header header = pcl->table_data.headers[header_index];
                     F32 flex_norm           = header.flex_value / headers_total_flex_value;
                     
                     ui_next_width(ui_px(flex_norm * space_for_headers));
                     ui_next_height(ui_grow());
                     
-                    Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_addr);
+                    Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
                     UI_Actions header_actions = pcl_ui_table_header(id, header);
 
-                    Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id %lld", header_addr);
+                    Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id %lld", header_index);
                     if (header_actions.is_right_clicked)
                     {
                       ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
@@ -523,6 +540,9 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
 
                     UI_ContextMenu(header_context_menu_id)
                     {
+                      static B32 clicked = false;
+                      // if (clicked) { BP; }
+
                       UI_Col()
                       {
                         ui_next_padded_border(1, orange());
@@ -675,6 +695,8 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
               }
             }
             
+            ui_scroll_box_with_wheel(table_box, 10);
+
             ui_spacer(ui_rem(0.25f));
 
             { // DD: Y Scroll bar for the table 
@@ -952,7 +974,7 @@ F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id)
   UI_Actions slider_acts = ui_actions_from_box(slider_top_box);
   if (slider_acts.is_down)
   {
-    BP;
+    // BP;
     UI_Box_data slider_box_data = ui_box_data_from_box(slider_top_box);
     if (slider_box_data.is_found)
     {
@@ -1010,7 +1032,11 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
       F32 max_thumb_size          = inner_space;
 
       thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
-      if (thumb_size > inner_space)    { thumb_size = inner_space; /*BreakPoint("DD: I wanna know when this finally happends");*/ }
+      if (thumb_size > inner_space)    
+      { 
+        BreakPoint("DD: I wanna know when this finally happends");
+        thumb_size = inner_space;  
+      }
       if (thumb_size < thumb_min_size) { thumb_size = thumb_min_size; }
       
       F32 max_vp_offset = outer_content_size - outer_vp_size;

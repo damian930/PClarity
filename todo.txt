@@ -1,11 +1,14 @@
-Testing (coverage)
+App
 -----------
-[ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change
+[x] - Fix the bug where the table gets 0 sized when you remove a header for a single frame
+      which results in a visible bug
+[x] - Fix the bug with ids for headers since when you remove them they get reused, and so the data is a bit fucked up
 
 
 Performance
 -----------
 [ ] - r_present seem to be taking too long for not a lot of drawings
+
 
 Rendering
 ---------
@@ -24,7 +27,6 @@ Rendering
 
 Tables
 ------
-[ ] - Be able to select a header of the table
 [ ] - Be able to select a row of a table and if a row is selected keep the row at the top at all times
 [ ] - Add a way to sort the UI when we press a header
 
@@ -39,8 +41,7 @@ Tables
 
 UI lib 
 --
-[ ] - Context menu support
-      [ ] - Fix the bug where the cursor be changing when we have the context menu open and 
+
 
 App UI 
 --
@@ -67,6 +68,11 @@ Platform
 [ ] - .rc for the app with a custom icon
 [ ] - Add support for ASAN
 
+
 Commands
 --------
-[ ] - Close the app
+
+
+Testing (coverage)
+-----------
+[ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change

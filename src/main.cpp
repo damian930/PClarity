@@ -114,8 +114,9 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
       ui_next_height(ui_px(250));
       UI_Box* floater = ui_box_make(
         UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_padding|
-          UI_Box_flag__floating|UI_Box_flag__clip,
+        UI_Box_flag__floating|UI_Box_flag__clip,
         Str8FromC("Floater"));
+      
       UI_Parent(floater)
       {
         U64 n_rows = 20;
@@ -123,7 +124,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         F32 space_between = 10;
         
         F32 row_size = 50;
-        F32 offset = -ui_clip_offset_from_box(floater).y;
+        F32 offset = -ui_box_clip_offset(floater).y;
         F32 vp     = ui_box_clip_data_from_box(floater).viewport_dims.y;
 
         if (offset < 0.0f) { offset = 0.0f; }
@@ -164,25 +165,13 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         ui_next_height(ui_px(space_after_last_visible_row));
         UI_Box* last_space_filler = ui_box_make(0, {});
       }
-    
-      F32 scroll = 0.0f;
-      for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
-      {
-        if (ev->kind == OS_Event_kind__wheel)
-        {
-          scroll = ev->wheel_event.scroll_data * 5.0f;
-          os_consume_frame_event(ev);
-          break;
-        }
-      }
-
-      F32 new_scroll = ui_clip_offset_from_box(floater).y + scroll;
-      ui_box_set_clip_offset_y(floater, new_scroll);
-
+      
+      ui_scroll_box_with_wheel(floater);
+      
       ui_next_font_size(32);
       ui_next_font_color(magenta());
       ui_text_f("Box count: %lld", ui_get_state()->last_build_box_count);
-    }
+    // }
     */
 
     /*
