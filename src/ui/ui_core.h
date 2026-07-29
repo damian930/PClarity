@@ -180,6 +180,8 @@ struct UI_Box {
     V4F32          border_width;
     V4F32          border_color;
     V2F32          floating_fixed_pos;
+    F32 outer_softness;
+    F32 inner_softness;
     //
     // TODO: This should be a flag also
     B32   has_fixed_dims;

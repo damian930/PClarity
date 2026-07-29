@@ -49,9 +49,11 @@ struct R_Rect_instance_data {
 
   V4F32 border_color;
   F32 border_thickness;
-  F32 softness;
+  
+  F32 softness_inner;
+  F32 softness_outer;
 
-  F32 _padding_[2];
+  F32 _padding_[1];
 };
 //
 struct R_Rect_unifrom_data {
@@ -190,6 +192,7 @@ B32 __r_is_handle_valid_handle_chain(R_Handle handle);
 const global 
 D3D11_INPUT_ELEMENT_DESC __r_g_rect_program_input_assembler_element_desc[] = 
 {
+  // TODO: Have better names for 00 10 and all these UVs
   { "RECT_00_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_00),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "RECT_10_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_10),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "RECT_01_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_01),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
@@ -204,7 +207,9 @@ D3D11_INPUT_ELEMENT_DESC __r_g_rect_program_input_assembler_element_desc[] =
   { "RECT_11_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_11), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "RECT_BORDER_COLOR",     0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, border_color),     D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "RECT_BORNER_THICKNESS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, border_thickness), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "SOFTNESS",              0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "SOFTNESS_INNER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_inner),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "SOFTNESS_OUTER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_outer),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+
 };
 D3D11_INPUT_ELEMENT_DESC __r_g_texture_program_input_assembler_element_desc[] = 
 {

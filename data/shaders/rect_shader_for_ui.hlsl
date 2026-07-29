@@ -1,3 +1,22 @@
+/*
+---- Notes about the shader ----:
+
+This shader is used for ui drawing, for the reasons for rendering we use a single shader if possible.
+The shader can draw rounded rectangles and borders for them, but only separatelly.
+If border width is non 0 then the shader will draw the border, otherwise it 
+will draw the whole rectangle. The borders are drawn inside the rectangle.
+So to be able to draw a rounded rectangle with borders the user should 
+do 2 draw calls: first one for teh background and also set border width to 0,
+and the second call where they set the border width to the width they want.
+
+The separation between the rect and the borders dont really need to be 
+done in 2 calls and could just be dont in a single draw call, but 
+since the this shader is for the ui and we Clay for ui backend and clay 
+has different commands for rectangles and rectangle borders for some reason,
+this makes us have to have this work so either only the background or the border is 
+drawn to be able to conform more to clay's public api logic.
+*/
+
 cbuffer cbuffer0 : register(b0) {
   float u_window_width;
   float u_window_height;
@@ -29,7 +48,8 @@ struct VertexInput {
   float4 rect_border_color    : RECT_BORDER_COLOR;
   float rect_border_thickness : RECT_BORNER_THICKNESS;
   
-  float softness              : SOFTNESS;
+  float softness_inner : SOFTNESS_INNER;
+  float softness_outer : SOFTNESS_OUTER;
 
   uint vertex_id : SV_VertexID;
 };
@@ -46,7 +66,8 @@ struct PixelInput {
   nointerpolation float4 border_color      : RECT_BORDER_COLOR;
   nointerpolation float border_thickness   : BORDER_THICH;
   
-  nointerpolation float softness           : SOFTNESS;
+  nointerpolation float softness_inner : SOFTNESS_INNER;
+  nointerpolation float softness_outer : SOFTNESS_OUTER;
   
   float4 pos : SV_POSITION;
 };
@@ -95,7 +116,8 @@ PixelInput vs_main(VertexInput vertex_input)
   pixel_input.rect_origin                    = rect_origin;
   pixel_input.rect_dims                      = rect_dims;
   pixel_input.corner_radius                  = rect_vertex_corner_r[vertex_input.vertex_id];
-  pixel_input.softness                       = vertex_input.softness;
+  pixel_input.softness_inner                 = vertex_input.softness_inner;
+  pixel_input.softness_outer                 = vertex_input.softness_outer;
   pixel_input.border_thickness               = vertex_input.rect_border_thickness;
   pixel_input.border_color                   = vertex_input.rect_border_color;
   pixel_input.vertex_color[UV__top_left]     = vertex_input.rect_color_top_left;
@@ -122,16 +144,14 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
 
   float4 final_color = background_color;
   
-  float outer_softness = 2;
-  float inner_softness = 2;
+  float outer_softness = pixel_input.softness_outer;
+  float inner_softness = pixel_input.softness_inner;
 
   float outer_smoothing = 1.0;
   float inner_smoothing = 1.0;
 
   if (pixel_input.border_thickness != 0.0)
   {
-    // todo: Here you do the border thing from the outside and then inside and produce a new color
-    // todo: Just try smooth step here
     if (pixel_input.corner_radius == 0.0)
     {
       if (-pixel_input.border_thickness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0f)

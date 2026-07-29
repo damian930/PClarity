@@ -514,7 +514,8 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
           instance_data.corner_radius_11 = node->command.u.rect_c.corner_radius[UV__x1y1];
           instance_data.border_color     = node->command.u.rect_c.border_color;
           instance_data.border_thickness = node->command.u.rect_c.border_thickness;
-          instance_data.softness         = node->command.u.rect_c.softness;
+          instance_data.softness_inner   = node->command.u.rect_c.inner_softness;
+          instance_data.softness_outer   = node->command.u.rect_c.outer_softness;
 
           memcpy((R_Rect_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
         }

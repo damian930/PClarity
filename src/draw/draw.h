@@ -15,7 +15,8 @@ struct D_Rect_command {
   F32 corner_radius[UV__COUNT];
   V4F32 border_color;
   F32 border_thickness;
-  F32 softness;
+  F32 inner_softness;
+  F32 outer_softness;
 };
 
 struct D_Texture_command {
@@ -112,22 +113,19 @@ D_Command_batch*      d_get_or_add_batch_for_settings(D_Command_type command_typ
 void                  d_add_command_to_batch(D_Command_batch* batch, D_Command command);
 
 // - Low level draw commands that require the caller to know how the shader works
-void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, F32 softness, V4F32 border_color);
+void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness);
 void d_add_texture_command(R_Handle texture, Rect dest_rect, Rect src_rect, V4F32 tint);
 
 // - Higher level draw commands that dont require the caller to know how the shader works
 void d_fill_with_color(V4F32 color);
 
 void d_draw_rect(Rect rect, V4F32 color);
-void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 softness);
-
-void d_draw_rect_inset_borders(Rect rect, V4F32 color, F32 thickness, V4F32 corner_radii, F32 softness);
+void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 inner_softness, F32 outer_softness);
 
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness);
-void d_draw_circle_inset_border(V2F32 center, F32 r, V4F32 color, F32 thickness, F32 softness);
 
 void d_draw_texture(R_Handle texture, V2F32 pos);
-void dd_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint);
+void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint);
 
 void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color);
 void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...);

@@ -44,13 +44,16 @@
   \
   EXPANSION(__UI_Hover_cursor_stack, OS_Cursor, stack_hover_cursor, OS_Cursor__arrow, ui_push_hover_cursor, ui_next_hover_cursor, ui_pop_hover_cursor, ui_auto_pop_hover_cursor, ui_top_hover_cursor, 64) \
   \
-  EXPANSION(__UI_Floating_fixed_pos_x, F32, stack_floating_fixed_pos_x, 0.0f, ui_push_floating_fixed_pos_x, ui_next_floating_fixed_pos_x, ui_pop_floating_fixed_pos_x, ui_auto_pop_floating_fixed_pos_x, ui_top_floating_fixed_pos_x, 64) \
-  EXPANSION(__UI_Floating_fixed_pos_y, F32, stack_floating_fixed_pos_y, 0.0f, ui_push_floating_fixed_pos_y, ui_next_floating_fixed_pos_y, ui_pop_floating_fixed_pos_y, ui_auto_pop_floating_fixed_pos_y, ui_top_floating_fixed_pos_y, 64) \
+  EXPANSION(__UI_Floating_fixed_pos_x_stack, F32, stack_floating_fixed_pos_x, 0.0f, ui_push_floating_fixed_pos_x, ui_next_floating_fixed_pos_x, ui_pop_floating_fixed_pos_x, ui_auto_pop_floating_fixed_pos_x, ui_top_floating_fixed_pos_x, 64) \
+  EXPANSION(__UI_Floating_fixed_pos_y_stack, F32, stack_floating_fixed_pos_y, 0.0f, ui_push_floating_fixed_pos_y, ui_next_floating_fixed_pos_y, ui_pop_floating_fixed_pos_y, ui_auto_pop_floating_fixed_pos_y, ui_top_floating_fixed_pos_y, 64) \
   \
-  EXPANSION(__UI_Floating_fixed_dims_x, F32, stack_floating_fixed_dims_x, 0.0f, ui_push_floating_fixed_dims_x, ui_next_floating_fixed_dims_x, ui_pop_floating_fixed_dims_x, ui_auto_pop_floating_fixed_dims_x, ui_top_floating_fixed_dims_x, 64) \
-  EXPANSION(__UI_Floating_fixed_dims_y, F32, stack_floating_fixed_dims_y, 0.0f, ui_push_floating_fixed_dims_y, ui_next_floating_fixed_dims_y, ui_pop_floating_fixed_dims_y, ui_auto_pop_floating_fixed_dims_y, ui_top_floating_fixed_dims_y, 64) \
+  EXPANSION(__UI_Floating_fixed_dims_x_stack, F32, stack_floating_fixed_dims_x, 0.0f, ui_push_floating_fixed_dims_x, ui_next_floating_fixed_dims_x, ui_pop_floating_fixed_dims_x, ui_auto_pop_floating_fixed_dims_x, ui_top_floating_fixed_dims_x, 64) \
+  EXPANSION(__UI_Floating_fixed_dims_y_stack, F32, stack_floating_fixed_dims_y, 0.0f, ui_push_floating_fixed_dims_y, ui_next_floating_fixed_dims_y, ui_pop_floating_fixed_dims_y, ui_auto_pop_floating_fixed_dims_y, ui_top_floating_fixed_dims_y, 64) \
   \
-  EXPANSION(__UI_Floating_attach_point, UI_Floating_attach_point, stack_floating_attach_point, UI_Floating_attach_point__parent, ui_push_floating_attach_point, ui_next_floating_attach_point, ui_pop_floating_attach_point, ui_auto_pop_floating_attach_point, ui_top_floating_attach_point, 64) 
+  EXPANSION(__UI_Floating_attach_point_stack, UI_Floating_attach_point, stack_floating_attach_point, UI_Floating_attach_point__parent, ui_push_floating_attach_point, ui_next_floating_attach_point, ui_pop_floating_attach_point, ui_auto_pop_floating_attach_point, ui_top_floating_attach_point, 64) \
+  \
+  EXPANSION(__UI_InnerSoftness_stack, F32, stack_inner_softness, 0.0f, ui_push_inner_softness, ui_next_inner_softness, ui_pop_inner_softness, ui_auto_pop_inner_softness, ui_top_inner_softness, 64) \
+  EXPANSION(__UI_OuterSoftness_stack, F32, stack_outer_softness, 0.0f, ui_push_outer_softness, ui_next_outer_softness, ui_pop_outer_softness, ui_auto_pop_outer_softness, ui_top_outer_softness, 64)
 
 #define __UI_STACK_DEFINE_STACK_STRUCTS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
   struct Stack_type_name { \

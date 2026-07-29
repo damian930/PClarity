@@ -146,7 +146,7 @@ void d_add_command_to_batch(D_Command_batch* batch, D_Command command)
 ///////////////////////////////////////////////////////////
 // - Low level draw commands that know about how the shader works 
 //
-void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, F32 softness, V4F32 border_color)
+void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness)
 {
   D_State* draw_state    = d_get_state();
   Arena* arena           = draw_state->arena_for_draw_commands;
@@ -159,7 +159,8 @@ void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_
   command.u.rect_c.rect             = rect; 
   command.u.rect_c.border_color     = border_color;
   command.u.rect_c.border_thickness = border_thickness;
-  command.u.rect_c.softness         = softness;
+  command.u.rect_c.inner_softness   = inner_softness;
+  command.u.rect_c.outer_softness   = outer_softness;
   for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.vertex_color[i]  = corner_colors[i]; }
   for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.corner_radius[i] = corner_radiuses.v[i]; }
   d_add_command_to_batch(batch, command);
@@ -190,43 +191,25 @@ void d_fill_with_color(V4F32 color)
   V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
   R_Handle target                = __d_get_current_render_target__defaults();
   Rect rect                      = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(target));
-  d_add_rect_command(rect, corner_colors, {}, {}, {}, {});
+  d_add_rect_command(rect, corner_colors, {}, {}, {}, 0.0f, 0.0f);
 }
 
 void d_draw_rect(Rect rect, V4F32 color)
 {
   V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  d_add_rect_command(rect, corner_colors, {}, {}, {}, {});
+  d_add_rect_command(rect, corner_colors, {}, {}, {}, 0.0f, 0.0f);
 }
 
-void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 softness)
+void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 inner_softness, F32 outer_softness)
 {
   V4F32 corner_colors[UV__COUNT] = { color_x0y0, color_x1y0, color_x0y1, color_x1y1 };
-  d_add_rect_command(rect, corner_colors, corner_radii, {}, softness, {});
-}
-
-void d_draw_rect_inset_borders(Rect rect, V4F32 color, F32 thickness, V4F32 corner_radii, F32 softness)
-{
-  V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  d_add_rect_command(rect, corner_colors, corner_radii, thickness, softness, color);
-}
-
-void d_draw_rect_outset_borders(Rect rect, V4F32 color, F32 thickness, V4F32 corner_radii, F32 softness)
-{
-  V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  d_add_rect_command(rect_padded(rect, thickness), corner_colors, corner_radii, thickness, softness, color);
+  d_add_rect_command(rect, corner_colors, corner_radii, {}, {}, inner_softness, outer_softness);
 }
 
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness)
 {
   Rect rect = rect_from_center(center, v2f32(r, r));
-  d_draw_rect_pro(rect, color, color, color, color, (r != 1.0f ? v4f32_all(1.0f) : v4f32_all(0.0f)), softness);
-}
-
-void d_draw_circle_inset_border(V2F32 center, F32 r, V4F32 color, F32 thickness, F32 softness)
-{
-  Rect rect = rect_from_center(center, v2f32(r, r));
-  d_draw_rect_inset_borders(rect, color, thickness, v4f32_all(1.0f), softness);
+  d_draw_rect_pro(rect, color, color, color, color, (r != 1.0f ? v4f32_all(1.0f) : v4f32_all(0.0f)), 0.0f, softness);
 }
 
 void d_draw_texture(R_Handle texture, V2F32 pos)
