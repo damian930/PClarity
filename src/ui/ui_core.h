@@ -85,15 +85,7 @@ enum UI_Floating_attach_point : U32 {
   UI_Floating_attach_point__COUNT,
 };
 
-struct UI_Provided_data_for_custom_draw {
-  UI_Box* box;
-  
-  // Damian: These are provided by clay directly 
-  Rect final_box_rect;
-  V4F32 background_color;
-  V4F32 corner_radii;
-};
-#define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Provided_data_for_custom_draw provided_data)
+#define UI_CUSTOM_DRAW_BOX_DEF(name) void name(UI_Box* box)
 typedef UI_CUSTOM_DRAW_BOX_DEF(UI_Box_custom_draw_func);
 
 enum UI_Mouse_button : U32 {
@@ -215,6 +207,7 @@ struct UI_Box {
   
     // Additional data that we have to keep for drawing since clay linearises the drawing
     UI_Box* ancestor_with_no_overflow_drag_flag;
+
   } per_build_config; 
 
   ///////////////////////////////////////////////////////////

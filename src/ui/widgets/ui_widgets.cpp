@@ -90,25 +90,24 @@ void ui_text_f(const char* fmt, ...)
   }
 }
 
-UI_CUSTOM_DRAW_BOX_DEF(__ui_label_draw_func)
+void __ui_label_draw_func(UI_Box* box)
 {
-  UI_Box* box      = provided_data.box;
   Str8 text        = box->per_build_config.text_extension.text;
   FP_Font font     = box->per_build_config.text_extension.font;
   F32 font_size    = box->per_build_config.text_extension.font_size;
   V4F32 font_color = box->per_build_config.text_extension.font_color;
-  d_draw_text(text, font, font_size, provided_data.final_box_rect.origin, font_color);
+  Rect rect        = box->rect;
+  d_draw_text(text, font, font_size, rect.origin, font_color);
 }
 
 ///////////////////////////////////////////////////////////
 // - Ellipsed labels 
 //
-UI_CUSTOM_DRAW_BOX_DEF(__ui_label_ellipsed_draw_func)
+void __ui_label_ellipsed_draw_func(UI_Box* box )
 {
   Scratch scratch = get_scratch(0, 0);
 
-  Rect rect        = provided_data.final_box_rect;
-  UI_Box* box      = provided_data.box;  
+  Rect rect        = box->rect;
   Str8 text        = box->per_build_config.text_extension.text;
   FP_Font font     = box->per_build_config.text_extension.font;
   F32 font_size    = box->per_build_config.text_extension.font_size;
@@ -244,11 +243,11 @@ void ui_spacer(UI_Size size)
 ///////////////////////////////////////////////////////////
 // - Images
 //
-UI_CUSTOM_DRAW_BOX_DEF(__ui_image_draw_func)
+void __ui_image_draw_func(UI_Box* box)
 {
-  R_Handle texture = *((R_Handle*)provided_data.box->per_build_config.custom_draw_extension.data_for_draw_func);
-  Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
-  d_draw_texture_pro(texture, provided_data.final_box_rect, texture_rect, white());
+  // R_Handle texture = *((R_Handle*)provided_data.box->per_build_config.custom_draw_extension.data_for_draw_func);
+  // Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
+  // d_draw_texture_pro(texture, provided_data.final_box_rect, texture_rect, white());
 }
 void ui_image(R_Handle texture, F32 width_px, F32 height_px)
 {
@@ -264,6 +263,113 @@ void ui_image(R_Handle texture, F32 width_px, F32 height_px)
 }
 #undef UI_CUSTOM_DATA_FOR_IMAGE
 
+///////////////////////////////////////////////////////////
+// - Color pickers (Saturation + Value)
+//
+struct __UI_Color_picker_sv_data {
+  V4F32 colors[UV__COUNT];
+};
 
+/*
+void ui_color_picker_sv(Str8 id, UI_Size size_x, UI_Size size_y, V4F32 hsva, F32* out_opt_new_sat, F32* out_opt_new_val)
+{
+  // note:
+  // this picker is for sv, meaning for saturation and value, these are hsv values, not rgb
+  // the value goes bottom-up in the color picker
+  // the saturation goes left-right in the color picker
+  // the bottom left and right are black
+  // the top left is white
+  // the top right is the purest version of the color. This is represented by hue, but in the rgb world this
+  // would have to be rgba_from_hsva(hue, 1.0f, 1.0f), so both value and saturation are 1.0s, this gives the most 
+  // saturated and brigth color for a shade of color, which is specified by the hue, which is a 0->360* or
+  // 0->1.0f value of the hsv color pallet. 
+
+  // DD: Plan on the order of code:
+  // 1) Do the ui based on the current state of the data
+  //    - Draw the picker based on the provider prev color
+  // 2) Based on the inputs, update the data and just give the new data to the user, keep the old one
+  //    - Based on mouse pos + color picker dims, get the new color, return to the user
+  
+  // Setting up the color picke box
+  ui_next_width(size_x);
+  ui_next_height(size_y);
+  UI_Box* color_picker_box = ui_box_make(0, id);
+
+  V4F32 pure_hsv = v4f32(hsva.hue, 1.0f, 1.0f, 1.0f);
+  
+  __UI_Color_picker_sv_data* draw_data = ArenaPush(ui_get_build_arena(), __UI_Color_picker_sv_data);
+  draw_data->colors[UV__top_left]     = white(); 
+  draw_data->colors[UV__top_right]    = black();
+  draw_data->colors[UV__bottom_left]  = rgba_from_hsva(pure_hsv);
+  draw_data->colors[UV__bottom_right] = black();
+  ui_extend_box_with_custom_draw_function(color_picker_box, __ui_color_picker_sv_square_draw_func, draw_data);
+  
+  UI_Box_data box_data = ui_get_box_data_prev_frame_from_box(color_picker_box);
+  V2F32 mouse          = ui_get_mouse_pos();
+  F32 circle_diameter  = 10.0f;
+
+  F32 circle_x_offset = 0.0f;
+  F32 circle_y_offset = 0.0f;
+  if (box_data.found)
+  {
+    // Reverse lerp
+    F32 x_t = hsva.saturation;
+    F32 y_t = hsva.value ;
+    clamp_f32_inplace(&x_t, 0.0f, 1.0f);
+    clamp_f32_inplace(&y_t, 0.0f, 1.0f);
+
+    circle_x_offset = (range_v2f32_dims(box_data.on_screen_bbox).x * x_t) - (circle_diameter / 2.0f);
+    circle_y_offset = (range_v2f32_dims(box_data.on_screen_bbox).y * (1.0f - y_t)) - (circle_diameter / 2.0f);
+  }
+
+  // Color picker tree
+  UI_Parent(color_picker_box)
+  {
+    UI_Col() 
+    {
+      ui_spacer(ui_px(circle_y_offset));
+      UI_Row()
+      {
+        ui_spacer(ui_px(circle_x_offset));
+
+        ui_set_next_size_x(ui_px(circle_diameter));
+        ui_set_next_size_y(ui_px(circle_diameter));
+        ui_set_next_corner_r(v4f32_all(1));
+        ui_set_next_border(3, white());
+        ui_set_next_softness(1.5f);
+        UI_Box* circle_picker = ui_box_make(Str8FromC("White circle for the picker"), UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners);
+      }
+    }
+  }
+
+  // Updating the colors 
+  F32 new_sat = hsva.saturation;
+  F32 new_val = hsva.value;
+  UI_Actions actions = ui_actions_from_box(color_picker_box);
+  if (actions.is_down) 
+  {
+    if (box_data.found)
+    {
+      F32 picker_relative_x = (mouse.x - box_data.on_screen_bbox.min.x) / (range_v2f32_dims(box_data.on_screen_bbox).x);
+      F32 picker_relative_y = 1.0f - ((mouse.y - box_data.on_screen_bbox.min.y) / (range_v2f32_dims(box_data.on_screen_bbox).y)); // Flipping the Y since color picker is bottom_left->up and the screen is top_left->down
+      clamp_f32_inplace(&picker_relative_x, 0.0f, 1.0f);
+      clamp_f32_inplace(&picker_relative_y, 0.0f, 1.0f);
+
+      // Getting the color for the realative mouse pos
+      new_sat = picker_relative_x;
+      new_val = picker_relative_y;
+    }
+  }
+  if (out_opt_new_sat) { *out_opt_new_sat = new_sat; }
+  if (out_opt_new_val) { *out_opt_new_val = new_val; }
+}
+
+void __ui_color_picker_sv_square_draw_func(UI_Box* box)
+{
+  __UI_Color_picker_sv_data* data = (__UI_Color_picker_sv_data*)box->per_build_config.custom_draw_extension.data_for_draw_func;
+  Rect rect = box->rect; 
+  d_draw_rect_pro(rect, data->colors[UV__x0y0], data->colors[UV__x1y0], data->colors[UV__x0y1], data->colors[UV__x1y1], v4f32_all(0.0f), 0.0f, 0.0f);
+}
+*/
 
 #endif

@@ -310,29 +310,47 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     */
 
-    // /* 
+    /*
     // Testing rounded corners
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
-      ui_next_floating_fixed_pos(v2f32(0, 0));
+      ui_next_floating_fixed_pos(v2f32(100, 100));
       ui_next_floating_fixed_dims(v2f32(250, 250));
       ui_next_b_color(nice_blue());
-      ui_next_corner_r(125);
-      ui_next_outer_softness(3);
-      ui_next_inner_softness(3);
-      ui_next_border(10, nice_red());
-      UI_Box* floater = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_borders|UI_Box_flag__has_background|UI_Box_flag__has_rounded_corners, {});
+      UI_Box* floater = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
 
       UI_Parent(floater)
       {
-
+        // ui_next_width(ui_fit()); 
+        // ui_next_height(ui_fit()); 
+        ui_next_width(ui_px(50));
+        ui_next_height(ui_px(50));  
+        ui_next_padding(ui_top_font_size());
+        ui_next_border(2, black());
+        ui_next_hover_cursor(OS_Cursor__hand);
+        ui_next_corner_r(50);
+        UI_Box* settings_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, Str8FromC("Navigation rail setting button"));
+        
+        UI_Parent(settings_button)
+        {
+          ui_image(pcl_icon_settings, 50, 50);
+      
+          UI_Actions settings_button_acts = ui_actions_from_box(settings_button);
+      
+          if (settings_button_acts.is_hovered) {
+            ui_box_set_b_color(settings_button, pcl_color_from_name(PCL_Color_name__item_selected));
+          }
+        }
+    
+        ui_next_font_color(magenta());
+        ui_next_font_size(64);
+        ui_text_f("Some text here");
       }
-
     }
-    // */
+    */
 
-    // pcl_frame_update(&pcl);
-    // pcl_build_ui(font, &pcl, prev_frame_fps);
+    pcl_frame_update(&pcl);
+    pcl_build_ui(font, &pcl, prev_frame_fps);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)

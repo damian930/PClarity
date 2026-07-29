@@ -9,6 +9,9 @@ App
 [x] - Be able to just have a box with border and it be smoothed on the outside and inside if roudned with no background
 [x] - Add support for smoothing, both outside and inside
 [x] - Have spall be an optional thing when compiling, just like asan
+[x] - Fix the bug with text drawing behind the boxed now for some reason
+[x] - Make sure that boxes dont use data from stacks if they dont have flags on them to be able to reference those easily
+[x] - Fix the bug where the border doesnt get drawn since we dont handle the border clay command if we dont have the background but only have the border 
 
 Performance
 -----------

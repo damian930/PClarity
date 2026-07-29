@@ -15,6 +15,8 @@ since the this shader is for the ui and we Clay for ui backend and clay
 has different commands for rectangles and rectangle borders for some reason,
 this makes us have to have this work so either only the background or the border is 
 drawn to be able to conform more to clay's public api logic.
+
+DD, TODO: We no longer conform to clay borders, so might colapse this into a single thing or some like that.
 */
 
 cbuffer cbuffer0 : register(b0) {

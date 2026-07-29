@@ -293,7 +293,10 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
       ui_next_padding(ui_top_font_size());
       ui_next_border(2, pcl_color_from_name(PCL_Color_name__item_selected));
       ui_next_hover_cursor(OS_Cursor__hand);
-      UI_Box* home_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders, Str8FromC("Navigation rail home button"));
+      ui_next_corner_r(25);
+      ui_next_inner_softness(2);
+      ui_next_outer_softness(3);
+      UI_Box* home_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, Str8FromC("Navigation rail home button"));
       UI_Actions home_button_acts = ui_actions_from_box(home_button);
       
       UI_Parent(home_button)

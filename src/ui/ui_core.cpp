@@ -365,7 +365,8 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
     box->per_build_config.alignment_on_x = ui_top_alignment_x();
     box->per_build_config.alignment_on_y = ui_top_alignment_y();
 
-    if (box->per_build_config.flags & UI_Box_flag__has_background)      { box->per_build_config.b_color = ui_top_b_color(); }
+    if (box->per_build_config.flags & UI_Box_flag__has_background) { box->per_build_config.b_color = ui_top_b_color(); }
+
     if (box->per_build_config.flags & UI_Box_flag__has_rounded_corners) { box->per_build_config.corner_radii = ui_top_corner_radius(); }
 
     if (box->per_build_config.flags & UI_Box_flag__clip_x) { box->per_build_config.clip_axis[Axis2__x] = true; }
@@ -379,7 +380,7 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
       box->per_build_config.border_color = ui_top_border_color(); 
     }
 
-    // Damian: Right now we only have default behaviour on Floating
+    // DD: Right now we only have default behaviour on Floating
     box->per_build_config.floating_fixed_pos = v2f32(ui_top_floating_fixed_pos_x(), ui_auto_pop_floating_fixed_pos_y());    
     if (
       state->stacks.stack_floating_fixed_dims_x.count > 0 || state->stacks.stack_floating_fixed_dims_x.is_single_use_value_set ||
@@ -467,6 +468,13 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
 {
   box->per_build_config.custom_draw_extension.draw_func          = custom_draw;
   box->per_build_config.custom_draw_extension.data_for_draw_func = (void*)data;
+
+  // DD: Giving this box a fake str id but not a key to then have clay give me the final rect 
+  // to then be able to use in in the custom draw function
+  if (box->per_build_config.str_for_key.count == 0)
+  {
+    box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
+  }
 }
 
 void ui_extend_box_with_text(UI_Box* box, Str8 str)
@@ -986,53 +994,52 @@ void ui_draw()
     switch (command.commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_NONE:
-      default: { } break;
+      default: { InvalidCodePath(); } break;
 
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
         Assert(command.userData != 0);
         if (command.userData)
         {
-          UI_Box* box        = (UI_Box*)command.userData;
-          V4F32 color        = __ui_v4f32_from_clay_color(command.renderData.rectangle.backgroundColor);
-          V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
-          
-          V4F32 vertex_colors[4] = { color, color, color, color };
-          F32 inner_softness = box->per_build_config.inner_softness;
-          F32 outer_softness = box->per_build_config.outer_softness;
+          // DD: Dont use command.renderData.rectangle.backgroundColor, it might be a fake color, like magenta, that was put in there just for clay to generate a render command for a box that might only have borders and no background color for us to draw the borders in the same place where we draw the background
 
-          d_add_rect_command(rect, vertex_colors, corner_radii, 0.0f, transparent(), inner_softness, outer_softness);
+          UI_Box* box        = (UI_Box*)command.userData;
+          V4F32 color        = box->per_build_config.b_color;
+          V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
+       
+          UI_Box_key key = ui_box_key_from_str8(Str8FromC("Navigation rail setting button"));
+          // if (ui_box_key_match(box->hash_table_key, key)) { BP; }
+
+          V4F32 vertex_colors[4] = { color, color, color, color };
+          F32 inner_softness     = box->per_build_config.inner_softness;
+          F32 outer_softness     = box->per_build_config.outer_softness;
+          F32 border_width       = box->per_build_config.border_width.x;
+          V4F32 border_color     = box->per_build_config.border_color;
+
+          // DD: Background rect
+          if (!(box->per_build_config.flags & UI_Box_flag__has_background)) {
+            d_add_rect_command(rect, vertex_colors, corner_radii, 0.0f, transparent(), inner_softness, outer_softness);
+          }
+          
+          // DD: Borders
+          d_add_rect_command(rect, vertex_colors, corner_radii, border_width, border_color, inner_softness, outer_softness);
         }
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
-        Assert(command.userData != 0);
-        if (command.userData)
-        {
-          UI_Box* box        = (UI_Box*)(command.userData);
-          V4F32 border_color = __ui_v4f32_from_clay_color(command.renderData.border.color);
-          V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.border.cornerRadius);
-          V4F32 border_width = __ui_v4f32_from_clay_border_width(command.renderData.border.width);
-
-          V4F32 b_color = box->per_build_config.b_color;
-          V4F32 vertex_colors[4] =  { b_color, b_color, b_color, b_color };
-          F32 inner_softness = box->per_build_config.inner_softness;
-          F32 outer_softness = box->per_build_config.outer_softness;
-
-          d_add_rect_command(rect, vertex_colors, corner_radii, border_width.x, border_color, inner_softness, outer_softness);
-        }
+        // DD: We dont conform to clay border render commands, we draw borders when we draw the main rect for clay elements
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
       {
-        // Damian: Not sure if we need this yet
+        // DD: Not sure if we need this yet
         NotImplemented();
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_IMAGE:
       {
-        // Damian: Not sure if we need this yet
+        // DD: Not sure if we need this yet
         NotImplemented();
       } break;
 
@@ -1053,7 +1060,21 @@ void ui_draw()
 
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
       {
+        Assert(command.userData != 0);
+        if (command.userData)
+        {
+          UI_Box* box = (UI_Box*)command.userData;
+          
+          UI_Box_custom_draw_func* draw_func = box->per_build_config.custom_draw_extension.draw_func;
+          
+          Assert(draw_func);
+          if (draw_func) {
+            draw_func(box);
+          }
+        }
+
         // DD: Just making sure
+        /*
         Assert((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData);
         if ((UI_Box*)command.renderData.custom.customData == (UI_Box*)command.userData)
         {
@@ -1076,6 +1097,8 @@ void ui_draw()
             draw_func(provided_data);
           }
         }
+        */
+
       } break;
     }
     
@@ -1738,7 +1761,19 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
     else if (box->per_build_config.alignment_on_y == UI_Alignment_y__center) { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_CENTER; }
     else if (box->per_build_config.alignment_on_y == UI_Alignment_y__bottom)  { clay_config.layout.childAlignment.y = CLAY_ALIGN_Y_BOTTOM; }
   
-    clay_config.backgroundColor = __ui_clay_color_from_v4f32(box->per_build_config.b_color); 
+    // DD: Using a random color when the box doesnt have a background flag to generate 
+    // a clay render comamnd of type RECT.  
+    // This is needed to be able to have a draw commne for rect, which we use to draw borders,
+    // for cases when we only have a box with borders and no background color.
+    // This background wont be used when drawing, but the comand will be generated.
+    if ( (box->per_build_config.flags & UI_Box_flag__has_background) 
+      && box->per_build_config.b_color.a != 0.0f
+    ) { 
+      clay_config.backgroundColor = __ui_clay_color_from_v4f32(box->per_build_config.b_color);
+    } else {
+      clay_config.backgroundColor = __ui_clay_color_from_v4f32(magenta());
+    }
+
     clay_config.cornerRadius    = __ui_clay_corner_radius_from_v4f32(box->per_build_config.corner_radii); 
   
     clay_config.clip.horizontal  = box->per_build_config.clip_axis[Axis2__x];
@@ -1749,8 +1784,8 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
     
     if (box->per_build_config.flags & UI_Box_flag__floating)
     {
-      clay_config.floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // Damian: Not sure where i need this, so just const right now
-      clay_config.floating.clipTo             = CLAY_CLIP_TO_NONE;                 // Damian: Not sure where i need this, so just const right now
+      clay_config.floating.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE; // DD: Not sure where i need this, so just const right now
+      clay_config.floating.clipTo             = CLAY_CLIP_TO_NONE;                 // DD: Not sure where i need this, so just const right now
       clay_config.floating.offset.x = box->per_build_config.floating_fixed_pos.x; 
       clay_config.floating.offset.y = box->per_build_config.floating_fixed_pos.y; 
       // TODO: Look into this, should we set the parent to be the root box of the build when we have UI_Floating_attach_point__root ?
