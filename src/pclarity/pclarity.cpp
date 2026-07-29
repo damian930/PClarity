@@ -604,7 +604,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
 
                   F32 space_before_first_visible_row = (row_size + space_between) * first_visible_row_index;
                   F32 space_for_visible_rows         = (row_size + space_between) * (last_visible_row_index - first_visible_row_index);
-                  F32 space_after_last_visible_row   = (row_size + space_between) * last_visible_row_index - first_visible_row_index;
+                  F32 space_after_last_visible_row   = (row_size + space_between) * (n_rows - last_visible_row_index);
                   
                   {
                     U64 _n_rows = first_visible_row_index + (last_visible_row_index - first_visible_row_index) + (pcl->gathered_process_data_this_frame.count - last_visible_row_index);
@@ -672,7 +672,6 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                             {
                               Scratch scratch = get_scratch(0, 0);
                               Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
-                              if (display_name.count != 0) { BP; }
                               ui_text(display_name);
                               end_scratch(&scratch);
                             } break;
