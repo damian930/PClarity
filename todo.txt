@@ -3,7 +3,7 @@ App
 [x] - Fix the bug where the table gets 0 sized when you remove a header for a single frame
       which results in a visible bug
 [x] - Fix the bug with ids for headers since when you remove them they get reused, and so the data is a bit fucked up
-
+[ ] - Have spall be an optional thing when compiling, just like asan
 
 Performance
 -----------

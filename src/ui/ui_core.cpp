@@ -816,7 +816,7 @@ UI_Box_key ui_box_key_from_str8(Str8 str)
 
 UI_Box* ui_box_from_key(UI_Box_key key)
 {
-  ProfBeginFunc();
+  // ProfBeginFunc();
   if (ui_box_key_is_null(key)) { return ui_box_null(); }
   
   UI_State* state     = ui_get_state();
@@ -833,7 +833,7 @@ UI_Box* ui_box_from_key(UI_Box_key key)
     }
   }
 
-  ProfEndGroup();
+  // ProfEndGroup();
   return result_box;
 }
 

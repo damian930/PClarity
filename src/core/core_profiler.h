@@ -24,7 +24,7 @@ global SpallBuffer  spall_buffer = {};
 
 void profiler_init()
 {
-  if (!spall_init_file("hello_world.spall", 1, &spall_ctx)) {
+  if (!spall_init_file("SPAL_PROFILING_DATA.spall", 1, &spall_ctx)) {
 		printf("Failed to setup spall?\n");
 		exit(1); // Todo: Remove this 
 	}

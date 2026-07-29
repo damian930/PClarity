@@ -311,7 +311,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     */
 
     pcl_frame_update(&pcl);
-    pcl_build_ui(font, &pcl);
+    pcl_build_ui(font, &pcl, prev_frame_fps);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)

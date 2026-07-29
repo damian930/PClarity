@@ -73,6 +73,7 @@ enum PCL_Menu {
 
 enum PCL_Table_header_kind : U32 {
   PCL_Table_header_kind__NONE, 
+  PCL_Table_header_kind__name, 
   PCL_Table_header_kind__pid, 
   PCL_Table_header_kind__ppid,
   PCL_Table_header_kind__startup_time,
@@ -97,7 +98,7 @@ struct PCL_State {
   // Frame data
   Arena* frame_arena;
   PCL_Command_list defered_commands_to_start_of_next_frame;
-  ProcessInfoList gathered_process_data_this_frame;
+  DD_ProcessInfoArray gathered_process_data_this_frame;
   
   // TODO: This maybe should not be here, not sure, but here cause i just needed it somewhere
   // Table data
@@ -152,7 +153,7 @@ global V4F32 __pcl_g_color_values_for_names[PCL_Color_name__COUNT] = {
 // - Main passes
 PCL_State pcl_init();
 void pcl_frame_update(PCL_State* PCL);
-void pcl_build_ui(FP_Font font, PCL_State* PCL);
+void pcl_build_ui(FP_Font font, PCL_State* PCL, U64 prev_frame_fps);
 UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header);
 
 // - Misc

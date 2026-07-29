@@ -237,7 +237,58 @@ Win32QueryProcessArray(Arena* arena)
   return result;
 }
 
+struct DD_ProcessInfo {
+  S32 pid;
+  S32 ppid;
+};
 
+struct DD_ProcessInfoArray {
+  DD_ProcessInfo* arr;
+  U64 count;
+};
+
+// DD: This was written by me to see if this makes it not be 30 ms, it should not make a diff i think, but will see
+DD_ProcessInfoArray DD_Win32QueryProcessArray(Arena* arena)
+{
+  DD_ProcessInfoArray result_arr = {};
+  ULONG size = {};
+  
+  // Query buffer size
+  NTSTATUS status = NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
+  U8* proc_info_array = 0;
+
+  for (;status == STATUS_INFO_LENGTH_MISMATCH;)
+    ScratchLoop(scratch, &arena, 1)
+  {
+    proc_info_array = ArenaPushArr(scratch.arena, U8, size);
+    status = NtQuerySystemInformation(SystemProcessInformation, proc_info_array, size, &size); // NOTE(S): the last param &size, updates to the new size windows wanted
+  }
+
+  if (!NT_SUCCESS(status))
+  {
+    printf("NtQuerySystemInformation failed");
+    return {};
+  }
+
+  auto* p = (SYSTEM_PROCESS_INFORMATION*)proc_info_array;
+
+  result_arr.arr   = ArenaCurrentAddressP(arena, DD_ProcessInfo);
+  result_arr.count = 0;
+  
+  for (;;)
+  {
+    DD_ProcessInfo* info = ArenaPush(arena, DD_ProcessInfo);
+    result_arr.count += 1;
+    info->pid           = HandleToLong(p->UniqueProcessId);
+    info->ppid          = HandleToLong(p->InheritedFromUniqueProcessId);
+
+    if (p->NextEntryOffset == 0) break;
+    
+    p = (SYSTEM_PROCESS_INFORMATION*)((PBYTE)p + p->NextEntryOffset);
+  }
+
+  return result_arr;
+}
 
 // NOTE(S): if using functions that are only available in newer Windows versions, dynamically import function.
 // And that's a big IF.

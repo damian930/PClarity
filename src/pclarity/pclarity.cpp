@@ -167,7 +167,13 @@ void pcl_frame_update(PCL_State* pcl)
   }
   Handle(is_state_valid);
 
-  pcl->gathered_process_data_this_frame = Win32QueryProcessList(pcl->frame_arena);
+
+  ProfGroup("Win32QueryProcessArray inside pcl frame update")
+  {
+    DD_ProcessInfoArray info_arr = DD_Win32QueryProcessArray(pcl->frame_arena);
+    // pcl->gathered_process_data_this_frame = Win32QueryProcessArray(pcl->frame_arena);
+    pcl->gathered_process_data_this_frame = info_arr;
+  }
 
   for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
   {
@@ -182,7 +188,7 @@ void pcl_frame_update(PCL_State* pcl)
   // Todo: Here you should order the thing about the process data once you start using arrays for Win32QueryProcessList
 }
 
-void pcl_build_ui(FP_Font font, PCL_State* pcl)
+void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
 {
   Assert(IsZeroStruct(pcl->defered_commands_to_start_of_next_frame)); 
 
@@ -367,6 +373,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
             Str8 button_text;
             PCL_Table_header_kind header_kind;
           } button_data[] = {
+            { Str8FromC("Add name"), PCL_Table_header_kind__name },
             { Str8FromC("Add pid"), PCL_Table_header_kind__pid },
             { Str8FromC("Add ppi"), PCL_Table_header_kind__ppid },
             { Str8FromC("Add startup"), PCL_Table_header_kind__startup_time },
@@ -597,29 +604,29 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
 
                   F32 space_before_first_visible_row = (row_size + space_between) * first_visible_row_index;
                   F32 space_for_visible_rows         = (row_size + space_between) * (last_visible_row_index - first_visible_row_index);
-                  F32 space_after_last_visible_row   = (row_size + space_between) * (n_rows - last_visible_row_index);
-
-                  ProcessInfoNode* process_data = pcl->gathered_process_data_this_frame.first;
-                  if (first_visible_row_index > 0) {
-                    for EachIndex(i, first_visible_row_index - 1) {
-                      if (process_data) { 
-                        process_data = process_data->next;
-                      }
-                    }
+                  F32 space_after_last_visible_row   = (row_size + space_between) * last_visible_row_index - first_visible_row_index;
+                  
+                  {
+                    U64 _n_rows = first_visible_row_index + (last_visible_row_index - first_visible_row_index) + (pcl->gathered_process_data_this_frame.count - last_visible_row_index);
+                    Assert(_n_rows == pcl->gathered_process_data_this_frame.count, "Your count is invalid buddy"); 
                   }
-                  Assert(process_data, "Your count is invalid buddy"); 
 
                   ui_next_width(ui_grow());
                   ui_next_height(ui_px(space_before_first_visible_row));
                   UI_Box* first_space_filler = ui_box_make(0, {});
 
-                  for (U64 i = first_visible_row_index; i < last_visible_row_index; i += 1, process_data = process_data->next)
-                  {
+                  for (
+                    U64 process_data_index = first_visible_row_index; 
+                    process_data_index < last_visible_row_index; 
+                    process_data_index += 1
+                  ) {
+                    DD_ProcessInfo* process_data = &pcl->gathered_process_data_this_frame.arr[process_data_index];
+
                     ui_next_width(ui_grow());
                     ui_next_height(ui_px(row_size));
                     ui_next_layout_x();
                     ui_next_padded_border(1, transparent());
-                    UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__clickable, "Table row box %lld", i);
+                    UI_Box* row_box = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__has_padding|UI_Box_flag__has_borders|UI_Box_flag__clickable, "Table row box %lld", process_data_index);
                     
                     UI_Actions row_actions = ui_actions_from_box(row_box);
     
@@ -661,6 +668,15 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                               // DD: Empty
                             } break;
     
+                            case PCL_Table_header_kind__name:
+                            {
+                              Scratch scratch = get_scratch(0, 0);
+                              Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
+                              if (display_name.count != 0) { BP; }
+                              ui_text(display_name);
+                              end_scratch(&scratch);
+                            } break;
+
                             case PCL_Table_header_kind__pid:
                             {
                               ui_text_f("%d", process_data->pid);
@@ -673,7 +689,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
     
                             case PCL_Table_header_kind__startup_time:
                             {
-                              ui_text(process_data->create_time);
+                              // ui_text(process_data->create_time);
                             } break;
                           }
                         }
@@ -681,7 +697,8 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
                     }
                   
                     // DD: Little spacer between the rows
-                    if (process_data->next != 0)
+                    // if (process_data->next != 0)
+                    if (process_data_index < pcl->gathered_process_data_this_frame.count - 1)
                     {
                       ui_spacer(ui_px(space_between));
                     }
@@ -845,7 +862,12 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl)
 
       ui_text_f("UI Boxes in use right now: %lld", ui_get_state()->last_build_box_count);
       ui_text_f("UI Generation: %lld",             ui_get_state()->build_generation);
-      // ui_text_f("FPS: %lld",                       ui_get_state()->build_generation); // TODO:
+
+      if (0) {}
+      else if (prev_frame_fps < 60) { ui_next_font_color(red()); }
+      else if (prev_frame_fps < 165) { ui_next_font_color(green()); }
+      else if (prev_frame_fps < 1000) { ui_next_font_color(golden()); }
+      ui_text_f("FPS: %lld",                       prev_frame_fps);
     }
   }
 
@@ -891,6 +913,7 @@ UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header)
     Str8 text_for_header_kind = {};
     if (0) {}
     else if (header.kind == PCL_Table_header_kind__NONE)         { text_for_header_kind = Str8FromC(""); }
+    else if (header.kind == PCL_Table_header_kind__name)         { text_for_header_kind = Str8FromC("Name"); }
     else if (header.kind == PCL_Table_header_kind__pid)          { text_for_header_kind = Str8FromC("PID"); }
     else if (header.kind == PCL_Table_header_kind__ppid)         { text_for_header_kind = Str8FromC("PPID"); }
     else if (header.kind == PCL_Table_header_kind__startup_time) { text_for_header_kind = Str8FromC("Startup"); }
