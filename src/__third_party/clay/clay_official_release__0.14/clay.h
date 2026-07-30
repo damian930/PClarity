@@ -2147,6 +2147,7 @@ void Clay__ConfigureOpenElementPtr(const Clay_ElementDeclaration *declaration) {
             scrollOffset->scrollPosition = Clay__QueryScrollOffset(scrollOffset->elementId, context->queryScrollOffsetUserData);
         }
     }
+    
     if (!Clay__MemCmp((char *)(&declaration->border.width), (char *)(&Clay__BorderWidth_DEFAULT), sizeof(Clay_BorderWidth))) {
         Clay__AttachElementConfig(CLAY__INIT(Clay_ElementConfigUnion) { .borderElementConfig = Clay__StoreBorderElementConfig(declaration->border) }, CLAY__ELEMENT_CONFIG_TYPE_BORDER);
     }

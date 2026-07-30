@@ -2161,7 +2161,13 @@ void Clay__ConfigureOpenElementPtr(const Clay_ElementDeclaration *declaration) {
     }
 
     if (declaration->clip.horizontal || declaration->clip.vertical) {
+      
+      // DD: I added this 
+      if (!(declaration->floating.attachTo != CLAY_ATTACH_TO_NONE && (declaration->clip.horizontal || declaration->clip.vertical)))
+      {
         Clay__int32_tArray_Add(&context->openClipElementStack, (int)openLayoutElement->id);
+      }
+      
         // Retrieve or create cached data to track scroll position across frames
         Clay__ScrollContainerDataInternal *scrollOffset = CLAY__NULL;
         for (int32_t i = 0; i < context->scrollContainerDatas.length; i++) {
@@ -2179,6 +2185,7 @@ void Clay__ConfigureOpenElementPtr(const Clay_ElementDeclaration *declaration) {
             scrollOffset->scrollPosition = Clay__QueryScrollOffset(scrollOffset->elementId, context->queryScrollOffsetUserData);
         }
     }
+   
     // Setup data to track transitions across frames
     if (declaration->transition.handler) {
         Clay__TransitionDataInternal *transitionData = CLAY__NULL;
@@ -4105,6 +4112,24 @@ void Clay_SetPointerState(Clay_Vector2 position, bool isPointerDown) {
             Clay_LayoutElement *currentElement = Clay_LayoutElementArray_Get(&context->layoutElements, Clay__int32_tArray_GetValue(&dfsBuffer, (int)dfsBuffer.length - 1));
 
             Clay_LayoutElementHashMapItem *mapItem = Clay__GetHashMapItem(currentElement->id); // TODO think of a way around this, maybe the fact that it's essentially a binary tree limits the cost, but the worst case is not great
+
+            // DD:
+            {
+              Str8 dd_id = Str8FromC("Add name");
+              Clay_String clay_str = {};
+              clay_str.length = (U32)dd_id.count;
+              clay_str.chars  = (char*)dd_id.data;
+              Clay_ElementId clay_test_id = Clay__HashString(clay_str, 0);
+              if (mapItem->elementId.id == clay_test_id.id)
+              {
+                if (Clay__PointIsInsideRect(position, mapItem->boundingBox))
+                {
+                  // BP;
+                }
+              }
+            }
+
+
             int32_t clipElementId = Clay__int32_tArray_GetValue(&context->layoutElementClipElementIds, (int32_t)(currentElement - context->layoutElements.internalArray));
             Clay_LayoutElementHashMapItem *clipItem = Clay__GetHashMapItem(clipElementId);
             // This check skips mouse interactions for elements that are currently "exit transitioning"

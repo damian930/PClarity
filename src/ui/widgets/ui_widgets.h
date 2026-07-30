@@ -634,6 +634,8 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
     ui_next_width(ui_fit());
     ui_next_height(ui_px(font_height));
     ui_next_layout_x();
+    
+    // /*
     UI_Box* cursor_section_box = ui_box_make(UI_Box_flag__clip|UI_Box_flag__floating, {});
     ui_box_set_clip_offset_x(cursor_section_box, new_clip_offset); 
     UI_Parent(cursor_section_box)
@@ -672,6 +674,7 @@ UI_Text_op_list ui_text_edit_box(Arena* arena, B32 create_updates, UI_Size size_
         }
       }
     }
+    // */
   }
 
   // Producing data for the user that represents hot to then update the text, cursor, section

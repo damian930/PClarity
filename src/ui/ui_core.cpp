@@ -425,8 +425,8 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
       {
         if (ui_box_key_is_null(box->hash_table_key))
         {
-          // box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
-          box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%lld__", fake_id_value_for_this_build++);
+          box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
+          // box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%lld__", fake_id_value_for_this_build++);
           box->per_build_config.is_str_for_key_fake = true;
         }
       }
@@ -484,8 +484,8 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
   // to then be able to use in in the custom draw function
   if (box->per_build_config.str_for_key.count == 0)
   {
-    // box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
-    box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%lld__", fake_id_value_for_this_build++);
+    box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
+    // box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%lld__", fake_id_value_for_this_build++);
   }
 }
 
@@ -589,7 +589,7 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   UI_State* state = ui_get_state();
 
   B32 is_context_menu_open     = !ui_box_key_is_null(state->final_context_menu_key_for_prev_build);
-  B32 is_child_of_context_menu = ui_box_key_match(box->prev_build_parent_context_menu_key, state->final_context_menu_key_for_prev_build);
+  B32 is_child_of_context_menu = !ui_box_key_is_null(box->prev_build_parent_context_menu_key) && ui_box_key_match(box->prev_build_parent_context_menu_key, state->final_context_menu_key_for_prev_build);
 
   B32 do_inputs_for_this_box = true;
   if (is_context_menu_open && !is_child_of_context_menu)
@@ -607,9 +607,27 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 went_up                 [UI_Mouse_button__COUNT] = {}; 
   V2F32 mouse_pos_when_went_down                       = {};
 
+  B32 match = false;
+  if (str8_match(box->per_build_config.str_for_key, Str8FromC("Add name"), 0))
+  {
+    match = true;
+  }
+
+  if (match)
+  {
+    if (rect_point_inside(box->rect, ui_get_mouse_pos()))
+    {
+      // BP;
+      B32 test = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_config.str_for_key));
+    }
+  }
+
   if (do_inputs_for_this_box)
   {
+    // TODO: I would rather use a custom rect here from teh box than be dependant on clay to be honest
     is_hovered = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_config.str_for_key)); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
+
+    // if (match && is_hovered) { BP; }
 
     for EachEnumRange(button, UI_Mouse_button, UI_Mouse_button__left, UI_Mouse_button__COUNT)
     {
@@ -1757,7 +1775,6 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
   
   // DD: Setting up clay config from our own box state
   Clay_ElementDeclaration clay_config = {};
-  
   {
     clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__x]);
     clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__y]);
@@ -1833,7 +1850,7 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
   // DD: Doing clay stuff to make clay ui element
   {
     if (box->per_build_config.str_for_key.count != 0) { 
-      Clay_ElementId id = Clay__HashString(__ui_clay_string_from_str8(box->per_build_config.str_for_key), 0);
+      Clay_ElementId id = __ui_clay_element_id_from_str8(box->per_build_config.str_for_key);
       Clay__OpenElementWithId(id);  
     } else {
       Clay__OpenElement();
