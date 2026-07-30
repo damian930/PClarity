@@ -303,8 +303,16 @@ R_Handle r_attach_window(OS_Window window)
     desc.AlphaMode   = (os_window_is_transparent() ? DXGI_ALPHA_MODE_PREMULTIPLIED : DXGI_ALPHA_MODE_UNSPECIFIED); // todo: Learn what these do
     desc.SwapEffect  = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     // desc.Flags       = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // TODO: This is new, might have to remove this 
+    
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreen_desc = {};
+    fullscreen_desc.RefreshRate.Numerator   = 165; // TODO: Get this from the monitor
+    fullscreen_desc.RefreshRate.Denominator = 1;
+    fullscreen_desc.Windowed                = FALSE;
+    fullscreen_desc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+    fullscreen_desc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
+    
     if  (os_window_is_transparent()) { hr = dxgi_factory->CreateSwapChainForComposition(d3d->device, &desc, Null, &swap_chain); }
-    else                             { hr = dxgi_factory->CreateSwapChainForHwnd(d3d->device, window.handle, &desc, Null, Null, &swap_chain); }
+    else                             { hr = dxgi_factory->CreateSwapChainForHwnd(d3d->device, window.handle, &desc, &fullscreen_desc, Null, &swap_chain); }
     HR(hr);
 
     dxgi_factory->Release();
@@ -410,6 +418,11 @@ void r_prepare_canvas(R_Handle* chain)
     chain->swap_chain->ResizeBuffers(0, (UINT)window_dims.x, (UINT)window_dims.y, DXGI_FORMAT_UNKNOWN, 0);
     chain->swap_chain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&chain->texture);
     d3d->device->CreateRenderTargetView(chain->texture, NULL, &chain->texture_rtv);
+  }
+
+  if (os_window_is_fullscreen())
+  {
+    chain->swap_chain->SetFullscreenState(TRUE, nullptr); 
   }
 
   ProfEndGroup();
@@ -684,12 +697,17 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
 
 void r_present(R_Handle target, B32 vsync)
 {
+  if (vsync) { BreakPoint("It is not working right now my dude"); }
+
   ProfBeginFunc();
   if (!__r_is_handle_valid_handle_chain(target)) { BreakPoint(); return; }
 
-  target.swap_chain->Present(!!vsync, 0);
-  if (os_window_is_transparent()) {
-    target.comp_device->Commit();
+  // target.swap_chain->Present(!!vsync, 0);
+  target.swap_chain->Present(0, 0);
+  
+  if (os_window_is_transparent()) ProfGroupF("D3D commit for transparent window")
+  {
+  target.comp_device->Commit();
   }
 
   ProfEndGroup();

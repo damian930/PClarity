@@ -209,7 +209,8 @@ void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness)
 {
   Rect rect = rect_from_center(center, v2f32(r, r));
-  d_draw_rect_pro(rect, color, color, color, color, (r != 1.0f ? v4f32_all(1.0f) : v4f32_all(0.0f)), 0.0f, softness);
+  F32 radius = Max(rect.width, rect.height);
+  d_draw_rect_pro(rect, color, color, color, color, v4f32_all(radius), 0.0f, softness);
 }
 
 void d_draw_texture(R_Handle texture, V2F32 pos)

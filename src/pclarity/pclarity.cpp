@@ -931,10 +931,19 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
       ui_text_f("UI Generation: %lld",             ui_get_state()->build_generation);
 
       if (0) {}
-      else if (prev_frame_fps < 60) { ui_next_font_color(red()); }
-      else if (prev_frame_fps < 165) { ui_next_font_color(green()); }
-      else if (prev_frame_fps < 1000) { ui_next_font_color(golden()); }
-      ui_text_f("FPS: %lld",                       prev_frame_fps);
+      else if (prev_frame_fps < 30)   { ui_next_font_color(red());        }
+      else if (prev_frame_fps < 60)   { ui_next_font_color(orange());     }
+      else if (prev_frame_fps < 120)  { ui_next_font_color(yellow());     }
+      else if (prev_frame_fps < 165)  { ui_next_font_color(green());      }
+      else if (prev_frame_fps < 240)  { ui_next_font_color(nice_green()); }
+      else if (prev_frame_fps < 360)  { ui_next_font_color(teal());       }
+      else if (prev_frame_fps < 500)  { ui_next_font_color(blue());       }
+      else if (prev_frame_fps < 700)  { ui_next_font_color(nice_blue());  }
+      else if (prev_frame_fps < 850)  { ui_next_font_color(magenta());    }
+      else if (prev_frame_fps < 1000) { ui_next_font_color(golden());     }
+      else                            { ui_next_font_color(pink());       }
+      ui_text_f("FPS: %lld", prev_frame_fps);
+
     }
   }
 

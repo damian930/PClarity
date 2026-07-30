@@ -287,6 +287,8 @@ V2F32 os_get_mouse_delta();
 B32 os_window_should_close();
 void os_window_maximize();
 void os_window_minimize();
+B32 os_window_is_fullscreen();
+void os_window_set_full_screen(B32 do_set);
 B32 os_window_is_transparent();
 
 // Key stuff

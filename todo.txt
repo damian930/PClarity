@@ -1,8 +1,7 @@
 App
 -----------
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
-
-
+[ ] - Make sure you dont have gsynch enabled
 
 Performance
 -----------
@@ -11,17 +10,10 @@ Performance
 
 Rendering
 ---------
-[ ] - Ask d3d discord about the 5ms present time when having a singl rect to draw
 [ ] - Have a way for window to redraw when resizing
 [ ] - Have the app be rendered when the window gets resized
-[ ] - Don't allow the headers or rows to overdraw the box that they are in
-[ ] - Fix that dont_overdraw_children only uses scissor rect for the box and not the whole nested tree of the box
-[ ] - Test if no overdraw in UI box works when you have them nested
-      Think about this, maybe even with Who, or Claude
 
-[ ] - Add a way to have rounded corners be done in the shader for the UI
 [ ] - Test right, left, top, bottom for corner_radius
-[ ] - Have UI use pixel corners and not 0-1% corners
 
 
 Tables
@@ -33,10 +25,10 @@ Tables
       when headers are not visible.
       This is a bug. Either don't spawn the resizers, or have them be clip-offset as well.
 
-[ ] - Fix the bug with IDs when there are a lot of headers in the table
 [ ] - Fix the bug with the scroll bar where holding the mouse at 0.0 delta per frame
       still moves the offset a bit
 [ ] - Add a minimum size in pixels to the table in the main menu
+
 
 UI lib 
 --
@@ -44,10 +36,8 @@ UI lib
 
 App UI 
 --
-[ ] - There is an assert breaking when a lot of headers are added to the table, look into it
 [ ] - Is there a way to have border + pading be its own separate thing. Maybe have non padded border be a flag since the default case is when the border is padded or some like that, not sure. But i also like to aply padding after the border as well. Think about it later. This is kind of minor, so dont worry about this too much.
 [ ] - Fix the bug with the scroll bar and the table where when the scroll bar is ui_grow() or ui_p_of_p() the table keeps getting bigger forever. This makes no sense.
-[ ] - To be able to have more headers you have to be able to only show the rows that are visible based on the viewport to the user, here is the link "https://www.nicbarker.com/virtual-scrolling"
 
 Layers / Architecture
 ---------------------
@@ -75,3 +65,8 @@ Commands
 Testing (coverage)
 -----------
 [ ] - Add tests for list macros inside core_base, those are used a lot in the codebase and knowing that those work would be great, also having tests would allow for their api change with no issues for the code that is dependant on them at the time of change
+
+
+Other/Misc
+-----------
+[] - Redo the code for the draw layer, it is old and is not great at all, make it more like ui layer code for stacks and all that

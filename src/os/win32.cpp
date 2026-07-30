@@ -20,11 +20,14 @@ struct OS_Window {
   WNDCLASSEXW window_class;
   HWND handle;
   B32 is_transparent;
-
+  
+  WINDOWPLACEMENT last_window_placement;
+  
   B32 should_close;
   OS_Cursor frame_cursor;
 
   B32 received_message_for_cursor_being_in_the_resie_area;
+
 
   // Per frame data
   V2F32 dims;
@@ -637,6 +640,52 @@ void os_window_maximize()
 void os_window_minimize()
 {
   B32 prev_visibility = ShowWindow(os_get_state()->window.handle, SW_MINIMIZE);
+}
+
+
+B32 os_window_is_fullscreen()
+{
+  OS_State* state   = os_get_state();
+  OS_Window* window = &state->window;
+  DWORD window_style = GetWindowLong(window->handle, GWL_STYLE);
+  return !(window_style & WS_OVERLAPPEDWINDOW);
+}
+
+void os_window_set_full_screen(B32 do_set)
+{
+  OS_State* state   = os_get_state();
+  OS_Window* window = &state->window;
+
+  DWORD window_style = GetWindowLongW(window->handle, GWL_STYLE);
+  B32 is_fullscreen_already = os_window_is_fullscreen();
+  
+  if (do_set)
+  {
+    if(!is_fullscreen_already) {
+      GetWindowPlacement(window->handle, &window->last_window_placement);
+    }
+    
+    MONITORINFO monitor_info = {};
+    monitor_info.cbSize = sizeof(monitor_info);
+    if(GetMonitorInfoW(MonitorFromWindow(window->handle, MONITOR_DEFAULTTOPRIMARY), &monitor_info))
+    {
+      SetWindowLongW(window->handle, GWL_STYLE, window_style & ~WS_OVERLAPPEDWINDOW);
+      SetWindowPos(window->handle, HWND_TOP,
+                   monitor_info.rcMonitor.left,
+                   monitor_info.rcMonitor.top,
+                   monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                   monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+                   SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+  }
+  else
+  {
+    SetWindowLongW(window->handle, GWL_STYLE, window_style | WS_OVERLAPPEDWINDOW);
+    SetWindowPlacement(window->handle, &window->last_window_placement);
+    SetWindowPos(window->handle, 0, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  }
 }
 
 B32 os_window_is_transparent()
