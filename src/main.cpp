@@ -310,72 +310,25 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     */
 
-    // /*
-    // Testing rounded corners
+    /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
-      static V4F32 color_hsva = hsva_from_rgba(golden());
-      
-      F32 new_sat = 0.0f;
-      F32 new_val = 0.0f;
-      ui_next_padded_border(5, nice_red());
-      ui_color_picker_sv(
-        Str8FromC("Color picker id"), 
-        ui_px(250),
-        ui_px(250),
-        color_hsva, 
-        &new_sat, &new_val
-      );
-
-      color_hsva.saturation = new_sat;
-      color_hsva.value      = new_val;
-
-      ui_spacer(ui_px(25));
-
-      ui_next_width(ui_px(50));
-      ui_next_height(ui_px(50));
-      ui_next_b_color(rgba_from_hsva(color_hsva));
-      UI_Box* colored_box = ui_box_make(UI_Box_flag__has_background, {});
-
-      /*
-      ui_next_floating_fixed_pos(v2f32(100, 100));
-      ui_next_floating_fixed_dims(v2f32(250, 250));
       ui_next_b_color(nice_blue());
-      UI_Box* floater = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
-
-      UI_Parent(floater)
+      ui_next_padded_border(4, golden());
+      ui_next_padding(5);
+      ui_next_corner_r(5);
+      ui_next_inner_softness(1);
+      ui_next_outer_softness(2);
+      UI_Actions button = ui_button_f("Button");
+      if (button.is_clicked) 
       {
-        // ui_next_width(ui_fit()); 
-        // ui_next_height(ui_fit()); 
-        ui_next_width(ui_px(50));
-        ui_next_height(ui_px(50));  
-        ui_next_padding(ui_top_font_size());
-        ui_next_border(2, black());
-        ui_next_hover_cursor(OS_Cursor__hand);
-        ui_next_corner_r(50);
-        UI_Box* settings_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, Str8FromC("Navigation rail setting button"));
-        
-        UI_Parent(settings_button)
-        {
-          ui_image(pcl_icon_settings, 50, 50);
-      
-          UI_Actions settings_button_acts = ui_actions_from_box(settings_button);
-      
-          if (settings_button_acts.is_hovered) {
-            ui_box_set_b_color(settings_button, pcl_color_from_name(PCL_Color_name__item_selected));
-          }
-        }
-    
-        ui_next_font_color(magenta());
-        ui_next_font_size(64);
-        ui_text_f("Some text here");
+        OutputDebugStringF("Click \n");
       }
-      */
     }
-    // */
+    */
 
-    // pcl_frame_update(&pcl);
-    // pcl_build_ui(font, &pcl, prev_frame_fps);
+    pcl_frame_update(&pcl);
+    pcl_build_ui(font, &pcl, prev_frame_fps);
     
     /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)

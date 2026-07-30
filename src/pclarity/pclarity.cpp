@@ -428,6 +428,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
             {
               if (ui_button(button_data[i].button_text).is_clicked)
               {
+                BP;
                 pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__add_header_to_table);
                 pcl->data_for_commands.table_header_kind_for_new_table_header = button_data[i].header_kind;
               }
@@ -665,12 +666,12 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                     ScratchLoop(scratch, 0, 0)
                     {
                       Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
-                      if (display_name.count == 0) { display_name= DD_GetExeNameForPid(scratch.arena, process_data->pid); }
-
+                      if (display_name.count == 0) { display_name = DD_GetExeNameForPid(scratch.arena, process_data->pid); }
+                      
                       if (filter_str_for_names.count != 0)
                       {
                         is_data_filtered_out = !str8_is_substring(display_name, filter_str_for_names, Str8_match__ignore_case|Str8_match__normalise_slash);
-                      }
+                      }                      
                     }
 
                     if (is_data_filtered_out) { continue; }
@@ -726,6 +727,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                               Scratch scratch = get_scratch(0, 0);
                               Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
                               if (display_name.count == 0) { display_name= DD_GetExeNameForPid(scratch.arena, process_data->pid); }
+                              if (display_name.count == 0) { display_name = Str8FromC("---NAME---"); }
                               ui_text(display_name);
                               end_scratch(&scratch);
                             } break;
@@ -898,8 +900,8 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
 
   if (pcl->show_debug_data)
   {
-    ui_next_width(ui_grow());
-    ui_next_height(ui_grow());
+    ui_next_width(ui_fit());
+    ui_next_height(ui_fit());
     ui_next_b_color(black());
     UI_Box* debug_floating_box = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
     
@@ -908,6 +910,18 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
     {
       ui_next_font_color(nice_blue());
       ui_text_f("DEBUG floating box: ");
+
+      ui_spacer(ui_px(15));
+
+      ui_text_f("Clay->layoutElementsHashMapInternal.length: %d", Clay_GetCurrentContext()->layoutElementsHashMapInternal.length);
+
+      ui_spacer(ui_px(15));
+
+      U64 boxed_in_table = 0;
+      for EachIndex(i, ArrayCount(ui_get_state()->hash_table_buckets)) {
+        boxed_in_table += ui_get_state()->hash_table_buckets[i].count;
+      }
+      ui_text_f("Count of boxed in the hash table: %lld", boxed_in_table);
 
       ui_spacer(ui_px(15));
 

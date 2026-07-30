@@ -1,7 +1,7 @@
 #ifndef __UI_H
 #define __UI_H
 
-#include "__third_party/clay/clay.h"
+#include "__third_party/clay/clay_code_after_0.14_release__July_30_2026/clay.h"
 
 #include "core/core_include.h"
 #include "font_provider/font_provider.h"

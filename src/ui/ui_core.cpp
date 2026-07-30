@@ -15,10 +15,12 @@
 // note: Clay got some warning, so we just gonna disable them
 #pragma warning(disable: 4244)
 #pragma warning(disable: 4305)
+#pragma warning(disable: 4389)
 #ifndef CLAY_IMPLEMENTATION
 #define CLAY_IMPLEMENTATION
-#include "__third_party/clay/clay.h"
+#include "__third_party/clay/clay_code_after_0.14_release__July_30_2026/clay.h"
 #endif
+#pragma warning(default: 4389)
 #pragma warning(default: 4244)
 #pragma warning(default: 4305)
 
@@ -80,8 +82,15 @@ void ui_release()
 ///////////////////////////////////////////////////////////
 // - UI building
 //
+
+// TODO: Remove this 
+global U64 fake_id_value_for_this_build = 0;
+
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 {   
+  // TODO: Remove this 
+  fake_id_value_for_this_build = 0;
+
   ProfBeginFunc();
   UI_State* state = ui_get_state();
   
@@ -184,6 +193,7 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   // and not the one before last one, so we start Clay build here.
   // ==
   // Right now(28th of July 2026) we only use Clay_PointerOver inside ui_actions_from_box
+  // BP;
   Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
   Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
   Clay_UpdateScrollContainers(false, {}, {}); 
@@ -236,7 +246,7 @@ void ui_end_build()
   // DD: Making clay boxes from our own box tree
   __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
 
-  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout();
+  Clay_RenderCommandArray clay_render_commands = Clay_EndLayout(0);
   
   __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
   
@@ -415,7 +425,8 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
       {
         if (ui_box_key_is_null(box->hash_table_key))
         {
-          box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
+          // box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
+          box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%lld__", fake_id_value_for_this_build++);
           box->per_build_config.is_str_for_key_fake = true;
         }
       }
@@ -473,7 +484,8 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
   // to then be able to use in in the custom draw function
   if (box->per_build_config.str_for_key.count == 0)
   {
-    box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
+    // box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
+    box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%lld__", fake_id_value_for_this_build++);
   }
 }
 
@@ -497,6 +509,8 @@ UI_Box_data ui_box_data_from_box(UI_Box* box)
   UI_Box_data box_data = {};
   if (box->generation_when_first_created != box->generation_when_last_created)
   {
+    // TODO: Here might be a good thing to check if the box has the key since we have fake ids sometimes
+
     box_data.is_found   = true;
     box_data.rect       = box->rect;
     box_data.inner_rect = box->rect;
@@ -1625,7 +1639,7 @@ Clay_ElementId __ui_clay_element_id_from_str8(Str8 str)
   if (str.count != 0)
   {
     Clay_String clay_str = __ui_clay_string_from_str8(str);
-    clay_id = Clay__HashString(clay_str, 0, 0);
+    clay_id = Clay__HashString(clay_str, 0);
   }
   return clay_id;
 }
@@ -1743,13 +1757,8 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
   
   // DD: Setting up clay config from our own box state
   Clay_ElementDeclaration clay_config = {};
-  {
-    // DD: Making clay id
-    if (box->per_build_config.str_for_key.count != 0)
-    {
-      clay_config.id = Clay__HashString(__ui_clay_string_from_str8(box->per_build_config.str_for_key), 0, 0);
-    }
   
+  {
     clay_config.layout.sizing.width  = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__x]);
     clay_config.layout.sizing.height = __ui_clay_sizing_axis_from_ui_size(box->per_build_config.size_on_axis[Axis2__y]);
     clay_config.layout.layoutDirection = (box->per_build_config.layout_direction == Axis2__x ?  CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM);
@@ -1823,7 +1832,12 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
 
   // DD: Doing clay stuff to make clay ui element
   {
-    Clay__OpenElement();
+    if (box->per_build_config.str_for_key.count != 0) { 
+      Clay_ElementId id = Clay__HashString(__ui_clay_string_from_str8(box->per_build_config.str_for_key), 0);
+      Clay__OpenElementWithId(id);  
+    } else {
+      Clay__OpenElement();
+    }
     Clay__ConfigureOpenElementPtr(&clay_config);
 
     // DD: Clay_Hovered() just returns if a mouse is over something, regardless of the fact that there might be something on top of it

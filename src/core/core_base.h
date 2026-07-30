@@ -182,7 +182,7 @@ typedef double F64;
 #define XOR(a, b)     ( ((a) && !(b)) || (!(a) && (b)) )
 #define NAND(a, b)    ( (!!(a) != 1) || (!!(b) != 1)   ) // Nand == Not AND
 
-#define EachIndex(it, count)                          (U64 it = 0; it < count; it += 1)
+#define EachIndex(it, count)                          (U64 it = 0; it < (count); it += 1)
 #define EachEnumRange(it, Type, min_value, max_value) (Type it = min_value; it < max_value; it = (Type)((U64)it + 1))	
 
 B32 is_zero_pointer(void* p) { return (p == 0); }

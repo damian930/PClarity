@@ -245,9 +245,9 @@ void ui_spacer(UI_Size size)
 //
 void __ui_image_draw_func(UI_Box* box)
 {
-  // R_Handle texture = *((R_Handle*)provided_data.box->per_build_config.custom_draw_extension.data_for_draw_func);
-  // Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
-  // d_draw_texture_pro(texture, provided_data.final_box_rect, texture_rect, white());
+  R_Handle texture = *((R_Handle*)box->per_build_config.custom_draw_extension.data_for_draw_func);
+  Rect texture_rect = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
+  d_draw_texture_pro(texture, box->rect, texture_rect, white());
 }
 void ui_image(R_Handle texture, F32 width_px, F32 height_px)
 {

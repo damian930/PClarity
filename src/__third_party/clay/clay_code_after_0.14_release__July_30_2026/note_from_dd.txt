@@ -1,0 +1,7 @@
+This code for clay is said to be from version 0.14, but it is not.
+Version 0.14 came out in June 2025, they just didnt update the name in the source.
+This source is not from an official release, i just took it from their developing git hub 
+repository. Had to do it since the latest release doenst have internal clay element
+hash table freeing, so it overflows from generated FAKE ids we produce.
+
+But this verion has it, but it has not yet been officialy released.

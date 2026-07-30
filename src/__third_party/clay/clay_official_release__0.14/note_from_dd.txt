@@ -1,0 +1,13 @@
+This is clay code for the release 5 on github for official version called 0.14.
+Here is the link: "https://github.com/nicbarker/clay/releases/tag/v0.14"
+
+In this version they did not yet have layoutElementsHashMapFreeList and so 
+the clay internal hash table array was overflowing from the generated FAKE ids 
+that our ui lib was producing based on addresses.
+
+For that reason we had to switch for a newer version of clay. This here was 
+written on July 30th 2026, at this time the laterst version of clay 
+is the one from release 5 (0.14), so no freeing of the hash table on the side 
+of clay. But the activally developed source code for clay does have that now.
+The version is stil called 0.14 in its source code, but thats now the same 0.14 as
+from the release. 
