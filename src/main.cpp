@@ -88,10 +88,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
-  for (;!os_window_should_close(); frame_counter += 1)
+  for (;!os_window_should_close(); frame_counter += 1) ProfGroupF("App frame")
   {
-    ProfBeginGroupF("App frame %d", frame_counter);
-
     if (pcl.close_the_app) { break; }
 
     F64 frame_start_time_sec = os_get_time_for_timing_sec();
@@ -451,16 +449,18 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
 
     d_end_batching();
-    r_submit(window_frame_buffer_target, d_get_batch_list());
-    r_present(window_frame_buffer_target, false);
+    
+    ProfGroupF("Sumbit + Draw")
+    {
+      r_submit(window_frame_buffer_target, d_get_batch_list());
+      r_present(window_frame_buffer_target, false);
+    }
   
     os_frame_end();
 
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
-    
-    ProfEndGroup();
   }
 
   // Damian: Not releasing anything since who cares, the system will release all the stuff

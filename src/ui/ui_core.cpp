@@ -1018,7 +1018,8 @@ void ui_draw()
           Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
           scissor_rect = rect_intersect(no_overdraw_parent->rect, current_scissor_rect);
         }
-        d_push_scissor_rect(scissor_rect);
+        // DD, TODO: Uncomment this, this is commented for testing
+        // d_push_scissor_rect(scissor_rect);
         pop_scissor_rect_after_this_command = true;
       }
     }
@@ -1136,7 +1137,8 @@ void ui_draw()
     
     if (pop_scissor_rect_after_this_command)
     {
-      d_pop_scissor_rect();
+      // DD, TODO: Uncomment this, this is commented for testing
+      // d_pop_scissor_rect();
     }
   }
 

@@ -11,6 +11,7 @@
 
 #include "pclarity/pclarity.h"
 
+// TODO: This might not be used thought
 U64 arr_shift_left_from_index(void* arr, U64 arr_count, U64 index_to_remove, U64 size_of_arr_entry)
 {
   U64 new_count = arr_count;

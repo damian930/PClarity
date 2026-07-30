@@ -78,12 +78,12 @@ void spall_buffer_begin_fmt(const char* fmt, ...)
 // -------
 
 #define ProfBeginGroup(name_cstr)       spall_buffer_begin(&spall_ctx, &spall_buffer, name_cstr, sizeof(name_cstr), profiler_time_in_ns())
-#define ProfBeginGroupF(name_cstr, ...) spall_buffer_begin_fmt(name_cstr, __VA_ARGS__)
+#define ProfBeginGroupF(name_cstr, ...) spall_buffer_begin_fmt(name_cstr, ##__VA_ARGS__)
 #define ProfBeginFunc()                 ProfBeginGroup(__FUNCTION__)
 #define ProfEndGroup()                  spall_buffer_end(&spall_ctx, &spall_buffer, profiler_time_in_ns())
 
 #define ProfGroup(name_cstr)       DeferLoop(ProfBeginGroup(name_cstr), ProfEndGroup())
-#define ProfGroupF(name_cstr, ...) DeferLoop(ProfBeginGroupF(name_cstr, __VA_ARGS__), ProfEndGroup())
+#define ProfGroupF(name_cstr, ...) DeferLoop(ProfBeginGroupF(name_cstr, ##__VA_ARGS__), ProfEndGroup())
 
 #else
 

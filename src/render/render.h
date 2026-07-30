@@ -114,7 +114,10 @@ struct R_Handle {
   //
   // This is optional for swap chain and only present if the window for which the swap chain is created 
   // was made transparent at its creation. (Transparent windows use different frame buffers)
-  IDCompositionDevice* comp_device; 
+  IDCompositionDevice* comp_device;
+  
+  // This is specific for texture
+  ID3D11ShaderResourceView* srv;
 };
 
 struct D3D_State {
@@ -130,17 +133,15 @@ struct D3D_State {
   //
   // ID3D11Texture2D* magenta_black_d3d_texture;
   //
-  ID3D11Buffer* rect_program_ia_buffer;
-  ID3D11Buffer* rect_program_uniform_buffer;
+  ID3D11Buffer* rect_program_ia_buffer[3];
+  ID3D11Buffer* rect_program_uniform_buffer[3];
   R_Program     rect_program;
   //
-  ID3D11Buffer* texture_program_ia_buffer;
-  ID3D11Buffer* texture_program_uniform_buffer;
+  ID3D11Buffer* texture_program_ia_buffer[3];
+  ID3D11Buffer* texture_program_uniform_buffer[3];
   R_Program     texture_program;
-  // 
-  ID3D11Buffer* line_program_ia_buffer;
-  ID3D11Buffer* line_program_uniform_buffer;
-  R_Program     line_program;
+
+  U64 draw_generation;
 };
 
 extern global D3D_State* __d3d_g_state;

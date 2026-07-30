@@ -36,7 +36,7 @@
 #include "__third_party/stb/stb_image.h"
 #endif
 
-#define RELESE_MODE_RENDERER 0
+#define RELESE_MODE_RENDERER 1
 
 #if DEBUG_MODE
   #define R_DEBUG_MODE 1 
@@ -180,41 +180,19 @@ void r_init()
     d3d->device->CreateSamplerState(&desc, &d3d->sampler);
   }
 
-  // // Magenta black texture
-  // {
-  //   D3D11_TEXTURE2D_DESC desc = {};
-  //   desc.Width      = 2;
-  //   desc.Height     = 2;
-  //   desc.MipLevels  = 1;
-  //   desc.ArraySize  = 1;
-  //   desc.Format     = DXGI_FORMAT_R8G8B8A8_UNORM;
-  //   desc.SampleDesc = { 1, 0 };
-  //   desc.Usage      = D3D11_USAGE_DEFAULT;
-  //   desc.BindFlags  = D3D11_BIND_SHADER_RESOURCE; 
-    
-  //   V4U8 texture_data[4] = {
-  //     black_u(),   magenta_u(),
-  //     magenta_u(), black_u(),
-  //   };
-
-  //   D3D11_SUBRESOURCE_DATA subresource_data = {};
-  //   subresource_data.pSysMem          = (void*)texture_data;
-  //   subresource_data.SysMemPitch      = 2 * sizeof(V4U8);
-  //   subresource_data.SysMemSlicePitch = Null;
-
-  //   d3d->device->CreateTexture2D(&desc, &subresource_data, &d3d->magenta_black_d3d_texture);
-  // }
-
   // Rect program
   {
     // Creating a buffer for input assembler data transfer
     {
       D3D11_BUFFER_DESC desc = {};
-      desc.ByteWidth      = Megabytes(8); 
+      desc.ByteWidth      = Kilobytes(16); 
       desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
       desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
       desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-      d3d->device->CreateBuffer(&desc, 0, &d3d->rect_program_ia_buffer);
+
+      for EachIndex(i, ArrayCount(d3d->rect_program_ia_buffer)) {
+        d3d->device->CreateBuffer(&desc, 0, &d3d->rect_program_ia_buffer[i]);
+      }
     }
     
     // Uniform buffer for rect program
@@ -224,15 +202,15 @@ void r_init()
       desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
       desc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
       desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-      d3d->device->CreateBuffer(&desc, 0, &d3d->rect_program_uniform_buffer); 
+      
+      for EachIndex(i, ArrayCount(d3d->rect_program_uniform_buffer)) {
+        d3d->device->CreateBuffer(&desc, 0, &d3d->rect_program_uniform_buffer[i]); 
+      }
     }
 
     // Loading programs
     d3d->rect_program = r_program_from_file(L"../data/shaders/rect_shader_for_ui.hlsl", "vs_main", "ps_main", __r_g_rect_program_input_assembler_element_desc, ArrayCount(__r_g_rect_program_input_assembler_element_desc));
   }
-
-  // todo: These programm stuff shoud be made a loop with an enum to index into them and then a loop to compile
-  //       and set data for them here, cause this is getting out of hand and alos error prone.
 
   // Texture program
   {
@@ -243,7 +221,10 @@ void r_init()
       desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
       desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
       desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-      d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_ia_buffer);
+
+      for EachIndex(i, ArrayCount(d3d->texture_program_ia_buffer)) {
+        d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_ia_buffer[i]);
+      }
     }
     
     // Uniform buffer for texture program
@@ -253,11 +234,29 @@ void r_init()
       desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
       desc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
       desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-      d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_uniform_buffer); 
+
+      for EachIndex(i, ArrayCount(d3d->texture_program_uniform_buffer)) {
+        d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_uniform_buffer[i]);
+      }
     }
 
     // Loading programs
     d3d->texture_program = r_program_from_file(L"../data/shaders/texture_shader.hlsl", "vs_main", "ps_main", __r_g_texture_program_input_assembler_element_desc, ArrayCount(__r_g_texture_program_input_assembler_element_desc));
+  }
+  
+  // DD, TODO: This is new code, so here for now
+  {
+    StaticAssert(ArrayCount(D3D_State::rect_program_ia_buffer) == 3);
+    StaticAssert(ArrayCount(D3D_State::rect_program_uniform_buffer) == 3);
+
+    StaticAssert(ArrayCount(D3D_State::texture_program_ia_buffer) == 3);
+    StaticAssert(ArrayCount(D3D_State::texture_program_uniform_buffer) == 3);
+
+    IDXGIDevice1* device1 = 0;
+    hr = d3d->device->QueryInterface(IID_IDXGIDevice1, (void**)&device1);
+    HR(hr);
+    device1->SetMaximumFrameLatency(2);
+    device1->Release();
   }
 }
 
@@ -416,6 +415,64 @@ void r_prepare_canvas(R_Handle* chain)
   ProfEndGroup();
 }
 
+// DD, TODO: There are new helper funtins, if they end up beeing used, then move them to the headder and to the bottom
+ID3D11Buffer* __r_get_rect_ia_buffer()
+{
+  StaticAssert(ArrayCount(D3D_State::rect_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::rect_program_uniform_buffer) == 3);
+
+  StaticAssert(ArrayCount(D3D_State::texture_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::texture_program_uniform_buffer) == 3);
+
+  D3D_State* d3d       = r_get_state();
+  U64 index            = d3d->draw_generation % 3;
+  ID3D11Buffer* buffer = d3d->rect_program_ia_buffer[index];
+  return buffer;
+}
+
+// DD, TODO: There are new helper funtins, if they end up beeing used, then move them to the headder and to the bottom
+ID3D11Buffer* __r_get_rect_uniform_buffer()
+{
+  StaticAssert(ArrayCount(D3D_State::rect_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::rect_program_uniform_buffer) == 3);
+
+  StaticAssert(ArrayCount(D3D_State::texture_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::texture_program_uniform_buffer) == 3);
+
+  D3D_State* d3d       = r_get_state();
+  U64 index            = d3d->draw_generation % 3;
+  ID3D11Buffer* buffer = d3d->rect_program_uniform_buffer[index];
+  return buffer;
+}
+
+ID3D11Buffer* __r_get_texture_ia_buffer()
+{
+  StaticAssert(ArrayCount(D3D_State::rect_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::rect_program_uniform_buffer) == 3);
+
+  StaticAssert(ArrayCount(D3D_State::texture_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::texture_program_uniform_buffer) == 3);
+
+  D3D_State* d3d       = r_get_state();
+  U64 index            = d3d->draw_generation % 3;
+  ID3D11Buffer* buffer = d3d->texture_program_ia_buffer[index];
+  return buffer;
+}
+
+ID3D11Buffer* __r_get_texture_uniform_buffer()
+{
+  StaticAssert(ArrayCount(D3D_State::rect_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::rect_program_uniform_buffer) == 3);
+
+  StaticAssert(ArrayCount(D3D_State::texture_program_ia_buffer) == 3);
+  StaticAssert(ArrayCount(D3D_State::texture_program_uniform_buffer) == 3);
+
+  D3D_State* d3d       = r_get_state();
+  U64 index            = d3d->draw_generation % 3;
+  ID3D11Buffer* buffer = d3d->texture_program_uniform_buffer[index];
+  return buffer;
+}
+
 // todo: This should not have to use a target here, since this implies that we are rendering into something like a frame buffer,
 //       when in reality we have already made commands to the draw layer that knows into what we have to render, so this shoud just
 //       render that in. 
@@ -433,6 +490,7 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
   D3D_State* d3d = r_get_state();
   V2F32 rtv_dims = r_get_handle_dims(target);
 
+  ProfBeginGroupF("Setting batch inspecific d3d context state before processing batches");
   // Setting state that is the same for all batches
   {
     d3d->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -449,10 +507,16 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
       d3d->context->RSSetViewports(1, &vp);
     }
   }
+  ProfEndGroup();
 
   // Working with batches
-  for (D_Command_batch* batch = command_batch_list->first; batch; batch = batch->next_batch)
+  U64 batch_index = 0;
+  for (D_Command_batch* batch = command_batch_list->first; batch; batch = batch->next_batch, batch_index += 1)
+    ProfGroupF("Draw batch %lld, kind %s", batch_index, (batch->command_type == D_Command_type__Rect ? "Rect" : (batch->command_type == D_Command_type__Texture ? "Texture" : "Else")))
   {
+    d3d->draw_generation += 1;
+
+    ProfBeginGroupF("Setting datat that has to be re-set every every batch");
     d3d->context->OMSetRenderTargets(1, &batch->target.texture_rtv, Null);
     d3d->context->RSSetState(d3d->rasterizer_states[batch->fill_mode]);
     d3d->context->OMSetBlendState(d3d->blend_states[batch->blend_kind], Null, ~0U);
@@ -466,36 +530,37 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
       if (scissor_rect.top > scissor_rect.bottom) { scissor_rect.top = scissor_rect.bottom; /*BreakPoint();*/ }
       d3d->context->RSSetScissorRects(1, &scissor_rect); 
     }
+    ProfEndGroup();
 
-    if (batch->command_type == D_Command_type__Rect)
+    if (batch->command_type == D_Command_type__Rect) ProfGroupF("Rect batch specific d3d state setting")
     {
-      d3d->context->IASetInputLayout(d3d->rect_program.input_layout);
+      ID3D11Buffer* uniform_buffer = __r_get_rect_uniform_buffer();
+      ID3D11Buffer* ia_buffer      = __r_get_rect_ia_buffer();
 
+      ProfBeginGroupF("Filling up the uniform data buffer with data");
       // Filling up the uniform buffer with data 
       {
         D3D11_MAPPED_SUBRESOURCE mapped = {};
-        d3d->context->Map(d3d->rect_program_uniform_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        d3d->context->Map(uniform_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         R_Rect_unifrom_data uniform_data = {};
         uniform_data.u_window_width  = rtv_dims.x;
         uniform_data.u_window_height = rtv_dims.y;
         memcpy(mapped.pData, &uniform_data, sizeof(uniform_data));
-        d3d->context->Unmap(d3d->rect_program_uniform_buffer, 0);
+        d3d->context->Unmap(uniform_buffer, 0);
       }
+      ProfEndGroup();
       
-      // Vertex shader
-      d3d->context->VSSetShader(d3d->rect_program.v_shader, Null, Null);
-      d3d->context->VSSetConstantBuffers(0, 1, &d3d->rect_program_uniform_buffer);  
-      
-      // Pixel shader
-      d3d->context->PSSetShader(d3d->rect_program.p_shader, Null, Null);
-      d3d->context->PSSetConstantBuffers(0, 1, &d3d->rect_program_uniform_buffer);
-
       // Filling up the ia buffer with data
+      ProfBeginGroupF("Filling up the input assembler data buffer with data");
       { 
+
+        ProfBeginGroupF("d3d->Map(ia buffer)");
         D3D11_MAPPED_SUBRESOURCE mapped = {};
         // todo: This doesnt check the cap for size of the buffer, this shoud be fixed
-        d3d->context->Map(d3d->rect_program_ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-        
+        d3d->context->Map(ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        ProfEndGroup();
+
+        ProfBeginGroupF("for { memcpy into the buffer from batch nodes }");
         U64 i = 0;
         for (D_Command_node* node = batch->first_command_node; node; node = node->next, i += 1)
         {
@@ -519,75 +584,97 @@ void r_submit(R_Handle target, D_Command_batch_list* command_batch_list)
 
           memcpy((R_Rect_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
         }
-        d3d->context->Unmap(d3d->rect_program_ia_buffer, 0);
+        ProfEndGroup();
+
+        ProfBeginGroupF("d3d->Unmap(ia buffer)");
+        d3d->context->Unmap(ia_buffer, 0);
+        ProfEndGroup();
+      }
+      ProfEndGroup();
+
+      ProfGroupF("d3d state setting")
+      {
+        d3d->context->IASetInputLayout(d3d->rect_program.input_layout);
+  
+        // Vertex shader
+        d3d->context->VSSetShader(d3d->rect_program.v_shader, Null, Null);
+        d3d->context->VSSetConstantBuffers(0, 1, &uniform_buffer);  
+        
+        // Pixel shader
+        d3d->context->PSSetShader(d3d->rect_program.p_shader, Null, Null);
+        d3d->context->PSSetConstantBuffers(0, 1, &uniform_buffer);
+        
+        UINT stride = sizeof(R_Rect_instance_data);
+        UINT offset = 0;
+        d3d->context->IASetVertexBuffers(0, 1, &ia_buffer, &stride, &offset);
+      }
+    }
+    else if (batch->command_type == D_Command_type__Texture && __r_is_handle_valid_handle(batch->texture)) ProfGroupF("Texture batch specific d3d state setting")
+    {
+      ID3D11Buffer* uniform_buffer = __r_get_texture_uniform_buffer();
+      ID3D11Buffer* ia_buffer      = __r_get_texture_ia_buffer();
+
+      // Filling up the uniform buffer with data 
+      ProfGroupF("Filling up the uniform data buffer with data");
+      {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        d3d->context->Map(uniform_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        R_Texture_uniform_data uniform_data = {};
+        uniform_data.u_window_width  = rtv_dims.x;
+        uniform_data.u_window_height = rtv_dims.y;
+        memcpy(mapped.pData, &uniform_data, sizeof(uniform_data));
+        d3d->context->Unmap(uniform_buffer, 0);
       }
 
-      UINT stride = sizeof(R_Rect_instance_data);
-      UINT offset = 0;
-      d3d->context->IASetVertexBuffers(0, 1, &d3d->rect_program_ia_buffer, &stride, &offset);
-    }
-    else if (batch->command_type == D_Command_type__Texture)
-    {
-      if (__r_is_handle_valid_handle(batch->texture))
+      // Filling up the ia buffer with data
+      ProfGroupF("Filling up the ia buffer with data");
+      {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        d3d->context->Map(ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        
+        U64 i = 0;
+        for (D_Command_node* node = batch->first_command_node; node; node = node->next, i += 1)
+        {
+          R_Texture_instance_data instance_data = {};
+          instance_data.dest_rect_origin = node->command.u.texture_c.dest_rect.origin; 
+          instance_data.dest_rect_size   = node->command.u.texture_c.dest_rect.dims; 
+          instance_data.src_rect_origin  = node->command.u.texture_c.src_rect.origin; 
+          instance_data.src_rect_size    = node->command.u.texture_c.src_rect.dims;
+          instance_data.src_texture_dims = r_get_handle_dims(batch->texture);
+          instance_data.tint             = node->command.u.texture_c.tint;
+          memcpy((R_Texture_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
+        }
+        d3d->context->Unmap(ia_buffer, 0);
+      }
+
+      ProfGroupF("d3d state setting")
       {
         d3d->context->IASetInputLayout(d3d->texture_program.input_layout);
-  
-        // Filling up the uniform buffer with data 
-        {
-          D3D11_MAPPED_SUBRESOURCE mapped = {};
-          d3d->context->Map(d3d->texture_program_uniform_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-          R_Texture_uniform_data uniform_data = {};
-          uniform_data.u_window_width  = rtv_dims.x;
-          uniform_data.u_window_height = rtv_dims.y;
-          memcpy(mapped.pData, &uniform_data, sizeof(uniform_data));
-          d3d->context->Unmap(d3d->texture_program_uniform_buffer, 0);
-        }
   
         d3d->context->PSSetSamplers(0, 1, &d3d->sampler);
         
         // Vertex shader
         d3d->context->VSSetShader(d3d->texture_program.v_shader, Null, Null);
-        d3d->context->VSSetConstantBuffers(0, 1, &d3d->texture_program_uniform_buffer);  
+        d3d->context->VSSetConstantBuffers(0, 1, &uniform_buffer);  
         
         // Pixel shader
         d3d->context->PSSetShader(d3d->texture_program.p_shader, Null, Null);
-        d3d->context->PSSetConstantBuffers(0, 1, &d3d->texture_program_uniform_buffer);
+        d3d->context->PSSetConstantBuffers(0, 1, &uniform_buffer);
         
-        {
-          ID3D11ShaderResourceView* texture_view = 0;
-          d3d->device->CreateShaderResourceView(batch->texture.texture, NULL, &texture_view);
-          d3d->context->PSSetShaderResources(0, 1, &texture_view);
-          texture_view->Release();
-        }
-  
-        // Filling up the ia buffer with data
-        {
-          D3D11_MAPPED_SUBRESOURCE mapped = {};
-          d3d->context->Map(d3d->texture_program_ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-          
-          U64 i = 0;
-          for (D_Command_node* node = batch->first_command_node; node; node = node->next, i += 1)
-          {
-            R_Texture_instance_data instance_data = {};
-            instance_data.dest_rect_origin = node->command.u.texture_c.dest_rect.origin; 
-            instance_data.dest_rect_size   = node->command.u.texture_c.dest_rect.dims; 
-            instance_data.src_rect_origin  = node->command.u.texture_c.src_rect.origin; 
-            instance_data.src_rect_size    = node->command.u.texture_c.src_rect.dims;
-            instance_data.src_texture_dims = r_get_handle_dims(batch->texture);
-            instance_data.tint             = node->command.u.texture_c.tint;
-            memcpy((R_Texture_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
-          }
-          d3d->context->Unmap(d3d->texture_program_ia_buffer, 0);
-        }
+        // Setting the texture as a resource to be used by the shader
+        d3d->context->PSSetShaderResources(0, 1, &batch->texture.srv);
   
         UINT stride = sizeof(R_Texture_instance_data);
         UINT offset = 0;
-        d3d->context->IASetVertexBuffers(0, 1, &d3d->texture_program_ia_buffer, &stride, &offset);
+        d3d->context->IASetVertexBuffers(0, 1, &ia_buffer, &stride, &offset);
       }
     }
     else { InvalidCodePath(); }
-  
-    d3d->context->DrawInstanced(4, (UINT)batch->count, 0, 0);
+
+    ProfGroupF("DrawInstanced")
+    {
+      d3d->context->DrawInstanced(4, (UINT)batch->count, 0, 0);
+    }
   }
 
   d3d->context->ClearState();
@@ -649,10 +736,14 @@ R_Handle r_make_texture(U32 width, U32 height)
   ID3D11RenderTargetView* rtv = 0;
   d3d->device->CreateRenderTargetView(texture, 0, &rtv);
 
+  ID3D11ShaderResourceView* srv = 0;
+  d3d->device->CreateShaderResourceView(texture, NULL, &srv);
+
   // On fail d3d will keep those pointer at 0
   R_Handle handle = {};
   handle.texture     = texture;
   handle.texture_rtv = rtv;
+  handle.srv         = srv;
   return handle;
 }
 
@@ -867,6 +958,7 @@ R_Handle r_load_texture_from_file(Str8 file_name)
   return result_texture;
 }
 
+// TODO: THis should be connected with r_make_texture, most of this code is duplicated
 R_Handle r_load_texture_from_image(Image image)
 {
   D3D_State* d3d = r_get_state();
@@ -892,10 +984,14 @@ R_Handle r_load_texture_from_image(Image image)
   ID3D11RenderTargetView* d3d_texture_rtv = 0;
   d3d->device->CreateRenderTargetView(d3d_texture, 0, &d3d_texture_rtv);
 
+  ID3D11ShaderResourceView* srv = 0;
+  d3d->device->CreateShaderResourceView(d3d_texture, NULL, &srv);
+
   // On fail d3d will keep those pointer at 0
   R_Handle texture = {};
   texture.texture     = d3d_texture;
   texture.texture_rtv = d3d_texture_rtv;
+  texture.srv         = srv;
   return texture;
 }
 

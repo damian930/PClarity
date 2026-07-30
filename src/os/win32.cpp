@@ -938,6 +938,12 @@ F64 os_get_time_for_timing_sec()
   return (F64)os_get_perf_counter() / (F64)os_get_perf_freq_per_sec(); 
 }
 
+F64 os_get_time_for_timing_in_ns()
+{
+	F64 ns = ((os_get_perf_counter()) * ((F64)1000000000.0 / os_get_perf_freq_per_sec()));
+  return ns;
+}
+
 void os_sleep(U64 ms)
 {
   Assert(ms <= u32_max);

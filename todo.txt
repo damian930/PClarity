@@ -1,6 +1,7 @@
 App
 -----------
-[ ] - ... 
+[ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
+
 
 
 Performance

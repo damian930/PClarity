@@ -66,7 +66,7 @@ void d_begin_batching(R_Handle target)
   // Make sure that things is not a setting stack for batching.
   // If it is, then you have to add a default value and set its value here
   // and also reset the count here to 0.
-  StaticAssert(144 == sizeof(D_Command_batch));
+  StaticAssert(160 == sizeof(D_Command_batch));
 }
 
 // todo: THis does not take it target and this makes it less clear about the idea for the call and what it does,
@@ -88,7 +88,7 @@ D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Handle texture)
   // Why is it important?
   // It is important to now have bugs, since to have batches working we have to change the code in couple 
   // of places after we add settings to the Batch struct. This place is 1 of them. 
-  StaticAssert(144 == sizeof(D_Command_batch));
+  StaticAssert(160 == sizeof(D_Command_batch));
 
   D_Command_batch* new_batch = ArenaPush(arena, D_Command_batch);
   new_batch->command_type = command_type;
@@ -114,7 +114,7 @@ D_Command_batch* d_get_or_add_batch_for_settings(D_Command_type command_type, R_
   // Why is it important?
   // It is important to now have bugs, since to have batches working we have to change the code in couple 
   // of places after we add settings to the Batch struct. This place is 1 of them. 
-  StaticAssert(144 == sizeof(D_Command_batch));
+  StaticAssert(160 == sizeof(D_Command_batch));
   
   D_State* draw_state = d_get_state();
   D_Command_batch* batch = draw_state->command_batch_list.last;
