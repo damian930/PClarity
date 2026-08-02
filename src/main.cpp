@@ -160,10 +160,10 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         {
           ui_text_f("SOme text here allla: %lld", i);
           
-          // ui_next_width(ui_px(5));
-          // ui_next_height(ui_px(5));
-          // ui_next_b_color(golden());
-          // UI_Box* golden_box = ui_box_make(UI_Box_flag__has_background, {});
+          ui_next_width(ui_px(5));
+          ui_next_height(ui_px(5));
+          ui_next_b_color(golden());
+          UI_Box* golden_box = ui_box_make(UI_Box_flag__has_background, {});
         }
       }
     }

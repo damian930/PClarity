@@ -131,7 +131,7 @@ void d_draw_texture(R_Handle texture, V2F32 pos)
 void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint)
 {
   D_Rect_command command = {};  
-  command.is_texture   = true;  
+  command.is_textured   = true;  
   command.rect         = dest_rect;
   command.texture_rect = source_rect;
   // TODO: Use tint

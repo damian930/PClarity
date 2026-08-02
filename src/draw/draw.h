@@ -14,7 +14,7 @@ struct D_Rect_command {
   F32   inner_softness;
   F32   outer_softness;
 
-  B8 is_texture;
+  B8 is_textured;
   Rect texture_rect;
 };
 

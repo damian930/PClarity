@@ -516,7 +516,9 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
   // TODO: Add more of these to the submit here, this buys a bit of time
   // ID3D11RenderTargetView* last_set_rtv         = 0;
   // ID3D11RasterizerState* last_set_raster_state = 0;
-  // ID3D11BlendState* last_set_blend_state       = 0;
+  // ID3D11BlendState* last_set_blend_state = 0;
+  ID3D11RenderTargetView* last_rtv = 0;
+
   // Rect last_scissor_rect                       = {};
 
   // Working with batches
@@ -524,16 +526,83 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
   // TODO: Add this back
   // ProfGroupF("Draw batch %lld, kind %s, n_nodes: %lld", batch_index, (batch->command_type == D_Command_type__Rect ? "Rect" : (batch->command_type == D_Command_type__Texture ? "Texture" : "Else")), batch->node_count)
 
-  U64 batch_index = 0;
+  // DD: Pre-uploading ia data for ui drawings 
+  U64 n_rect_draws_in_command_batch_list = 0;
+  for (
+    D_Rect_command_batch_node* batch_node = command_batch_list->first; 
+    batch_node != 0; 
+    batch_node = batch_node->next
+  ) {
+    n_rect_draws_in_command_batch_list += batch_node->batch.node_count;
+  }
+  
+  ID3D11Buffer* ia_buffer = __r_get_rect_ia_buffer();
+  {
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    ProfGroupF("Preloading ia data via d3d->Map")
+    {
+      // TODO: This doesnt check the cap for size of the buffer, this shoud be fixed
+      Assert(n_rect_draws_in_command_batch_list * sizeof(R_Rect_instance_data) <= __R_SIZE_FOR_IA_BUFFER);
+      
+      d3d->context->Map(ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    }
+
+    U64 instance_index = 0;
+    U64 batch_index    = 0;
+    for (
+      D_Rect_command_batch_node* batch_node = command_batch_list->first; 
+      batch_node != 0; 
+      batch_node = batch_node->next, batch_index += 1
+    ) {
+      D_Rect_command_batch* batch = &batch_node->batch;
+
+      ProfGroupF("for { memcpy into the buffer from batch nodes }")
+      {
+        for (D_Rect_command_node* node = batch->first_command_node; node; node = node->next)
+        {
+          R_Rect_instance_data instance_data = {};
+          instance_data.origin_x            = node->rect_command.rect.x; 
+          instance_data.origin_y            = node->rect_command.rect.y; 
+          instance_data.width               = node->rect_command.rect.width;
+          instance_data.height              = node->rect_command.rect.height;
+          instance_data.color_00            = node->rect_command.color_at_corners[UV__top_left];
+          instance_data.color_01            = node->rect_command.color_at_corners[UV__top_right];
+          instance_data.color_10            = node->rect_command.color_at_corners[UV__bottom_left];
+          instance_data.color_11            = node->rect_command.color_at_corners[UV__bottom_right];
+          instance_data.corner_radius_00    = node->rect_command.corner_radii.v[UV__top_left];
+          instance_data.corner_radius_01    = node->rect_command.corner_radii.v[UV__top_right];
+          instance_data.corner_radius_10    = node->rect_command.corner_radii.v[UV__bottom_left];
+          instance_data.corner_radius_11    = node->rect_command.corner_radii.v[UV__bottom_right];
+          instance_data.border_color        = node->rect_command.border_color;
+          instance_data.border_thickness    = node->rect_command.border_thickness;
+          instance_data.softness_inner      = node->rect_command.inner_softness;
+          instance_data.softness_outer      = node->rect_command.outer_softness;
+          instance_data.is_texture          = node->rect_command.is_textured;
+          instance_data.texture_rect_origin = node->rect_command.texture_rect.origin;
+          instance_data.texture_rect_dims   = node->rect_command.texture_rect.dims;
+
+          memcpy((R_Rect_instance_data*)mapped.pData + instance_index, &instance_data, sizeof(instance_data));
+          instance_index += 1;
+        }
+      }
+    }
+
+    ProfGroupF("d3d->Unmap(ia buffer)")
+    {
+      d3d->context->Unmap(ia_buffer, 0);
+    }
+  }
+
+  U32 instances_drawn = 0;
+  U64 batch_index     = 0;
   for (
     D_Rect_command_batch_node* batch_node = command_batch_list->first; 
     batch_node != 0; 
     batch_node = batch_node->next, batch_index += 1
   ) {
     d3d->draw_generation += 1;
-
     D_Rect_command_batch* batch = &batch_node->batch;
-    
+
     ProfGroupF("Setting d3d context state for batch %lld", batch_index)
     {
       d3d->context->OMSetRenderTargets(1, &batch->render_target.texture_rtv, Null);
@@ -561,56 +630,6 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
         d3d->context->Unmap(uniform_buffer, 0);
       }
       
-      ID3D11Buffer* ia_buffer      = __r_get_rect_ia_buffer();
-      ProfGroupF("Filling up the input assembler data buffer with data")
-      { 
-        // TODO: Make this be better and checked, at least if on false here 
-        U64 bytes_needed_for_ia_data = batch->node_count * sizeof(R_Rect_instance_data);
-        HandleLater(bytes_needed_for_ia_data < __R_SIZE_FOR_IA_BUFFER);
-
-        D3D11_MAPPED_SUBRESOURCE mapped = {};
-        ProfGroupF("d3d->Map(ia buffer)")
-        {
-          // TODO: This doesnt check the cap for size of the buffer, this shoud be fixed
-          d3d->context->Map(ia_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-        }
-
-        ProfGroupF("for { memcpy into the buffer from batch nodes }")
-        {
-          U64 i = 0;
-          for (D_Rect_command_node* node = batch->first_command_node; node; node = node->next, i += 1)
-          {
-            R_Rect_instance_data instance_data = {};
-            instance_data.origin_x            = node->rect_command.rect.x; 
-            instance_data.origin_y            = node->rect_command.rect.y; 
-            instance_data.width               = node->rect_command.rect.width;
-            instance_data.height              = node->rect_command.rect.height;
-            instance_data.color_00            = node->rect_command.color_at_corners[UV__top_left];
-            instance_data.color_01            = node->rect_command.color_at_corners[UV__top_right];
-            instance_data.color_10            = node->rect_command.color_at_corners[UV__bottom_left];
-            instance_data.color_11            = node->rect_command.color_at_corners[UV__bottom_right];
-            instance_data.corner_radius_00    = node->rect_command.corner_radii.v[UV__top_left];
-            instance_data.corner_radius_01    = node->rect_command.corner_radii.v[UV__top_right];
-            instance_data.corner_radius_10    = node->rect_command.corner_radii.v[UV__bottom_left];
-            instance_data.corner_radius_11    = node->rect_command.corner_radii.v[UV__bottom_right];
-            instance_data.border_color        = node->rect_command.border_color;
-            instance_data.border_thickness    = node->rect_command.border_thickness;
-            instance_data.softness_inner      = node->rect_command.inner_softness;
-            instance_data.softness_outer      = node->rect_command.outer_softness;
-            instance_data.is_texture          = node->rect_command.is_texture;
-            instance_data.texture_rect_origin = node->rect_command.texture_rect.origin;
-            instance_data.texture_rect_dims   = node->rect_command.texture_rect.dims;
-
-            memcpy((R_Rect_instance_data*)mapped.pData + i, &instance_data, sizeof(instance_data));
-          }
-        }
-
-        ProfGroupF("d3d->Unmap(ia buffer)")
-        {
-          d3d->context->Unmap(ia_buffer, 0);
-        }
-      }
-
       d3d->context->IASetInputLayout(d3d->rect_program.input_layout);
 
       d3d->context->PSSetSamplers(0, 1, &d3d->sampler);
@@ -634,7 +653,9 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
 
     ProfGroupF("DrawInstanced")
     {
-      d3d->context->DrawInstanced(4, (UINT)batch->node_count, 0, 0);
+      U32 instances_to_draw = (U32)batch->node_count; // TODO: DOnt like this conversion here
+      d3d->context->DrawInstanced(4, instances_to_draw, 0, instances_drawn);
+      instances_drawn += instances_to_draw;
     }
   }
 
