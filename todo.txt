@@ -1,5 +1,6 @@
 App
 -----------
+[ ] - Fix the bug when you scroll to the bottom of the table you have 30 fps, what the fuck
 [ ] - Fix the render layer handle thing, it is annoying in the way it is right now for reals
 [ ] - 
 [ ] - Look into drawing texture with the same shader as the rects
