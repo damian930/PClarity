@@ -148,16 +148,17 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     }
     if (close_the_app) { break; }
 
-    pcl_frame_update(&pcl);
-    pcl_build_ui(font, &pcl, prev_frame_fps);
+    // pcl_frame_update(&pcl);
+    // pcl_build_ui(font, &pcl, prev_frame_fps);
 
-    /*
+    // /*
     UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
     {
       UI_Col()
       {
         for EachIndex(i, 200)
         {
+          ui_next_font_color(red());
           ui_text_f("SOme text here allla: %lld", i);
           
           ui_next_width(ui_px(5));
@@ -167,7 +168,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
         }
       }
     }
-    */
+    // */
 
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();

@@ -16,6 +16,7 @@ struct D_Rect_command {
 
   B8 is_textured;
   Rect texture_rect;
+  V4F32 texture_tint;
 };
 
 struct D_Rect_command_node {

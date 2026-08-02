@@ -59,6 +59,7 @@ struct R_Rect_instance_data {
 
   F32 texture_width;
   F32 texture_height;
+  V4F32 texture_tint;
 
   F32 _padding_[2];
 };
@@ -141,20 +142,18 @@ struct D3D_State {
   ID3D11SamplerState*    sampler;
   //
   #define D3D_BUFFER_COUNT 8
+  
+  ///////////////////////////////////////////////////////////
+  // These are obtained after the base of the state is set 
+  //
+  R_Handle magenta_black_texture;
+
   ID3D11Buffer* rect_program_ia_buffer[D3D_BUFFER_COUNT];
   ID3D11Buffer* rect_program_uniform_buffer[D3D_BUFFER_COUNT];
   R_Program     rect_program;
-  //
-  ID3D11Buffer* texture_program_ia_buffer[D3D_BUFFER_COUNT];
-  ID3D11Buffer* texture_program_uniform_buffer[D3D_BUFFER_COUNT];
-  R_Program     texture_program;
 
-  // These are obtained after the base of the state is set
-  R_Handle magenta_black_texture;
-  // TODO, DD: Move the programs here as well
-
-  // TODO: Try to remoe this and see if it changes anything
-  U64 draw_generation;
+  // Other/Misc
+  U64 draw_generation; // TODO: Try to remoe this and see if it changes anything
 };
 
 extern global D3D_State* __d3d_g_state;
@@ -235,6 +234,7 @@ D3D11_INPUT_ELEMENT_DESC __r_g_rect_program_input_assembler_element_desc[] =
   { "IS_TEXTURE",            0, DXGI_FORMAT_R8_UINT,            0, TypeFieldOffset(R_Rect_instance_data, is_texture),          D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "TEXTURE_RECT_ORIGIN",   0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Rect_instance_data, texture_rect_origin), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "TEXTURE_RECT_SIZE",     0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Rect_instance_data, texture_rect_dims),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "TEXTURE_TINT",          0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, texture_tint),        D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 };
 
 D3D11_INPUT_ELEMENT_DESC __r_g_texture_program_input_assembler_element_desc[] = 

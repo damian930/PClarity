@@ -180,6 +180,26 @@ void r_init()
     d3d->device->CreateSamplerState(&desc, &d3d->sampler);
   }
 
+  // DD, TODO: This is new code, so here for now
+  // DD, TODO: Look into this
+  {
+    // IDXGIDevice1* device1 = 0;
+    // hr = d3d->device->QueryInterface(IID_IDXGIDevice1, (void**)&device1);
+    // HR(hr);
+    // device1->SetMaximumFrameLatency(2);
+    // device1->Release();
+  }
+
+  // Magenta-Black texture
+  {
+    U8 data[2][2][4] = {
+      { { 255, 0, 255, 255 }, { 0,   0,   0, 255 } },
+      { { 0,   0,   0, 255 }, { 255, 0, 255, 255 } },
+    };
+    Data_buffer buffer = str8_manual_view((U8*)data, sizeof(data)); 
+    d3d->magenta_black_texture = __r_make_texture(2, 2, buffer);
+  }
+  
   // Rect program
   {
     // Creating a buffer for input assembler data transfer
@@ -215,58 +235,6 @@ void r_init()
     d3d->rect_program = r_program_from_file(L"../data/shaders/rect_shader_for_ui.hlsl", "vs_main", "ps_main", __r_g_rect_program_input_assembler_element_desc, ArrayCount(__r_g_rect_program_input_assembler_element_desc));
   }
 
-  // Texture program
-  {
-    // Creating a buffer for input assembler data transfer
-    {
-      D3D11_BUFFER_DESC desc = {};
-      desc.ByteWidth      = Megabytes(8); 
-      desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
-      desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
-      desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-      for EachIndex(i, ArrayCount(d3d->texture_program_ia_buffer)) {
-        d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_ia_buffer[i]);
-      }
-    }
-    
-    // Uniform buffer for texture program
-    {
-      D3D11_BUFFER_DESC desc = {};
-      desc.ByteWidth      = sizeof(R_Texture_uniform_data); 
-      desc.Usage          = D3D11_USAGE_DYNAMIC; // Dynamic is for for gpu to read and for cpu to write 
-      desc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
-      desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-      for EachIndex(i, ArrayCount(d3d->texture_program_uniform_buffer)) {
-        d3d->device->CreateBuffer(&desc, 0, &d3d->texture_program_uniform_buffer[i]);
-      }
-    }
-
-    // Loading programs
-    d3d->texture_program = r_program_from_file(L"../data/shaders/texture_shader.hlsl", "vs_main", "ps_main", __r_g_texture_program_input_assembler_element_desc, ArrayCount(__r_g_texture_program_input_assembler_element_desc));
-  }
-  
-  // DD, TODO: This is new code, so here for now
-  // DD, TODO: Look into this
-  {
-    // IDXGIDevice1* device1 = 0;
-    // hr = d3d->device->QueryInterface(IID_IDXGIDevice1, (void**)&device1);
-    // HR(hr);
-    // device1->SetMaximumFrameLatency(2);
-    // device1->Release();
-  }
-
-  // Magenta-Black texture
-  {
-    U8 data[2][2][4] = {
-      { { 255, 0, 255, 255 }, { 0,   0,   0, 255 } },
-      { { 0,   0,   0, 255 }, { 255, 0, 255, 255 } },
-    };
-    Data_buffer buffer = str8_manual_view((U8*)data, sizeof(data)); 
-    d3d->magenta_black_texture = __r_make_texture(2, 2, buffer);
-  }
-  
 }
 
 void r_relesase()
@@ -465,21 +433,6 @@ ID3D11Buffer* __r_get_rect_uniform_buffer()
   return buffer;
 }
 
-ID3D11Buffer* __r_get_texture_ia_buffer()
-{
-  D3D_State* d3d       = r_get_state();
-  U64 index            = d3d->draw_generation % D3D_BUFFER_COUNT;
-  ID3D11Buffer* buffer = d3d->texture_program_ia_buffer[index];
-  return buffer;
-}
-
-ID3D11Buffer* __r_get_texture_uniform_buffer()
-{
-  D3D_State* d3d       = r_get_state();
-  U64 index            = d3d->draw_generation % D3D_BUFFER_COUNT;
-  ID3D11Buffer* buffer = d3d->texture_program_uniform_buffer[index];
-  return buffer;
-}
 
 // todo: This should not have to use a target here, since this implies that we are rendering into something like a frame buffer,
 //       when in reality we have already made commands to the draw layer that knows into what we have to render, so this shoud just
@@ -567,6 +520,7 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
           instance_data.is_texture          = node->rect_command.is_textured;
           instance_data.texture_rect_origin = node->rect_command.texture_rect.origin;
           instance_data.texture_rect_dims   = node->rect_command.texture_rect.dims;
+          instance_data.texture_tint        =  node->rect_command.texture_tint;
 
           memcpy((R_Rect_instance_data*)mapped.pData + instance_index, &instance_data, sizeof(instance_data));
           instance_index += 1;

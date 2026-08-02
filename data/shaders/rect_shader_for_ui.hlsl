@@ -60,6 +60,7 @@ struct VertexInput {
   
   float2 texture_rect_origin  : TEXTURE_RECT_ORIGIN;
   float2 texture_rect_size    : TEXTURE_RECT_SIZE;
+  float4 texture_tint         : TEXTURE_TINT;
 
   uint vertex_id : SV_VertexID;
 };
@@ -82,6 +83,7 @@ struct PixelInput {
   bool is_texture : IS_TEXTURE_BOOL;
 
   float2 texture_to_sample_uv : TEXTURE_TO_SAMPLE_UV;
+  float4 texture_tint         : TEXTURE_TINT;
 
   float4 pos : SV_POSITION;
 };
@@ -140,22 +142,21 @@ PixelInput vs_main(VertexInput vertex_input)
   rect_vertex_corner_r[UV__bottom_right] = vertex_input.rect_corner_radius_bottom_right;
 
   PixelInput pixel_input;
-  pixel_input.pos                                  = float4(rect_vertex_in_ndc, 0, 1);
-  pixel_input.rect_origin                          = rect_origin;
-  pixel_input.rect_dims                            = rect_dims;
-  pixel_input.corner_radius                        = rect_vertex_corner_r[vertex_input.vertex_id];
-  pixel_input.softness_inner                       = vertex_input.softness_inner;
-  pixel_input.softness_outer                       = vertex_input.softness_outer;
-  pixel_input.border_thickness                     = vertex_input.rect_border_thickness;
-  pixel_input.border_color                         = vertex_input.rect_border_color;
-  pixel_input.vertex_color[UV__top_left]           = vertex_input.rect_color_top_left;
-  pixel_input.vertex_color[UV__top_right]          = vertex_input.rect_color_top_right;
-  pixel_input.vertex_color[UV__bottom_left]        = vertex_input.rect_color_bottom_left;
-  pixel_input.vertex_color[UV__bottom_right]       = vertex_input.rect_color_bottom_right;
-  pixel_input.is_texture                           = vertex_input.is_texture;
-  pixel_input.texture_to_sample_uv                 = texture_vertex_in_uv;
-  // pixel_input.texture_to_sample_uv.y                 = 1;
-
+  pixel_input.pos                            = float4(rect_vertex_in_ndc, 0, 1);
+  pixel_input.rect_origin                    = rect_origin;
+  pixel_input.rect_dims                      = rect_dims;
+  pixel_input.corner_radius                  = rect_vertex_corner_r[vertex_input.vertex_id];
+  pixel_input.softness_inner                 = vertex_input.softness_inner;
+  pixel_input.softness_outer                 = vertex_input.softness_outer;
+  pixel_input.border_thickness               = vertex_input.rect_border_thickness;
+  pixel_input.border_color                   = vertex_input.rect_border_color;
+  pixel_input.vertex_color[UV__top_left]     = vertex_input.rect_color_top_left;
+  pixel_input.vertex_color[UV__top_right]    = vertex_input.rect_color_top_right;
+  pixel_input.vertex_color[UV__bottom_left]  = vertex_input.rect_color_bottom_left;
+  pixel_input.vertex_color[UV__bottom_right] = vertex_input.rect_color_bottom_right;
+  pixel_input.is_texture                     = vertex_input.is_texture;
+  pixel_input.texture_to_sample_uv           = texture_vertex_in_uv;
+  pixel_input.texture_tint                   = vertex_input.texture_tint;
 
   return pixel_input;
 }
@@ -186,6 +187,7 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
   {
     // pixel_input.texture_to_sample_uv.y = 0.7;
     final_color = texture0.Sample(sampler0, pixel_input.texture_to_sample_uv);
+    final_color *= pixel_input.texture_tint;
   }
   else 
   {

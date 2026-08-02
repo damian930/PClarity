@@ -1,24 +1,17 @@
 App
 -----------
-[ ] - Try to preload all the commands when you have a single list of batches wit the same ia data, then only change the d3d context and draw instances with offset from the filled in ia buffer 
-[ ] - Add tint back to be able to have colored text
-[ ] - Remove texture program form renderer state
-[ ] - Remove the texture shader from the renderer rignt now and just have the batch for the ui
-[ ] - Fix the bug with the fps with tips from discord
-[ ] - Redo the draw layer, this shit is annoying as fuck
 [ ] - Fix the render layer handle thing, it is annoying in the way it is right now for reals
 [ ] - 
 [ ] - Look into drawing texture with the same shader as the rects
-[ ] - Fix the bug where d3d->Map taked too much time when drawing texture batches sometimes
 [ ] - The longer we scroll the table the more time the ui build takes, why, fix it
 [ ] - Make sure you dont have gsync enabled
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
 [ ] - Make the debug window be draggable around like in dear imgui 
 [ ] - Keep the header above the scroll list to be able to see which column is which
 
+
 Performance
 -----------
-[ ] - r_present seem to be taking too long for not a lot of drawings
 
 
 Rendering

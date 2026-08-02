@@ -134,7 +134,7 @@ void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F3
   command.is_textured   = true;  
   command.rect         = dest_rect;
   command.texture_rect = source_rect;
-  // TODO: Use tint
+  command.texture_tint = tint;
   
   __d_add_rect_texture_command(command, texture);
 }
