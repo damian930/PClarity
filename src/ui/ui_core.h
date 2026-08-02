@@ -261,12 +261,12 @@ struct UI_State {
   Arena* arena_for_clay; 
 
   U64    build_generation;
-  Arena* build_arenas[2];
+  Arena* build_arenas[2]; // Todo: do we need 2 of these
 
   // Hash table for persistant boxes
   UI_Box_list hash_table_buckets[64];
   
-  //          Free list for persistant boxes
+  // Free list for persistant boxes
   UI_Box* first_free_box;
   U64     count_of_free_boxes;
 

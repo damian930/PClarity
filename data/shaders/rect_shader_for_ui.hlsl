@@ -190,5 +190,7 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
     final_color.a *= inner_smoothing;
   }
 
+  // TODO: Use the color from a texture if it is here 
+
   return final_color;
 }

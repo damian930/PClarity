@@ -24,6 +24,35 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "pclarity/pclarity.h"
 #include "pclarity/pclarity.cpp"
 
+// struct Framerate_ring_buffer {
+//   U32 data_arr[1024];
+//   U64 start_index;
+//   U64 data_arr_count;
+// };
+
+// B32 frame_rate_ring_buffer_add(Framerate_ring_buffer* ring, U64 data, B32 allow_override)
+// {
+//   B32 data_got_added = false;
+//   // todo: do this for frame rate and then have a very light weight way to draw plots for this shit here
+  
+//   if (ring->data_arr_count < ArrayCount(ring->data_arr) || allow_override)
+//   {
+//     U64 index_for_new_data = ring->start_index + ring->data_arr_count;
+//     if (index_for_new_data >= ArrayCount(ring->data_arr))
+//     {
+//       index_for_new_data = index_for_new_data % ArrayCount(ring->data_arr); 
+//     }
+//     if (ring->data_arr_count == ArrayCount(ring->data_arr)) { Assert(index_for_new_data == ring->start_index); }
+
+
+
+//   }
+
+
+
+
+// }
+
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
@@ -86,7 +115,9 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   B32 show_debug_stuff = false;
 
-  os_window_set_full_screen(true);
+  // os_window_set_full_screen(true);
+
+  // Framerate_ring_buffer framerate_ring_buffer = {};
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
@@ -102,6 +133,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     r_prepare_canvas(&window_frame_buffer_target);
     d_begin_batching(window_frame_buffer_target);
 
+    // TODO: Remove this and handle Alt+F4 if it has to be handled manually
     B32 close_the_app = false;
     for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
     {
@@ -116,10 +148,11 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     pcl_frame_update(&pcl);
     pcl_build_ui(font, &pcl, prev_frame_fps);
 
-    // d_draw_circle(os_get_mouse_pos(), 50, golden(), 2);
-
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
+
+    // d_draw_text_f("SOme long text here like this dudes hshshshs", font, 64, v2f32(25, 25), golden());
+
     if (show_debug_stuff)
     {
       d_draw_text_f("FPS: %lld", font, 32, v2f32(0, 0), magenta(), prev_frame_fps);
@@ -138,7 +171,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     F64 frame_end_time_sec = os_get_time_for_timing_sec();
 
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
-  
+
     ProfEndGroup();
   }
 

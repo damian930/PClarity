@@ -2162,11 +2162,11 @@ void Clay__ConfigureOpenElementPtr(const Clay_ElementDeclaration *declaration) {
 
     if (declaration->clip.horizontal || declaration->clip.vertical) {
       
-      // DD: I added this 
-      if (!(declaration->floating.attachTo != CLAY_ATTACH_TO_NONE && (declaration->clip.horizontal || declaration->clip.vertical)))
-      {
-        Clay__int32_tArray_Add(&context->openClipElementStack, (int)openLayoutElement->id);
-      }
+        /**/ // DD: I added this 
+        /**/if (!(declaration->floating.attachTo != CLAY_ATTACH_TO_NONE && (declaration->clip.horizontal || declaration->clip.vertical)))
+        /**/{
+        /**/    Clay__int32_tArray_Add(&context->openClipElementStack, (int)openLayoutElement->id);
+        /**/}
       
         // Retrieve or create cached data to track scroll position across frames
         Clay__ScrollContainerDataInternal *scrollOffset = CLAY__NULL;

@@ -56,6 +56,8 @@ PCL_State pcl_init()
 
 void pcl_frame_update(PCL_State* pcl)
 {
+  ProfBeginFunc();
+  
   // DD: Handling the defered commands 
   for (
     PCL_Command_node* command_node = pcl->defered_commands_to_start_of_next_frame.first; 
@@ -169,7 +171,7 @@ void pcl_frame_update(PCL_State* pcl)
   Handle(is_state_valid);
 
 
-  ProfGroup("Win32QueryProcessArray inside pcl frame update")
+  ProfGroup("Win32QueryProcessArray")
   {
     DD_ProcessInfoArray info_arr = DD_Win32QueryProcessArray(pcl->frame_arena);
     // pcl->gathered_process_data_this_frame = Win32QueryProcessArray(pcl->frame_arena);
@@ -187,10 +189,14 @@ void pcl_frame_update(PCL_State* pcl)
   }
 
   // Todo: Here you should order the thing about the process data once you start using arrays for Win32QueryProcessList
+  
+  ProfEndGroup();
 }
 
 void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
 {
+  ProfBeginFunc();
+
   Assert(IsZeroStruct(pcl->defered_commands_to_start_of_next_frame)); 
 
   ui_begin_build(os_get_client_area_dims(), os_get_mouse_pos(), font);
@@ -965,6 +971,8 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
   */
 
   ui_end_build();
+
+  ProfEndGroup();
 }
 
 UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header)

@@ -133,12 +133,13 @@ struct D3D_State {
   //
   // ID3D11Texture2D* magenta_black_d3d_texture;
   //
-  ID3D11Buffer* rect_program_ia_buffer[3];
-  ID3D11Buffer* rect_program_uniform_buffer[3];
+  #define D3D_BUFFER_COUNT 8
+  ID3D11Buffer* rect_program_ia_buffer[D3D_BUFFER_COUNT];
+  ID3D11Buffer* rect_program_uniform_buffer[D3D_BUFFER_COUNT];
   R_Program     rect_program;
   //
-  ID3D11Buffer* texture_program_ia_buffer[3];
-  ID3D11Buffer* texture_program_uniform_buffer[3];
+  ID3D11Buffer* texture_program_ia_buffer[D3D_BUFFER_COUNT];
+  ID3D11Buffer* texture_program_uniform_buffer[D3D_BUFFER_COUNT];
   R_Program     texture_program;
 
   U64 draw_generation;

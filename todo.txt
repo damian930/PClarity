@@ -1,7 +1,12 @@
 App
 -----------
+[ ] - Look into drawing texture with the same shader as the rects
+[ ] - Fix the bug where d3d->Map taked too much time when drawing texture batches sometimes
+[ ] - The longer we scroll the table the more time the ui build takes, why, fix it
+[ ] - Make sure you dont have gsync enabled
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
-[ ] - Make sure you dont have gsynch enabled
+[ ] - Make the debug window be draggable around like in dear imgui 
+[ ] - Keep the header above the scroll list to be able to see which column is which
 
 Performance
 -----------
