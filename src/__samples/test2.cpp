@@ -9,54 +9,15 @@ TODO(S): Need to use same tab size, also I think my editor doesn't sub out space
 #include "core/core_include.h"
 #include "core/core_include.cpp"
 
+
 #include <Windows.h>
+#include "psapi.h"
 #include "nt_types.h"
 
 #define WIN32_MAX_WIDE_PATH 32768
 
-struct ProcessInfoNode
-{
-  S32 pid;
-  S32 ppid;
-  Str8 create_time;
-  Str8 image_name;
-  Str8 display_name;
 
-  ProcessInfoNode* next;
-};
-struct ProcessInfoList
-{
-  ProcessInfoNode* first;
-  ProcessInfoNode* last;
-  U64 count;
-};
-struct ProcessInfoArray
-{
-  ProcessInfoNode* v;
-  U64 count;
 
-  ProcessInfoNode& operator[](U64 i)        { Assert(i < count); return v[i]; }
-};
-
-Str8 Str8FromTime(Arena* arena, LARGE_INTEGER time)
-{
-  RtlSystemTimeToLocalTime(&time, &time);
-  TIME_FIELDS tf;
-  RtlTimeToTimeFields(&time, &tf);
-  return str8_fmt(arena, 
-        "%02d:%02d:%02d.%03d",
-        tf.Hour, tf.Minute, tf.Second, tf.Milliseconds);
-}
-
-#if 0
-
-Get()
-{
-  B32 category = IsExeOrPackagedApp();
-  
-}
-
-#endif
 
 struct VersionInfoTranslation
 {
@@ -67,6 +28,7 @@ struct VersionInfoTranslation
 tu_specific Str8
 DisplayNameFromPid(Arena* arena, DWORD pid)
 {
+  ProfBeginFunc();
   Temp_arena scratch = get_scratch(&arena, 1);
 
   Str8 result{};
@@ -75,9 +37,6 @@ DisplayNameFromPid(Arena* arena, DWORD pid)
 
   UINT translation_size{};
   VersionInfoTranslation* translations{};
-
-
-  
 
   HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
   if (process)
@@ -136,103 +95,165 @@ DisplayNameFromPid(Arena* arena, DWORD pid)
   }
 
   end_scratch(&scratch);
-
+  ProfEndGroup();
   return result;
-}
+};
 
+// NOTE(S): Your function copy-pasted
 tu_specific Str8 
-Str8FromUnicodeString(Arena* arena, UNICODE_STRING u_str)
+ExeNameFromPid(Arena* arena, S32 pid)
 {
-  Str8 result{};
-
-  result.count = WideCharToMultiByte(CP_UTF8, 0, (wchar_t *)u_str.Buffer, u_str.Length, nullptr, 0, nullptr, nullptr);
-  if (result.count) 
-  {
-    result.data = ArenaPushArr(arena, U8, result.count);
-    WideCharToMultiByte(CP_UTF8, 0, (wchar_t *)u_str.Buffer, u_str.Length, (LPSTR)result.data, (int)result.count, nullptr, nullptr);
-  }
-  return result;
-}
-
-tu_specific void
-ProcessInfoListAppend(Arena* arena, ProcessInfoList* list, SYSTEM_PROCESS_INFORMATION* p)
-{
-  ProcessInfoNode* node = ArenaPush(arena, ProcessInfoNode);
-
-  node->next          = nullptr;
-  node->pid           = HandleToLong(p->UniqueProcessId);
-  node->ppid          = HandleToLong(p->InheritedFromUniqueProcessId);
-  node->create_time   = Str8FromTime(arena, p->CreateTime);
-  node->display_name  = DisplayNameFromPid(arena, node->pid);
-  node->image_name    = Str8FromUnicodeString(arena, p->ImageName);
-
-  QueuePushBack_Ex(list, node, first, last, next, is_zero_pointer, 0);
-  ++list->count;
-}
-
-tu_specific ProcessInfoArray
-Win32QueryProcessArray(Arena* arena)
-{
-  Scratch scratch = get_scratch(&arena, 1);
-
-  ProcessInfoArray result{};
-  ProcessInfoList result_list{};
-  ULONG size{};
+  ProfBeginFunc();
+  Str8 result_str = {};
   
-  // Query buffer size
-  NTSTATUS status = NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
-  U8* proc_info_array{};
-
-  for (;status == STATUS_INFO_LENGTH_MISMATCH;)
+  HANDLE process_handle = OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, FALSE, (U32)pid);
+  if (process_handle) ScratchLoop(scratch, &arena, 1)
   {
-
-    Temp_arena temp = temp_arena_begin(scratch.arena);
-
-    proc_info_array = ArenaPushArr(temp.arena, U8, size);
-
-    // Use queried buffer size
-    status = NtQuerySystemInformation(SystemProcessInformation, proc_info_array, size, &size); // NOTE(S): the last param &size, updates to the new size windows wanted
-
-    if (status == STATUS_INFO_LENGTH_MISMATCH)
+    Data_buffer buffer = data_buffer_make(scratch.arena, 255);
+    DWORD res = GetModuleBaseNameA(process_handle, Null, (char*)buffer.data, (U32)buffer.count);
+    if (res != 0)
     {
-      temp_arena_end(&temp);
+      result_str = str8_copy(arena, str8_substring(buffer, 0, res));
+    }
+  }
+  CloseHandle(process_handle);
+  ProfEndGroup();
+  return result_str;
+}
+
+
+typedef struct WindowInfo WindowInfo;
+struct WindowInfo
+{
+  HWND hwnd;
+  DWORD pid;
+  DWORD ppid;
+  Str8 exe_name;
+  // Str8 title;  // TODO(S): GET WINDOW TITLE
+  Str8 display_name;
+};
+
+typedef struct WindowInfoArray WindowInfoArray;
+struct WindowInfoArray
+{
+  WindowInfo* v;
+  U64 count;
+
+  WindowInfo& operator[](U64 i) { Assert(i < count); return v[i]; }
+}; 
+
+#define CHUNK_BLOCK_SIZE 64
+
+typedef struct HwndChunk HwndChunk;
+struct HwndChunk
+{
+  HWND items[CHUNK_BLOCK_SIZE];
+  HwndChunk* next;
+  U32 count;
+};
+
+typedef struct EnumWindowsCtx EnumWindowsCtx;
+struct EnumWindowsCtx
+{
+  Arena* scratch_arena;
+  HwndChunk* first_chunk;
+  HwndChunk* last_chunk;
+  U64        total_count;
+};
+
+// TODO(S): Come up with more filters and use non-blocking functions
+tu_specific BOOL CALLBACK 
+Win32EnumWindowsCallback(HWND hwnd, LPARAM lparam)
+{
+  EnumWindowsCtx* ctx = (EnumWindowsCtx* )lparam;
+
+  // NOTE(S): Filter windows that don't have WS_VISIBLE
+  if (!IsWindowVisible(hwnd))
+    return TRUE;
+
+  // NOTE(S): Filter windows that are owned by another window.
+  if (GetWindow(hwnd, GW_OWNER) != NULL)
+    return TRUE;
+
+  // NOTE(S): Filter windows that don't have the force on taskbar and show up in Alt+Tab.
+  // WS_EX_APPWINDOW forces on to task bar and Alt+Tab 
+  // WS_EX_TOOLWINDOW means to hide it from task bar and ALt+Tab
+  LONG ex_style = GetWindowLong(hwnd, GWL_EXSTYLE);
+  if ((ex_style & WS_EX_TOOLWINDOW) && !(ex_style & WS_EX_APPWINDOW))
+    return TRUE;
+
+  S32 length = GetWindowTextLength(hwnd);
+  if (length == 0)
+    return TRUE;
+
+  // NOTE(S): Filter windows visible with WS_VISIBLE but hidden by compositor
+  // compositor can hide for a number of reasons (most I don't know)
+  BOOL cloaked = FALSE;
+  DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
+  if (cloaked)
+    return TRUE;
+
+  // filters passed
+  if (!ctx->last_chunk || ctx->last_chunk->count >= CHUNK_BLOCK_SIZE)
+  {
+    HwndChunk* chunk = ArenaPushArr(ctx->scratch_arena, HwndChunk, 1);
+    QueuePushBack_Ex(ctx, chunk, first_chunk, last_chunk, next, is_zero_pointer, 0);
+  }
+
+  ctx->last_chunk->items[ctx->last_chunk->count++] = hwnd;
+  ctx->total_count++;
+
+  return TRUE;
+
+}
+
+tu_specific WindowInfoArray
+GetTrackableWindows(Arena* arena)
+{
+  ProfBeginFunc();
+  Temp_arena scratch  = get_scratch(&arena, 1);
+  WindowInfoArray result{};
+  EnumWindowsCtx ctx{};
+  ctx.scratch_arena = scratch.arena;
+  // TODO(S): See how to enumerate UWP apps too
+  if (EnumWindows(Win32EnumWindowsCallback, (LPARAM)&ctx))  
+  {
+    result.v = ArenaPushArr(arena, WindowInfo, ctx.total_count);
+
+    for (auto* chunk = ctx.first_chunk; chunk; chunk = chunk->next)
+    {
+      for (U64 i{}; i < chunk->count; ++i)
+      {
+        HWND hwnd = chunk->items[i];
+
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hwnd, &pid);
+        if (!pid)
+          continue;
+
+        Str8 exe_name     = ExeNameFromPid(arena, pid);
+        Str8 display_name = DisplayNameFromPid(arena, pid);
+
+        if (!exe_name.count)
+          continue;
+
+        WindowInfo* info = &result.v[result.count];
+        info->hwnd          = hwnd;
+        info->pid           = pid;
+        info->exe_name      = exe_name;
+        info->display_name  = display_name;
+        result.count++;
+        // info->title TODO(S): GET WINDOW TITLE
+      }
     }
   }
 
-  if (!NT_SUCCESS(status))
-  {
-    printf("NtQuerySystemInformation failed");
-    return {};
-  }
 
-
-  auto* p = (SYSTEM_PROCESS_INFORMATION*)proc_info_array;
-
-  for (;;)
-  {
-    ProcessInfoListAppend(scratch.arena, &result_list, p);
-
-    if (p->NextEntryOffset == 0) 
-      break;
-    p = (SYSTEM_PROCESS_INFORMATION*)((PBYTE)p + p->NextEntryOffset);
-  }
-  
-
-  result.v = ArenaPushArr(arena, ProcessInfoNode, result_list.count);
-  result.count = result_list.count;
-  U32 i{};
-  for (auto* node = result_list.first; 
-       node != nullptr; 
-       node = node->next, ++i)
-  {
-    MemCopyStruct(&result[i], node);
-  }
   end_scratch(&scratch);
-
-
-
+  ProfEndGroup();
   return result;
 }
+
 
 
 
@@ -240,34 +261,45 @@ Win32QueryProcessArray(Arena* arena)
 // And that's a big IF.
 #pragma comment(lib, "ntdll") 
 
+#define Str8Varg(S) (int)((S).count), ((S).data)     // use this for variadic functions where the format specifier is "%.*s" meaning an int value (width) is provided before the char string.
 int main()
 {
   // TODO(S): Support Unicode!
   allocate_thread_context();
+
   B32 os_init_succ = os_init();
   if (!os_init_succ) { return -1; }
   OS_State* win32_state = os_get_state();
+  profiler_init();
+  ProfBeginGroup("MAIN");
   
   Arena* frame_arena = arena_alloc(Gigabytes(64));
-  for (;!os_window_should_close();)
+  int frame_count = 0;
+  for (;frame_count <= 1;)
   {
-    ProcessInfoArray p = Win32QueryProcessArray(frame_arena); // <-- USE THIS FUNCTION
-    
-    #define Str8Varg(S) (int)((S).count), ((S).data)     // use this for variadic functions where the format specifier is "%.*s" meaning an int value (width) is provided before the char string.
+    frame_count++;
 
+    WindowInfoArray windows = GetTrackableWindows(frame_arena);   
 
-    for (int i{}; i < p.count; ++i)
+    for (U64 i{}; i < windows.count; ++i)
     {
-      printf("Display Name: %.*s Image name: %.*s\n",
-            Str8Varg(p[i].display_name), Str8Varg(p[i].image_name));
+      WindowInfo* w = &windows[i];
+      printf("hwnd=%p pid=%lu exe=%.*s display=%.*s\n",
+              w->hwnd, w->pid,
+              Str8Varg(w->exe_name),
+              Str8Varg(w->display_name));
+              // Str8Varg(w->title),
     }
+    
 
 
     arena_clear(frame_arena);
     // TODO(S): Implement proper timer
-    Sleep(2000);
+    // Sleep(2000);
   }
-
+  release_thread_context();
+  ProfEndGroup();
+  profiler_release();
   return 0;
   
 }
