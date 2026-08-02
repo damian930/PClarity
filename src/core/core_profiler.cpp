@@ -18,9 +18,10 @@
 // TODO: Need a better way to have this whole thing inited here
 // TODO: Might be nice to just have an overall init for the things that we from base, like core_init
 //       and there we init all the stuff that we need from all the little parts of core
-global Arena* spall_arena        = {};
-global SpallProfile spall_ctx    = {};
-global SpallBuffer  spall_buffer = {};
+global Arena* spall_arena              = {};
+global SpallProfile spall_ctx          = {};
+global SpallBuffer  spall_buffer       = {};
+global U64 spall_times_used_this_frame = {};
 
 void profiler_init()
 {
@@ -48,6 +49,17 @@ void profiler_release()
 	spall_quit(&spall_ctx);
 }
 
+void profiler_begin_frame()
+{
+	spall_times_used_this_frame = 0;
+}
+
+void profiler_end_frame()
+{
+	// DD: Nothing here
+}
+
+
 U64 profiler_time_in_ns()
 {
 	U64 ns = (U64)(((F64)os_get_perf_counter()) * ((F64)1000000000.0 / (F64)os_get_perf_freq_per_sec()));
@@ -56,6 +68,8 @@ U64 profiler_time_in_ns()
 
 void spall_buffer_begin_fmt(const char* fmt, ...)
 {
+	spall_times_used_this_frame += 1;
+
 	Scratch scratch = get_scratch(0, 0);
 	va_list argptr;
 	va_start(argptr, fmt);

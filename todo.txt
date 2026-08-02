@@ -1,5 +1,10 @@
 App
 -----------
+[ ] - Remove the texture shader from the renderer rignt now and just have the batch for the ui
+[ ] - Fix the bug with the fps with tips from discord
+[ ] - Redo the draw layer, this shit is annoying as fuck
+[ ] - Fix the render layer handle thing, it is annoying in the way it is right now for reals
+[ ] - 
 [ ] - Look into drawing texture with the same shader as the rects
 [ ] - Fix the bug where d3d->Map taked too much time when drawing texture batches sometimes
 [ ] - The longer we scroll the table the more time the ui build takes, why, fix it

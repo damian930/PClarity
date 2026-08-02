@@ -372,7 +372,8 @@ void __ui_color_picker_sv_square_draw_func(UI_Box* box)
 {
   __UI_Color_picker_sv_data* data = (__UI_Color_picker_sv_data*)box->per_build_config.custom_draw_extension.data_for_draw_func;
   Rect rect = box->rect;
-  d_draw_rect_pro(rect, data->colors[UV__x0y0], data->colors[UV__x1y0], data->colors[UV__x0y1], data->colors[UV__x1y1], v4f32_all(0.0f), 0.0f, 0.0f);
+  V4F32 color_at_corners[UV__COUNT] = { data->colors[UV__x0y0], data->colors[UV__x1y0], data->colors[UV__x0y1], data->colors[UV__x1y1] };
+  d_draw_rect_pro(rect, color_at_corners, v4f32_all(0.0f), 0.0f, transparent(), 0.0f, 0.0f);
 }
 
 #endif

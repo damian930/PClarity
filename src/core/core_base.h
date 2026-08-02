@@ -648,17 +648,6 @@ tu_specific S16 sign_s16(S16 x);
 tu_specific S32 sign_s32(S32 x);
 tu_specific S64 sign_s64(S64 x);
 
-tu_specific F32 clamp_f32(F32 value, F32 min, F32 max);
-tu_specific F64 clamp_f64(F64 value, F64 min, F64 max);
-tu_specific S8  clamp_s8 (S8  value, S8  min, S8  max);
-tu_specific S16 clamp_s16(S16 value, S16 min, S16 max);
-tu_specific S32 clamp_s32(S32 value, S32 min, S32 max);
-tu_specific S64 clamp_s64(S64 value, S64 min, S64 max);
-tu_specific U8  clamp_u8 (U8  value, U8  min, U8  max);
-tu_specific U16 clamp_u16(U16 value, U16 min, U16 max);
-tu_specific U32 clamp_u32(U32 value, U32 min, U32 max);
-tu_specific U64 clamp_u64(U64 value, U64 min, U64 max);
-
 tu_specific void clamp_f32_inplace(F32* value, F32 min, F32 max);
 tu_specific void clamp_f64_inplace(F64* value, F64 min, F64 max);
 tu_specific void clamp_s8_inplace (S8*  value, S8  min, S8  max);
@@ -669,6 +658,17 @@ tu_specific void clamp_u8_inplace (U8*  value, U8  min, U8  max);
 tu_specific void clamp_u16_inplace(U16* value, U16 min, U16 max);
 tu_specific void clamp_u32_inplace(U32* value, U32 min, U32 max);
 tu_specific void clamp_u64_inplace(U64* value, U64 min, U64 max);
+
+tu_specific F32 clamp_f32(F32 value, F32 min, F32 max);
+tu_specific F64 clamp_f64(F64 value, F64 min, F64 max);
+tu_specific S8  clamp_s8 (S8  value, S8  min, S8  max);
+tu_specific S16 clamp_s16(S16 value, S16 min, S16 max);
+tu_specific S32 clamp_s32(S32 value, S32 min, S32 max);
+tu_specific S64 clamp_s64(S64 value, S64 min, S64 max);
+tu_specific U8  clamp_u8 (U8  value, U8  min, U8  max);
+tu_specific U16 clamp_u16(U16 value, U16 min, U16 max);
+tu_specific U32 clamp_u32(U32 value, U32 min, U32 max);
+tu_specific U64 clamp_u64(U64 value, U64 min, U64 max);
 
 tu_specific F32   lerp_f32  (F32 v0, F32 v1, F32 t);
 tu_specific F64   lerp_f64  (F64 v0, F64 v1, F64 t);
@@ -800,9 +800,9 @@ tu_specific B32 __is_memory_zero(U8* p, U64 size);
 	} while(0)
 
 #define MemCompare(dest, src, size) (memcmp(&dest, &src, size) == 0 ? true : false)
-#define MemCompareSafe(dest, src, result_b32_p) do { \
+#define MemCompareSafe(dest, src, opt_result_b32_p) do { \
 	StaticAssert(sizeof(dest) == sizeof(src), "Cant comapre memory safely, the sizes of dest and src variables are not the equal."); \
-	if (result_b32_p) { *result_b32_p = MemCompare(dest, src, sizeof(dest)); }  \
+	if (opt_result_b32_p) { *opt_result_b32_p = MemCompare(dest, src, sizeof(dest)); }  \
 } while (0)
 
 // Damian: 

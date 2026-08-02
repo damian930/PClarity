@@ -1,168 +1,127 @@
 #ifndef DRAW_API_H
 #define DRAW_API_H
 
+#include "core/core_include.h"
 #include "render/render.h"
 #include "font_provider/font_provider.h"
 
-enum D_Command_type : U32 {
-  D_Command_type__Rect,
-  D_Command_type__Texture,
-};
-
 struct D_Rect_command {
-  Rect rect;
-  V4F32 vertex_color[UV__COUNT];
-  F32 corner_radius[UV__COUNT];
+  Rect  rect;
+  V4F32 color_at_corners[UV__COUNT];
+  V4F32 corner_radii;
   V4F32 border_color;
-  F32 border_thickness;
-  F32 inner_softness;
-  F32 outer_softness;
+  F32   border_thickness;
+  F32   inner_softness;
+  F32   outer_softness;
+
+  B8 is_texture;
+  Rect texture_rect;
 };
 
-struct D_Texture_command {
-  V4F32 tint;
-  Rect dest_rect;
-  Rect src_rect;
+struct D_Rect_command_node {
+  D_Rect_command rect_command;
+  D_Rect_command_node* next;
 };
 
-struct D_Command {
-  union {
-    D_Rect_command rect_c;
-    D_Texture_command texture_c;
-  } u;
-};
-
-struct D_Command_node {
-  D_Command command;
-  D_Command_node* next;
-};
-
-struct D_Command_batch {
-  // Provided by the caller to the batch maker
-  D_Command_type command_type;                 
-  R_Handle       texture; // Right now this might or might not be used, kind of like for a fat struct
-
-  // Provided by batch setting stacks
-  R_Handle     target;                       
-  Rect         scissor_rect;                 
+struct D_Rect_command_batch {
+  // Batch level settings that come from setting stacks
   R_Blend_kind blend_kind;                   
-  R_Fill_mode  fill_mode;                       
-                                                  
-  D_Command_node* first_command_node;           
-  D_Command_node* last_command_node;            
-  U64             count;                        
-                                                  
-  D_Command_batch* next_batch; 
+  R_Handle     render_target;                       
+  Rect         scissor_rect;                 
+  R_Fill_mode  fill_mode;   
+  
+  // Batch level settings that have to be set manually
+  R_Handle     opt_texture; 
+
+  D_Rect_command_node* first_command_node;           
+  D_Rect_command_node* last_command_node;            
+  U64 node_count;                        
 };
 
-struct D_Command_batch_list {
-  D_Command_batch* first;
-  D_Command_batch* last;
+struct D_Rect_command_batch_node {
+  D_Rect_command_batch batch;
+  D_Rect_command_batch_node* next;
+};
+
+struct D_Rect_command_batch_list {
+  D_Rect_command_batch_node* first;
+  D_Rect_command_batch_node* last;
   U64 count;
 };
+
+#include "draw/draw_stack_macros.h"
+
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DEFINE_STACK_STRUCT)
 
 struct D_State {
   Arena* state_arena;
   
   Arena* arena_for_draw_commands;
-  D_Command_batch_list command_batch_list;
+  D_Rect_command_batch_list rect_batch_list;
  
-  // Settings stacks
-  R_Blend_kind arr_of_blend_kinds[64];
-  U64 current_blend_kind_count;
-  //
-  R_Handle arr_of_render_targets[64];
-  U64 current_render_target_count;
-  //
-  Rect arr_of_scissor_rects[64];
-  U64 current_scissor_rect_count;
-  // 
-  R_Fill_mode arr_of_fill_modes[64];
-  U64 current_fill_mode_count;
-  // 
-  F32 arr_of_offsets_for_x[64];
-  U64 current_offset_for_x_count;
-  //
-  F32 arr_of_offsets_for_y[64];
-  U64 current_offset_for_y_count;
-
+  // All the stacks
   struct {
-    R_Blend_kind blend_kind;
-    R_Handle     render_target;
-    Rect         scissor_rect;
-    R_Fill_mode  fill_mode;
-    F32          offset_x;
-    F32          offset_y;
-  } default_settings;
+    #define EXPANSION(Stack_type_name, inner_data_type, var_name_inside_state, ...) Stack_type_name var_name_inside_state;
+    __D_STACK_DATA_TABLE_EXPANSION(EXPANSION)
+    #undef EXPANSTION
+  } stacks;
+
+  // TODO: Add debug data to this layer for debug stuff
 };
 
+// - State variables
 extern global D_State* __d_g_state;
 
-// - State
+// - State accessor
 D_State* d_get_state();
 void     d_set_state(D_State* state);
-void     d_init();
-void     d_release();
 
-// - Batching
-void                  d_begin_batching(R_Handle target) ;
-void                  d_end_batching();
-D_Command_batch_list* d_get_batch_list();
-D_Command_batch*      d_add_new_batch(D_Command_type command_type, R_Handle texture);
-D_Command_batch*      d_get_or_add_batch_for_settings(D_Command_type command_type, R_Handle texture);
-void                  d_add_command_to_batch(D_Command_batch* batch, D_Command command);
+// - State
+void d_init();
+void d_release();
 
-// - Low level draw commands that require the caller to know how the shader works
-void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness);
-void d_add_texture_command(R_Handle texture, Rect dest_rect, Rect src_rect, V4F32 tint);
+// - Batching scope
+void d_begin_batching(R_Handle handle) ;
+void d_end_batching();
 
-// - Higher level draw commands that dont require the caller to know how the shader works
-void d_fill_with_color(V4F32 color);
-
+// - Draw calls 
 void d_draw_rect(Rect rect, V4F32 color);
-void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 inner_softness, F32 outer_softness);
-
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness);
-
+void d_draw_rect_pro(Rect rect, V4F32 color_at_corners[RectEdge__COUNT], V4F32 corner_radii,  F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness);
+//
 void d_draw_texture(R_Handle texture, V2F32 pos);
 void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint);
-
+//
 void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color);
 void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...);
 
+// - State getters
+D_Rect_command_batch_list* d_get_batch_list();
+
 // - Push/Pops 
-void         d_push_blend_kind(R_Blend_kind blend_kind);
-void         d_pop_blend_kind();
-R_Blend_kind __d_get_current_blend_kind__defaults();
-#define      D_BlendKind(blend_kind) DeferLoop(d_push_blend_kind(blend_kind), d_pop_blend_kind())
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DECLARE_PUSH_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DECLARE_POP_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DECLARE_TOP_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DECLARE_HAS_NON_DEFAULT)
 
-void     d_push_render_target(R_Handle target);
-void     d_pop_render_target();
-R_Handle __d_get_current_render_target__defaults();
-#define  D_RenderTarget(target) DeferLoop(d_push_render_target(target), d_pop_render_target())
+#define D_BlendKind(blend_kind) DeferLoop(d_push_blend_kind(blend_kind), d_pop_blend_kind())
+#define D_RenderTarget(target)  DeferLoop(d_push_render_target(target), d_pop_render_target())
+#define D_ScissorRect(rect)     DeferLoop(d_push_scissor_rect(rect), d_pop_scissor_rect())
+#define D_FillMode(fill_mode)   DeferLoop(d_push_fill_mode(fill_mode), d_pop_fill_mode())
 
-void    d_push_scissor_rect(Rect rect);
-void    d_pop_scissor_rect();
-Rect    __d_get_current_scissor_rect__defaults(); // TODO: This api has to change, the ui_core api for stacks is nice
-#define D_ScissorRect(rect) DeferLoop(d_push_scissor_rect(rect), d_pop_scissor_rect())
+///////////////////////////////////////////////////////////
+// Private helpers
+///////////////////////////////////////////////////////////
 
-void        d_push_fill_mode(R_Fill_mode fill_mode);
-void        d_pop_fill_mode();
-R_Fill_mode __d_get_current_fill_mode__defaults();
-#define D_FillMode(fill_mode) DeferLoop(d_push_fill_mode(fill_mode), d_pop_fill_mode())
+// - Low level draw commands that know about how the shader works 
+void __d_add_rect_texture_command(D_Rect_command command, R_Handle opt_texture);
 
-void d_push_offset_x(F32 offset);
-void d_pop_offset_x();
-F32 __d_get_current_offset_x();
-#define D_OffsetX(offset) DeferLoop(d_push_offset_x(offset), d_pop_offset_x())
-
-void d_push_offset_y(F32 offset);
-void d_pop_offset_y();
-F32 __d_get_current_offset_y();
-#define D_OffsetY(offset) DeferLoop(d_push_offset_y(offset), d_pop_offset_y())
-
-void d_push_offset(F32 offset_x, F32 offset_y); 
-void d_pop_offset();  
-#define D_Offset(offset_x, offset_y) DeferLoop(d_push_offset(offset_x, offset_y), d_pop_offset())
+D_Rect_command_batch* __d__get__or__make_and_get__new_batch(
+  R_Handle     render_target,                       
+  Rect         scissor_rect,                 
+  R_Blend_kind blend_kind,                   
+  R_Fill_mode  fill_mode,                       
+  R_Handle     opt_texture
+);
 
 #endif

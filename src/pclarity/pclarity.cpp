@@ -10,6 +10,7 @@
 #include "ui/widgets/ui_widgets.cpp"
 
 #include "pclarity/pclarity.h"
+#include "pclarity/win32_data_retrival/win32_data_retrival.cpp"
 
 // TODO: This might not be used thought
 U64 arr_shift_left_from_index(void* arr, U64 arr_count, U64 index_to_remove, U64 size_of_arr_entry)
@@ -173,8 +174,7 @@ void pcl_frame_update(PCL_State* pcl)
 
   ProfGroup("Win32QueryProcessArray")
   {
-    DD_ProcessInfoArray info_arr = DD_Win32QueryProcessArray(pcl->frame_arena);
-    // pcl->gathered_process_data_this_frame = Win32QueryProcessArray(pcl->frame_arena);
+    WindowInfoArray info_arr = GetTrackableWindows(pcl->frame_arena);
     pcl->gathered_process_data_this_frame = info_arr;
   }
 
@@ -192,7 +192,7 @@ void pcl_frame_update(PCL_State* pcl)
   
   ProfEndGroup();
 }
-
+ 
 void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
 {
   ProfBeginFunc();
@@ -666,18 +666,12 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
                     process_data_index < last_visible_row_index; 
                     process_data_index += 1
                   ) {
-                    DD_ProcessInfo* process_data = &pcl->gathered_process_data_this_frame.arr[process_data_index];
+                    WindowInfo* process_data = &pcl->gathered_process_data_this_frame.v[process_data_index];
 
                     B32 is_data_filtered_out = false;
                     ScratchLoop(scratch, 0, 0)
                     {
                       Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
-                      if (display_name.count == 0) { display_name = DD_GetExeNameForPid(scratch.arena, process_data->pid); }
-                      
-                      if (filter_str_for_names.count != 0)
-                      {
-                        is_data_filtered_out = !str8_is_substring(display_name, filter_str_for_names, Str8_match__ignore_case|Str8_match__normalise_slash);
-                      }                      
                     }
 
                     if (is_data_filtered_out) { continue; }
@@ -730,12 +724,7 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
     
                             case PCL_Table_header_kind__name:
                             {
-                              Scratch scratch = get_scratch(0, 0);
-                              Str8 display_name = DisplayNameFromPid(scratch.arena, process_data->pid);
-                              if (display_name.count == 0) { display_name= DD_GetExeNameForPid(scratch.arena, process_data->pid); }
-                              if (display_name.count == 0) { display_name = Str8FromC("---NAME---"); }
-                              ui_text(display_name);
-                              end_scratch(&scratch);
+                              ui_text_f("--Name--");
                             } break;
 
                             case PCL_Table_header_kind__pid:
@@ -935,6 +924,17 @@ void pcl_build_ui(FP_Font font, PCL_State* pcl, U64 prev_frame_fps)
       ui_text_f("UI Boxes in use right now: %lld", ui_get_state()->last_build_box_count);
       ui_text_f("UI Free boxes count: %lld",       ui_get_state()->count_of_free_boxes);
       ui_text_f("UI Generation: %lld",             ui_get_state()->build_generation);
+
+      ui_spacer(ui_px(15));
+
+      // ui_text_f("Times Scissor rect got attempted to be pushed this frame: %lld", draw_debug_data.times_scissor_rect_was_attempted_to_be_pushed);
+      // ui_text_f("Times Scissor rect got pushed this frame: %lld", draw_debug_data.times_scissor_rect_got_pushed);
+
+      ui_spacer(ui_px(15));
+
+      // ui_text_f("spall_times_used_this_frame: %lld", times_spall_got_used_last_frame);
+
+      ui_spacer(ui_px(15));
 
       if (0) {}
       else if (prev_frame_fps < 30)   { ui_next_font_color(red());        }
@@ -1139,11 +1139,7 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
       F32 max_thumb_size          = inner_space;
 
       thumb_size = (outer_vp_size / outer_content_size) * max_thumb_size;
-      if (thumb_size > inner_space)    
-      { 
-        BreakPoint("DD: I wanna know when this finally happends");
-        thumb_size = inner_space;  
-      }
+      if (thumb_size > inner_space) { thumb_size = inner_space; }
       if (thumb_size < thumb_min_size) { thumb_size = thumb_min_size; }
       
       F32 max_vp_offset = outer_content_size - outer_vp_size;

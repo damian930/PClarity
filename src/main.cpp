@@ -121,8 +121,11 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
+
   for (;!os_window_should_close(); frame_counter += 1) 
   {
+    profiler_begin_frame();
+
     ProfBeginGroupF("App frame %lld", frame_counter);
 
     if (pcl.close_the_app) { break; }
@@ -148,10 +151,26 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     pcl_frame_update(&pcl);
     pcl_build_ui(font, &pcl, prev_frame_fps);
 
+    /*
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      UI_Col()
+      {
+        for EachIndex(i, 200)
+        {
+          ui_text_f("SOme text here allla: %lld", i);
+          
+          // ui_next_width(ui_px(5));
+          // ui_next_height(ui_px(5));
+          // ui_next_b_color(golden());
+          // UI_Box* golden_box = ui_box_make(UI_Box_flag__has_background, {});
+        }
+      }
+    }
+    */
+
     r_clear_handle(window_frame_buffer_target, black());
     ui_draw();
-
-    // d_draw_text_f("SOme long text here like this dudes hshshshs", font, 64, v2f32(25, 25), golden());
 
     if (show_debug_stuff)
     {
@@ -173,6 +192,8 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
 
     ProfEndGroup();
+
+    profiler_end_frame();
   }
 
   // Damian: Not releasing anything since who cares, the system will release all the stuff

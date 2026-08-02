@@ -210,17 +210,6 @@ S64 sign_s64(S64 x) { return (x < 0    ? -1    : 1   ); }
 ///////////////////////////////////////////////////////////
 // - Clamp
 //
-F32 clamp_f32(F32 value, F32 min, F32 max) { F32 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-F64 clamp_f64(F64 value, F64 min, F64 max) { F64 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-S8  clamp_s8 (S8  value, S8  min, S8  max) { S8  result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-S16 clamp_s16(S16 value, S16 min, S16 max) { S16 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-S32 clamp_s32(S32 value, S32 min, S32 max) { S32 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-S64 clamp_s64(S64 value, S64 min, S64 max) { S64 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-U8  clamp_u8 (U8  value, U8  min, U8  max) { U8  result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-U16 clamp_u16(U16 value, U16 min, U16 max) { U16 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-U32 clamp_u32(U32 value, U32 min, U32 max) { U32 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-U64 clamp_u64(U64 value, U64 min, U64 max) { U64 result = value; if (result < min) { result = min; } else if (result > max) { result = max; } return result; }
-
 void clamp_f32_inplace(F32* value, F32 min, F32 max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
 void clamp_f64_inplace(F64* value, F64 min, F64 max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
 void clamp_s8_inplace (S8*  value, S8  min, S8  max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
@@ -231,6 +220,17 @@ void clamp_u8_inplace (U8*  value, U8  min, U8  max) { if (*value < min) { *valu
 void clamp_u16_inplace(U16* value, U16 min, U16 max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
 void clamp_u32_inplace(U32* value, U32 min, U32 max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
 void clamp_u64_inplace(U64* value, U64 min, U64 max) { if (*value < min) { *value = min; } else if (*value > max) { *value = max; } }
+
+F32 clamp_f32(F32 value, F32 min, F32 max) { clamp_f32_inplace(&value, min, max); return value; }
+F64 clamp_f64(F64 value, F64 min, F64 max) { clamp_f64_inplace(&value, min, max); return value; }
+S8  clamp_s8 (S8  value, S8  min, S8  max) {  clamp_s8_inplace(&value, min, max); return value; }
+S16 clamp_s16(S16 value, S16 min, S16 max) { clamp_s16_inplace(&value, min, max); return value; }
+S32 clamp_s32(S32 value, S32 min, S32 max) { clamp_s32_inplace(&value, min, max); return value; }
+S64 clamp_s64(S64 value, S64 min, S64 max) { clamp_s64_inplace(&value, min, max); return value; }
+U8  clamp_u8 (U8  value, U8  min, U8  max) {  clamp_u8_inplace(&value, min, max); return value; }
+U16 clamp_u16(U16 value, U16 min, U16 max) { clamp_u16_inplace(&value, min, max); return value; }
+U32 clamp_u32(U32 value, U32 min, U32 max) { clamp_u32_inplace(&value, min, max); return value; }
+U64 clamp_u64(U64 value, U64 min, U64 max) { clamp_u64_inplace(&value, min, max); return value; }
 
 ///////////////////////////////////////////////////////////
 // - Lerp

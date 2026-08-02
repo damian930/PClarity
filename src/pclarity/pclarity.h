@@ -98,7 +98,7 @@ struct PCL_State {
   // Frame data
   Arena* frame_arena;
   PCL_Command_list defered_commands_to_start_of_next_frame;
-  DD_ProcessInfoArray gathered_process_data_this_frame;
+  WindowInfoArray gathered_process_data_this_frame;
   
   // TODO: This maybe should not be here, not sure, but here cause i just needed it somewhere
   // Table data
@@ -138,11 +138,11 @@ struct PCL_State {
 
 // TODO: These should be the part of the PCL_State, i just havent moved them yet in there
 global F32 pcl_font_size                  = 24.0f;
-global R_Handle pcl_icon_settings         = r_zero_handle();
-global R_Handle pcl_icon_home             = r_zero_handle();
-global R_Handle pcl_icon_magnifying_glass = r_zero_handle();
-global R_Handle pcl_icon_arrow_up         = r_zero_handle();
-global R_Handle pcl_icon_arrow_down       = r_zero_handle();
+global R_Handle pcl_icon_settings         = r_handle_zero();
+global R_Handle pcl_icon_home             = r_handle_zero();
+global R_Handle pcl_icon_magnifying_glass = r_handle_zero();
+global R_Handle pcl_icon_arrow_up         = r_handle_zero();
+global R_Handle pcl_icon_arrow_down       = r_handle_zero();
 global V4F32 __pcl_g_color_values_for_names[PCL_Color_name__COUNT] = {
   rgba_from_hex(0x00000000) , // NONE
   rgba_from_hex(0x191432FF),

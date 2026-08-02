@@ -27,8 +27,8 @@
 ///////////////////////////////////////////////////////////
 // - State variables
 //
-UI_State* __ui_g_state = 0;
-UI_Box __ui_g_null_box = {};
+global UI_State* __ui_g_state = 0;
+global UI_Box __ui_g_null_box = {};
 
 ///////////////////////////////////////////////////////////
 // - State accessors
@@ -82,15 +82,8 @@ void ui_release()
 ///////////////////////////////////////////////////////////
 // - UI building
 //
-
-// TODO: Remove this 
-global U64 fake_id_value_for_this_build = 0;
-
 void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
 {   
-  // TODO: Remove this 
-  fake_id_value_for_this_build = 0;
-
   ProfBeginFunc();
   UI_State* state = ui_get_state();
   
@@ -111,27 +104,30 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->final_context_menu_key_for_prev_build = state->open_context_menu_box_key;
 
   // DD: Cleaning the cashe hash table 
-  for EachIndex(bucket_index, ArrayCount(state->hash_table_buckets))
+  ProfGroup("Cleaning the cashe hash table")
   {
-    UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
-    for (
-      UI_Box* box = bucket->first, *next_box = ui_box_null(); 
-      !ui_box_is_null(box); 
-      box = next_box
-    ) {
-      next_box = box->next_in_bucket_or_free_list;
-
-      // DD: If the box has not been "used" for a single build we remove it from the box cashe hash table
-      if ((box->generation_when_last_created + 1) != state->build_generation)
-      {
-        // DD: Removing the box from the bucket list
-        DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_box_is_null, ui_box_null());
-        bucket->count -= 1;
-
-        // DD: Nulling the box and adding the box to the state free list
-        __ui_box_set_to_null_mem(box);
-        StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_box_is_null, ui_box_null());
-        state->count_of_free_boxes += 1;
+    for EachIndex(bucket_index, ArrayCount(state->hash_table_buckets))
+    {
+      UI_Box_list* bucket = state->hash_table_buckets + bucket_index;
+      for (
+        UI_Box* box = bucket->first, *next_box = ui_box_null(); 
+        !ui_box_is_null(box); 
+        box = next_box
+      ) {
+        next_box = box->next_in_bucket_or_free_list;
+  
+        // DD: If the box has not been "used" for a single build we remove it from the box cashe hash table
+        if ((box->generation_when_last_created + 1) != state->build_generation)
+        {
+          // DD: Removing the box from the bucket list
+          DllPop_Ex(bucket, box, first, last, next_in_bucket_or_free_list, prev_in_bucket, ui_box_is_null, ui_box_null());
+          bucket->count -= 1;
+  
+          // DD: Nulling the box and adding the box to the state free list
+          __ui_box_set_to_null_mem(box);
+          StackPush_Explicit_Ex(state->first_free_box, box, next_in_bucket_or_free_list, ui_box_is_null, ui_box_null());
+          state->count_of_free_boxes += 1;
+        }
       }
     }
   }
@@ -144,11 +140,14 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   state->render_commands_as_result_of_ui_build = Clay_RenderCommandArray{};
   
   // DD: Resetting all the stacks
-  #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
-          state->stacks.var_name_inside_state = {}; \
-          state->stacks.var_name_inside_state.default_value = default_expr; 
-  __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
-  #undef UI_RESET_STACKS
+  ProfGroup("Resetting all the stacks")
+  {
+    #define UI_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
+            state->stacks.var_name_inside_state = {}; \
+            state->stacks.var_name_inside_state.default_value = default_expr; 
+    __UI_STACK_DATA_TABLE_EXPANSION(UI_RESET_STACKS)
+    #undef UI_RESET_STACKS
+  }
 
   state->mouse_pos_for_prev_build   = state->mouse_pos_for_this_build;
   state->mouse_pos_for_this_build   = mouse_pos;
@@ -194,10 +193,14 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
   // ==
   // Right now(28th of July 2026) we only use Clay_PointerOver inside ui_actions_from_box
   // BP;
-  Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
-  Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
-  Clay_UpdateScrollContainers(false, {}, {}); 
-  Clay_BeginLayout();
+
+  ProfGroup("Beggining layout with Clay")
+  {
+    Clay_SetPointerState({ state->mouse_pos_for_this_build.x, state->mouse_pos_for_this_build.y }, false);
+    Clay_SetLayoutDimensions({ state->window_dims_for_this_build.x, state->window_dims_for_this_build.y });
+    Clay_UpdateScrollContainers(false, {}, {}); 
+    Clay_BeginLayout();
+  }
 
   ProfEndGroup();
 }
@@ -243,11 +246,17 @@ void ui_end_build()
   }
 
   // DD: Making clay boxes from our own box tree
-  __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
+  ProfGroupF("Making Clay ui tree rom Box tree")
+  {
+    __ui_build_clay_element_tree_from_box_tree(state->current_build_root_box);
+  }
 
   Clay_RenderCommandArray clay_render_commands = Clay_EndLayout(0);
   
-  __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
+  ProfGroupF("Storing Box data from Clay data ")
+  {
+    __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(state->current_build_root_box);
+  }
   
   state->render_commands_as_result_of_ui_build = clay_render_commands; 
 
@@ -425,7 +434,6 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
         if (ui_box_key_is_null(box->hash_table_key))
         {
           box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%p__", (void*)box);
-          // box->per_build_config.str_for_key         = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_SINGLE_FRAME_%lld__", fake_id_value_for_this_build++);
           box->per_build_config.is_str_for_key_fake = true;
         }
       }
@@ -484,7 +492,6 @@ void ui_extend_box_with_custom_draw_function(UI_Box* box, UI_Box_custom_draw_fun
   if (box->per_build_config.str_for_key.count == 0)
   {
     box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%p__", box);
-    // box->per_build_config.str_for_key = str8_fmt(ui_get_build_arena(), "__FAKE_ID_FOR_CUSTOM_DATA_%lld__", fake_id_value_for_this_build++);
   }
 }
 
@@ -985,6 +992,8 @@ UI_Box* ui_box_null()
 //
 void ui_draw()
 {
+  ProfBeginFunc();
+
   UI_State* state = ui_get_state();
   Clay_RenderCommandArray render_commands = state->render_commands_as_result_of_ui_build;
 
@@ -1012,9 +1021,9 @@ void ui_draw()
       if (!ui_box_is_null(no_overdraw_parent))
       {
         Rect scissor_rect = no_overdraw_parent->rect; // DD: Its okay to just use the rect here since this draw is called after ui_end_build which produces the final rect for boxes 
-        if (d_get_state()->current_scissor_rect_count > 0)
+        if (d_scissor_rect_stack_has_non_default())
         {
-          Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
+          Rect current_scissor_rect = d_top_scissor_rect();
           scissor_rect = rect_intersect(no_overdraw_parent->rect, current_scissor_rect);
         }
         d_push_scissor_rect(scissor_rect);
@@ -1034,26 +1043,30 @@ void ui_draw()
         {
           // DD: Dont use command.renderData.rectangle.backgroundColor, it might be a fake color, like magenta, that was put in there just for clay to generate a render command for a box that might only have borders and no background color for us to draw the borders in the same place where we draw the background
 
+          // TODO, DD: Skip these when you have custom draw things maybe ??? 
+
           UI_Box* box        = (UI_Box*)command.userData;
           V4F32 color        = box->per_build_config.b_color;
           V4F32 corner_radii = __ui_v4f32_from_clay_corner_radius(command.renderData.rectangle.cornerRadius);
-       
-          UI_Box_key key = ui_box_key_from_str8(Str8FromC("Navigation rail setting button"));
-          // if (ui_box_key_match(box->hash_table_key, key)) { BP; }
 
           V4F32 vertex_colors[4] = { color, color, color, color };
           F32 inner_softness     = box->per_build_config.inner_softness;
           F32 outer_softness     = box->per_build_config.outer_softness;
           F32 border_width       = box->per_build_config.border_width.x;
           V4F32 border_color     = box->per_build_config.border_color;
-
-          // DD: Background rect
-          if (!(box->per_build_config.flags & UI_Box_flag__has_background)) {
-            d_add_rect_command(rect, vertex_colors, corner_radii, 0.0f, transparent(), inner_softness, outer_softness);
-          }
           
-          // DD: Borders
-          d_add_rect_command(rect, vertex_colors, corner_radii, border_width, border_color, inner_softness, outer_softness);
+          B32 do_draw_background = true;
+          B32 do_draw_borders    = true;
+          if (color.a == 0.0f || !(box->per_build_config.flags & UI_Box_flag__has_background)) { do_draw_background = false; }
+          if (border_color.a == 0.0f || !(box->per_build_config.flags & UI_Box_flag__has_borders)) { do_draw_borders = false; }
+
+          if (do_draw_background) {
+            d_draw_rect_pro(rect, vertex_colors, corner_radii, 0.0f, transparent(), inner_softness, outer_softness);
+          }
+
+          if (do_draw_borders) {
+            d_draw_rect_pro(rect, vertex_colors, corner_radii, border_width, border_color, inner_softness, outer_softness);
+          }
         }
       } break;
 
@@ -1078,7 +1091,7 @@ void ui_draw()
       {
         B32 is_axis_clipped[Axis2__COUNT] = { command.renderData.clip.horizontal, command.renderData.clip.vertical };
         
-        Rect current_scissor_rect = __d_get_current_scissor_rect__defaults();
+        Rect current_scissor_rect = d_top_scissor_rect();
         if (is_axis_clipped[Axis2__x]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, rect, Axis2__x); }
         if (is_axis_clipped[Axis2__y]) { current_scissor_rect = rect_intersect_on_axis(current_scissor_rect, rect, Axis2__y); }
         d_push_scissor_rect(current_scissor_rect);
@@ -1140,6 +1153,8 @@ void ui_draw()
   }
 
   d_pop_scissor_rect();
+
+  ProfEndGroup();
 }
 
 ///////////////////////////////////////////////////////////
@@ -1894,7 +1909,6 @@ void __ui_build_clay_element_tree_from_box_tree(UI_Box* box)
 
     Clay__CloseElement();
   }
-
 }
 
 void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root)
@@ -1961,8 +1975,9 @@ void ui_scroll_box_with_wheel(UI_Box* box, F32 multiplier)
         V2F32 current_offset = ui_box_clip_offset(box);
         V2F32 new_offset     = v2f32_add(current_offset, scroll);
         F32 max_offset       = clip_data.content_dims.v[axis] - clip_data.viewport_dims.v[axis];
+        if (max_offset > 0.0f) { max_offset = 0.0f; }
         F32 min_offset       = 0.0f;
-        clamp_f32_inplace(&new_offset.v[axis], -max_offset, -min_offset);
+        clamp_f32_inplace(&new_offset.v[axis], max_offset, -min_offset);
         ui_box_set_clip_offset_for_axis(box, new_offset.v[axis], axis);
       }
     }

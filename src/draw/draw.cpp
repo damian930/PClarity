@@ -10,14 +10,20 @@
 #include "draw/draw.h"
 
 ///////////////////////////////////////////////////////////
-// - State 
+// - State accessor 
 //
 global D_State* __d_g_state = 0;
 
+///////////////////////////////////////////////////////////
+// - State accessor 
+//
 D_State* d_get_state() { return __d_g_state; }
 
 void d_set_state(D_State* state) { __d_g_state = state; }
 
+///////////////////////////////////////////////////////////
+// - State 
+//
 void d_init()
 {
   Arena* state_arena = arena_alloc(Kilobytes(8));
@@ -30,200 +36,107 @@ void d_init()
 void d_release() 
 { 
   arena_release(&__d_g_state->arena_for_draw_commands);
-
   arena_release(&__d_g_state->state_arena);
   __d_g_state = 0;
 }
 
 ///////////////////////////////////////////////////////////
-// - Batching 
+// - Batching scope
 //
-void d_begin_batching(R_Handle target) 
+void d_begin_batching(R_Handle handle) 
 { 
+  ProfBeginFunc();
 
-
-  D_State* draw_state = d_get_state();
+  D_State* state = d_get_state();
   
-  draw_state->command_batch_list = {};
-  arena_clear(draw_state->arena_for_draw_commands); 
+  state->rect_batch_list = D_Rect_command_batch_list{};
+  arena_clear(state->arena_for_draw_commands); 
 
-  // There is no need to be doing this here an not inside init, but i am doing this here just because
-  draw_state->default_settings.blend_kind    = R_Blend_kind__alpha;
-  draw_state->default_settings.render_target = target; 
-  draw_state->default_settings.scissor_rect  = rect_make(0.0f, 0.0f, r_get_handle_dims(target).x, r_get_handle_dims(target).y);
-  draw_state->default_settings.fill_mode     = R_Fill_mode__solid;
-  draw_state->default_settings.offset_x      = 0.0f;
-  draw_state->default_settings.offset_y      = 0.0f;
-
-  draw_state->current_blend_kind_count    = 0;
-  draw_state->current_render_target_count = 0;
-  draw_state->current_scissor_rect_count  = 0;
-  draw_state->current_fill_mode_count     = 0;
-  draw_state->current_offset_for_x_count  = 0;
-  draw_state->current_offset_for_y_count  = 0;
-
-  // If the assert below is hit, then you have added something to the state.
-  // Make sure that things is not a setting stack for batching.
-  // If it is, then you have to add a default value and set its value here
-  // and also reset the count here to 0.
-  StaticAssert(160 == sizeof(D_Command_batch));
-}
-
-// todo: THis does not take it target and this makes it less clear about the idea for the call and what it does,
-//       make it better 
-void d_end_batching() { /*Nothing here*/ }
-
-D_Command_batch_list* d_get_batch_list() { return &d_get_state()->command_batch_list; }
-
-D_Command_batch* d_add_new_batch(D_Command_type command_type, R_Handle texture)
-{
-  D_State* draw_state = d_get_state();
-  Arena* arena = draw_state->arena_for_draw_commands;
-
-  // note:
-  // If this static assert fails, that mean that the batch struct has changed. 
-  // To resolve the assert, go see what field in the struct you have that you dont set here to 
-  // the new batch, set that field. Then manually change the value you compare agains sizeof
-  // to be able to assert the next time. 
-  // Why is it important?
-  // It is important to now have bugs, since to have batches working we have to change the code in couple 
-  // of places after we add settings to the Batch struct. This place is 1 of them. 
-  StaticAssert(160 == sizeof(D_Command_batch));
-
-  D_Command_batch* new_batch = ArenaPush(arena, D_Command_batch);
-  new_batch->command_type = command_type;
-  new_batch->texture      = texture;
-  new_batch->target       = __d_get_current_render_target__defaults();
-  new_batch->scissor_rect = __d_get_current_scissor_rect__defaults();
-  new_batch->blend_kind   = __d_get_current_blend_kind__defaults();
-  new_batch->fill_mode    = __d_get_current_fill_mode__defaults();
-
-  QueuePushBack_Ex(&draw_state->command_batch_list, new_batch, first, last, next_batch, is_zero_pointer, 0);
-  draw_state->command_batch_list.count += 1;
-
-  return new_batch;
-}
-
-D_Command_batch* d_get_or_add_batch_for_settings(D_Command_type command_type, R_Handle texture)
-{
-  // note:
-  // If this static assert fails, that mean that the batch struct has changed. 
-  // To resolve the assert, go see what field in the struct you have that you dont set here to 
-  // the new batch, set that field. Then manually change the value you compare agains sizeof
-  // to be able to assert the next time. 
-  // Why is it important?
-  // It is important to now have bugs, since to have batches working we have to change the code in couple 
-  // of places after we add settings to the Batch struct. This place is 1 of them. 
-  StaticAssert(160 == sizeof(D_Command_batch));
-  
-  D_State* draw_state = d_get_state();
-  D_Command_batch* batch = draw_state->command_batch_list.last;
-  if ( batch == 0 
-    || batch->command_type != command_type  
-    || batch->blend_kind   != __d_get_current_blend_kind__defaults()
-    || batch->fill_mode    != __d_get_current_fill_mode__defaults()
-    || !r_handle_match(batch->texture, texture)
-    || !r_handle_match(batch->target, __d_get_current_render_target__defaults())
-    || !rect_match    (batch->scissor_rect, __d_get_current_scissor_rect__defaults())
-  ) {
-    batch = d_add_new_batch(command_type, texture);
+  ProfGroupF("Resetting all the stacks")
+  {
+    #define DRAW_RESET_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, ...) \
+            state->stacks.var_name_inside_state = {}; \
+            state->stacks.var_name_inside_state.default_value = default_expr; 
+    __D_STACK_DATA_TABLE_EXPANSION(DRAW_RESET_STACKS)
+    #undef DRAW_RESET_STACKS
   }
-  return batch;
+
+  // TODO: I am not a 100% fan o fthis here, but fine
+  d_push_render_target(handle);
+
+  ProfEndGroup();
 }
 
-void d_add_command_to_batch(D_Command_batch* batch, D_Command command)
-{
-  D_State* draw_state = d_get_state();
-  Arena* arena = draw_state->arena_for_draw_commands;
-
-  D_Command_node* node = ArenaPush(arena, D_Command_node);
-  node->command = command;
-   
-  QueuePushBack_Ex(batch, node, first_command_node, last_command_node, next, is_zero_pointer, 0);
-  batch->count += 1;
+void d_end_batching() 
+{ 
+  // DD: Nothing here
 }
 
 ///////////////////////////////////////////////////////////
-// - Low level draw commands that know about how the shader works 
+// - Draw calls
 //
-void d_add_rect_command(Rect rect, V4F32 corner_colors[UV__COUNT], V4F32 corner_radiuses, F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness)
-{
-  D_State* draw_state    = d_get_state();
-  Arena* arena           = draw_state->arena_for_draw_commands;
-  D_Command_batch* batch = d_get_or_add_batch_for_settings(D_Command_type__Rect, r_zero_handle());
-
-  rect.x += __d_get_current_offset_x();
-  rect.y += __d_get_current_offset_y();
-
-  D_Command command = {};
-  command.u.rect_c.rect             = rect; 
-  command.u.rect_c.border_color     = border_color;
-  command.u.rect_c.border_thickness = border_thickness;
-  command.u.rect_c.inner_softness   = inner_softness;
-  command.u.rect_c.outer_softness   = outer_softness;
-  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.vertex_color[i]  = corner_colors[i]; }
-  for EachEnumRange(i, UV, UV__x0y0, UV__COUNT) { command.u.rect_c.corner_radius[i] = corner_radiuses.v[i]; }
-  d_add_command_to_batch(batch, command);
-}
-
-void d_add_texture_command(R_Handle texture, Rect dest_rect, Rect src_rect, V4F32 tint)
-{
-  D_State* draw_state    = d_get_state();
-  Arena* arena           = draw_state->arena_for_draw_commands;
-  D_Command_batch* batch = d_get_or_add_batch_for_settings(D_Command_type__Texture, texture);
-
-  dest_rect.x += __d_get_current_offset_x();
-  dest_rect.y += __d_get_current_offset_y();
-
-  D_Command command = {};
-  command.u.texture_c.dest_rect = dest_rect;
-  command.u.texture_c.src_rect  = src_rect;
-  command.u.texture_c.tint      = tint;
-
-  d_add_command_to_batch(batch, command);
-}
-
-///////////////////////////////////////////////////////////
-// - Higher level draw commands that dont require the caller to know how the shader works 
-//
-void d_fill_with_color(V4F32 color)
-{
-  V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  R_Handle target                = __d_get_current_render_target__defaults();
-  Rect rect                      = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(target));
-  d_add_rect_command(rect, corner_colors, {}, {}, {}, 0.0f, 0.0f);
-}
-
 void d_draw_rect(Rect rect, V4F32 color)
 {
-  V4F32 corner_colors[UV__COUNT] = { color, color, color, color };
-  d_add_rect_command(rect, corner_colors, {}, {}, {}, 0.0f, 0.0f);
-}
+  // TODO: Use  d_draw_rect_pro here
+  D_Rect_command command = {};
+  command.rect = rect;
+  for EachIndex(i, ArrayCount(command.color_at_corners)) { command.color_at_corners[i] = color; }
 
-void d_draw_rect_pro(Rect rect, V4F32 color_x0y0, V4F32 color_x1y0, V4F32 color_x0y1, V4F32 color_x1y1, V4F32 corner_radii, F32 inner_softness, F32 outer_softness)
-{
-  V4F32 corner_colors[UV__COUNT] = { color_x0y0, color_x1y0, color_x0y1, color_x1y1 };
-  d_add_rect_command(rect, corner_colors, corner_radii, {}, {}, inner_softness, outer_softness);
+  __d_add_rect_texture_command(command, r_handle_zero());
 }
 
 void d_draw_circle(V2F32 center, F32 r, V4F32 color, F32 softness)
 {
-  Rect rect = rect_from_center(center, v2f32(r, r));
-  F32 radius = Max(rect.width, rect.height);
-  d_draw_rect_pro(rect, color, color, color, color, v4f32_all(radius), 0.0f, softness);
+  D_Rect_command command = {};  
+  command.rect           = rect_from_center(center, v2f32(r, r));
+  command.outer_softness = softness;
+
+  command.color_at_corners[UV__top_left]     = color; 
+  command.color_at_corners[UV__top_right]    = color; 
+  command.color_at_corners[UV__bottom_left]  = color; 
+  command.color_at_corners[UV__bottom_right] = color; 
+
+  command.corner_radii.v[UV__top_left]     = r; 
+  command.corner_radii.v[UV__top_right]    = r; 
+  command.corner_radii.v[UV__bottom_left]  = r; 
+  command.corner_radii.v[UV__bottom_right] = r;
+
+  __d_add_rect_texture_command(command, r_handle_zero());
+}
+
+void d_draw_rect_pro(Rect rect, V4F32 color_at_corners[UV__COUNT], V4F32 corner_radii, F32 border_thickness, V4F32 border_color, F32 inner_softness, F32 outer_softness)
+{
+  D_Rect_command command = {};
+  command.rect             = rect;
+  command.corner_radii     = corner_radii;
+  command.border_thickness = border_thickness;
+  command.border_color     = border_color;
+  command.inner_softness   = inner_softness;
+  command.outer_softness   = outer_softness;
+  command.color_at_corners[UV__top_left]     = color_at_corners[UV__top_left]; 
+  command.color_at_corners[UV__top_right]    = color_at_corners[UV__top_right]; 
+  command.color_at_corners[UV__bottom_left]  = color_at_corners[UV__bottom_left]; 
+  command.color_at_corners[UV__bottom_right] = color_at_corners[UV__bottom_right]; 
+
+  __d_add_rect_texture_command(command, r_handle_zero());
 }
 
 void d_draw_texture(R_Handle texture, V2F32 pos)
 {
-  V2F32 texture_dims = r_get_handle_dims(texture);
-  Rect source_rect   = rect_make_v(v2f32(0.0f, 0.0f), r_get_handle_dims(texture));
-  Rect dest_rect     = rect_make_v(pos, texture_dims);
-  d_add_texture_command(texture, dest_rect, source_rect, white());
+  Rect dest_rect   = rect_make_v(pos, r_get_handle_dims(texture));
+  Rect source_rect = rect_make_v(v2f32(0, 0), r_get_handle_dims(texture));
+  d_draw_texture_pro(texture, dest_rect, source_rect, white());
 }
 
 void d_draw_texture_pro(R_Handle texture, Rect dest_rect, Rect source_rect, V4F32 tint)
 {
-  d_add_texture_command(texture, dest_rect, source_rect, tint);
+  D_Rect_command command = {};  
+  command.is_texture   = true;  
+  command.rect         = dest_rect;
+  command.texture_rect = source_rect;
+  // TODO: Use tint
+  
+  __d_add_rect_texture_command(command, texture);
 }
 
 void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color)
@@ -264,17 +177,6 @@ void d_draw_text(Str8 text, FP_Font font, F32 font_size, V2F32 pos, V4F32 color)
     Assert(0.001f > abs_f32(x_offset - fp_text_dims.x));
   }
   #endif
-
-  // TODO: This should be the a draw layout contant that will decide weather to draw these in debug mode or not
-  // These are some debug drawings for baseline and stuff
-  #if DEBUG_MODE
-  {
-    // V2F32 fp_text_dims = fp_measure_text(text, font);
-    // d_draw_rect(rect_make(pos.x, pos.y, fp_text_dims.x, 1), green());
-    // d_draw_rect(rect_make(pos.x, pos.y + font.ascent + font.descent, fp_text_dims.x, 1), green());
-    // d_draw_rect(rect_make(pos.x, origin_y, fp_text_dims.x, 1), green());
-  }
-  #endif
 }
 
 void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F32 color, ...)
@@ -288,59 +190,93 @@ void d_draw_text_f(const char* fmt, FP_Font font, F32 font_size, V2F32 pos, V4F3
   end_scratch(&scratch);
 }
 
+
+///////////////////////////////////////////////////////////
+// - State getters
+//
+D_Rect_command_batch_list* d_get_batch_list()
+{
+  return &d_get_state()->rect_batch_list;
+}
+
 ///////////////////////////////////////////////////////////
 // - Push/Pops
 //
-// TODO: Think about having this not be specific to the batch settings in the draw state, 
-//       but rather a more general macro generation for static array based settings,
-//       since those are the once you gon be using in this draw module, you will not
-//       be locking yourself in to the batch setting, but rather using the same generation
-//       for general stacks and settings stacks
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DEFINE_PUSH_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DEFINE_POP_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DEFINE_TOP_FUNC)
+__D_STACK_DATA_TABLE_EXPANSION(__D_STACK_DEFINE_HAS_NON_DEFAULT)
 
-#define __D_StackOnStaticArr_Push_Impl(draw_state, array_var_name, array_count_var_name, new_setting_value) \
-  if (draw_state->array_count_var_name < ArrayCount(draw_state->array_var_name)) \
-  { \
-    draw_state->array_var_name[draw_state->array_count_var_name++] = new_setting_value; \
-  } \
-  else { InvalidCodePath(); }
+///////////////////////////////////////////////////////////
+// Private helpers
+///////////////////////////////////////////////////////////
 
-#define __D_StackOnStaticArr_Pop_Impl(draw_state, array_var_name, array_count_var_name) \
-  if (draw_state->array_count_var_name > 0) { \
-    draw_state->array_count_var_name -= 1;  \
+void __d_add_rect_texture_command(D_Rect_command command, R_Handle opt_texture)
+{
+  D_State* state = d_get_state();
+
+  R_Blend_kind blend_kind = d_top_blend_kind();
+  R_Handle render_target  = d_top_render_target();
+  Rect scissor_rect       = d_top_scissor_rect();
+  R_Fill_mode fill_mode   = d_top_fill_mode();
+
+  D_Rect_command_batch* batch = __d__get__or__make_and_get__new_batch(render_target, scissor_rect, blend_kind, fill_mode, opt_texture);
+
+  Arena* arena = state->arena_for_draw_commands;
+  D_Rect_command_node* new_command_node = ArenaPush(arena, D_Rect_command_node);
+  new_command_node->rect_command = command;
+ 
+  QueuePushBack_Ex(batch, new_command_node, first_command_node, last_command_node, next, is_zero_pointer, 0);
+  batch->node_count += 1;
+}
+
+D_Rect_command_batch* __d__get__or__make_and_get__new_batch(
+  R_Handle     render_target,                       
+  Rect         scissor_rect,                 
+  R_Blend_kind blend_kind,                   
+  R_Fill_mode  fill_mode,                       
+  R_Handle     opt_texture
+) {
+  D_State* state = d_get_state();
+
+  D_Rect_command_batch* batch = 0;
+  {
+    D_Rect_command_batch_node* batch_node = state->rect_batch_list.last;
+    if (batch_node)
+    {
+      batch = &batch_node->batch;
+    }
+  }
+  
+  B32 have_to_make_a_new_batch = false;
+  if ( batch == 0
+    || !r_handle_match(batch->render_target, render_target)
+    || !rect_match(batch->scissor_rect, scissor_rect) 
+    || !(batch->blend_kind == blend_kind)
+    || !(batch->fill_mode == fill_mode)
+    || !r_handle_match(batch->opt_texture, opt_texture) 
+  ) { 
+    have_to_make_a_new_batch = true;
   }
 
-#define __D_StackOnStaticArr_Get_Impl(draw_state, array_var_name, array_count_var_name, default_setting_var_name) \
-  if (draw_state->array_count_var_name > 0) {  \
-    return draw_state->array_var_name[draw_state->array_count_var_name - 1]; \
-  } else { \
-    return draw_state->default_settings.default_setting_var_name; \
-  } 
+  if (have_to_make_a_new_batch)
+  {
+    Arena* arena = state->arena_for_draw_commands;
+    D_Rect_command_batch_node* new_batch_node = ArenaPush(arena, D_Rect_command_batch_node);
+    D_Rect_command_batch* new_batch = &new_batch_node->batch;
+    new_batch->render_target = render_target;                       
+    new_batch->scissor_rect  = scissor_rect;                 
+    new_batch->blend_kind    = blend_kind;                   
+    new_batch->fill_mode     = fill_mode;                       
+    new_batch->opt_texture   = opt_texture; 
+  
+    QueuePushBack(&state->rect_batch_list, new_batch_node);
+    state->rect_batch_list.count += 1;
+  
+    batch = new_batch;
+  }
 
-void         d_push_blend_kind(R_Blend_kind blend_kind)  { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_blend_kinds, current_blend_kind_count,     blend_kind);  }
-void         d_pop_blend_kind()                          { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_blend_kinds, current_blend_kind_count); }
-R_Blend_kind __d_get_current_blend_kind__defaults()      { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_blend_kinds,  current_blend_kind_count,     blend_kind);  }
-
-void     d_push_render_target(R_Handle target)           { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_render_targets, current_render_target_count,  target);      }
-void     d_pop_render_target()                           { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_render_targets, current_render_target_count); }
-R_Handle __d_get_current_render_target__defaults()       { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_render_targets,  current_render_target_count,  render_target); }
-
-void d_push_scissor_rect(Rect rect)                      { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_scissor_rects, current_scissor_rect_count,  rect);         }
-void d_pop_scissor_rect()                                { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_scissor_rects, current_scissor_rect_count);                }
-Rect __d_get_current_scissor_rect__defaults()            { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_scissor_rects,  current_scissor_rect_count,  scissor_rect);  }
-
-void        d_push_fill_mode(R_Fill_mode fill_mode)      { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_fill_modes, current_fill_mode_count,  fill_mode);    }
-void        d_pop_fill_mode()                            { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_fill_modes, current_fill_mode_count);                   }
-R_Fill_mode __d_get_current_fill_mode__defaults()        { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl(draw_state, arr_of_fill_modes,  current_fill_mode_count,  fill_mode);    }
-
-void d_push_offset_x(F32 offset_x) { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_offsets_for_x, current_offset_for_x_count,  offset_x);    }
-void d_pop_offset_x()              { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_offsets_for_x, current_offset_for_x_count);                   }
-F32 __d_get_current_offset_x()     { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl (draw_state, arr_of_offsets_for_x, current_offset_for_x_count,  offset_x);    }
-
-void d_push_offset_y(F32 offset_y) { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Push_Impl(draw_state, arr_of_offsets_for_y, current_offset_for_y_count,  offset_y);    }
-void d_pop_offset_y()              { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Pop_Impl (draw_state, arr_of_offsets_for_y, current_offset_for_y_count);                   }
-F32 __d_get_current_offset_y()     { D_State* draw_state = d_get_state(); __D_StackOnStaticArr_Get_Impl (draw_state, arr_of_offsets_for_y, current_offset_for_y_count,  offset_y);    }
-
-void d_push_offset(F32 offset_x, F32 offset_y) { d_push_offset_x(offset_x); d_push_offset_y(offset_y); }
-void d_pop_offset()  { d_pop_offset_x(); d_pop_offset_y(); }
+  return batch;
+}
 
 #endif

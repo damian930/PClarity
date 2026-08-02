@@ -6,6 +6,10 @@
 
 void profiler_init();
 void profiler_release();
+
+void profiler_begin_frame();
+void profiler_end_frame();
+
 U64  profiler_time_in_ns();
 void spall_buffer_begin_fmt(const char* fmt, ...);
 

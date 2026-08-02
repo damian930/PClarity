@@ -53,7 +53,14 @@ struct R_Rect_instance_data {
   F32 softness_inner;
   F32 softness_outer;
 
-  F32 _padding_[1];
+  B8 is_texture;
+  V2F32 texture_rect_origin;
+  V2F32 texture_rect_dims;
+
+  F32 texture_width;
+  F32 texture_height;
+
+  F32 _padding_[2];
 };
 //
 struct R_Rect_unifrom_data {
@@ -118,6 +125,8 @@ struct R_Handle {
   
   // This is specific for texture
   ID3D11ShaderResourceView* srv;
+
+  V2F32 texture_or_swap_chain_dims;
 };
 
 struct D3D_State {
@@ -131,8 +140,6 @@ struct D3D_State {
   ID3D11BlendState*      blend_states[R_Blend_kind__COUNT];
   ID3D11SamplerState*    sampler;
   //
-  // ID3D11Texture2D* magenta_black_d3d_texture;
-  //
   #define D3D_BUFFER_COUNT 8
   ID3D11Buffer* rect_program_ia_buffer[D3D_BUFFER_COUNT];
   ID3D11Buffer* rect_program_uniform_buffer[D3D_BUFFER_COUNT];
@@ -142,6 +149,11 @@ struct D3D_State {
   ID3D11Buffer* texture_program_uniform_buffer[D3D_BUFFER_COUNT];
   R_Program     texture_program;
 
+  // These are obtained after the base of the state is set
+  R_Handle magenta_black_texture;
+  // TODO, DD: Move the programs here as well
+
+  // TODO: Try to remoe this and see if it changes anything
   U64 draw_generation;
 };
 
@@ -160,12 +172,27 @@ void r_prepare_canvas(R_Handle* chain);
 void r_submit(R_Handle target, D_Command_batch_list* command_batch_list);
 void r_present(R_Handle target, B32 vsync);
 
-// - Texture stuff
+// - Handles
+R_Handle r_handle_zero();
+B32 r_handle_is_zero(R_Handle handle);
+B32 r_handle_match(R_Handle handle, R_Handle other);
+
+// - Texture making 
+R_Handle __r_make_texture(U32 width_in_px, U32 height_in_px, Data_buffer opt_image_data_bytes);
 R_Handle r_make_texture(U32 width, U32 height);
+R_Handle r_load_texture_from_file(Str8 file_name); // TODO: Change the name
+R_Handle r_load_texture_from_image(Image image);   // TODO: Change the name
 void r_release_texture(R_Handle* texture);
 
+// - Texure other stuff
+Image r_image_from_texture(Arena* arena, R_Handle texture);
+void r_export_texture(R_Handle texture, Str8 file_path);
+void r_export_image(Image image, Str8 file_name);
+void r_copy_into_texture_from_texture(R_Handle dest_texture, R_Handle src_texture, B32* out_opt_is_succ);
+V2F32 r_get_handle_dims(R_Handle target);
+
 // - Boring stuff with handles
-R_Handle r_zero_handle();
+R_Handle r_handle_zero();
 B32 r_handle_match(R_Handle target, R_Handle other);
 
 // - Misc
@@ -175,13 +202,6 @@ R_Program r_program_from_file(const WCHAR* shader_program_file,
                               const D3D11_INPUT_ELEMENT_DESC* opt_desc_arr,
                               U32 desc_arr_count);
 void r_clear_handle(R_Handle handle, V4F32 color);
-Image r_image_from_texture(Arena* arena, R_Handle texture);
-void r_export_texture(R_Handle texture, Str8 file_path);
-void r_export_image(Image image, Str8 file_name);
-R_Handle r_load_texture_from_file(Str8 file_name);
-R_Handle r_load_texture_from_image(Image image);
-void r_copy_into_texture_from_texture(R_Handle dest_texture, R_Handle src_texture, B32* out_opt_is_succ);
-V2F32 r_get_handle_dims(R_Handle target);
 
 ///////////////////////////////////////////////////////////
 // - Private stuff that is not for that caller to use or care about
@@ -194,25 +214,28 @@ B32 __r_is_handle_valid_handle_chain(R_Handle handle);
 const global 
 D3D11_INPUT_ELEMENT_DESC __r_g_rect_program_input_assembler_element_desc[] = 
 {
-  // TODO: Have better names for 00 10 and all these UVs
-  { "RECT_00_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_00),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_10_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_10),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_01_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_01),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_11_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_11),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_ORIGIN_X",         0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, origin_x),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_ORIGIN_Y",         0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, origin_y),         D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_WIDTH",            0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, width),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_HEIGHT",           0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, height),           D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_00_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_00), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_10_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_10), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_01_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_01), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_11_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_11), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_BORDER_COLOR",     0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, border_color),     D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "RECT_BORNER_THICKNESS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, border_thickness), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "SOFTNESS_INNER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_inner),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-  { "SOFTNESS_OUTER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_outer),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-
+  // TODO: Have better names for 00 10 and all these UVs   
+  { "RECT_00_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_00),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_10_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_10),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_01_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_01),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_11_COLOR",         0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, color_11),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_ORIGIN_X",         0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, origin_x),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_ORIGIN_Y",         0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, origin_y),            D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_WIDTH",            0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, width),               D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_HEIGHT",           0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, height),              D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_00_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_00),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_10_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_10),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_01_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_01),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_11_CORNER_RADIUS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, corner_radius_11),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_BORDER_COLOR",     0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Rect_instance_data, border_color),        D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "RECT_BORNER_THICKNESS", 0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, border_thickness),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "SOFTNESS_INNER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_inner),      D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "SOFTNESS_OUTER",        0, DXGI_FORMAT_R32_FLOAT,          0, TypeFieldOffset(R_Rect_instance_data, softness_outer),      D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "IS_TEXTURE",            0, DXGI_FORMAT_R8_UINT,            0, TypeFieldOffset(R_Rect_instance_data, is_texture),          D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "TEXTURE_RECT_ORIGIN",   0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Rect_instance_data, texture_rect_origin), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+  { "TEXTURE_RECT_SIZE",     0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Rect_instance_data, texture_rect_dims),   D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 };
+
 D3D11_INPUT_ELEMENT_DESC __r_g_texture_program_input_assembler_element_desc[] = 
 {
   { "TINT",             0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, TypeFieldOffset(R_Texture_instance_data, tint),             D3D11_INPUT_PER_INSTANCE_DATA, 1 },

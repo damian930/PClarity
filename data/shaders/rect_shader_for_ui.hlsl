@@ -24,6 +24,9 @@ cbuffer cbuffer0 : register(b0) {
   float u_window_height;
 };
 
+sampler sampler0 : register(s0);                           
+Texture2D<float4> texture0 : register(t0);                 
+
 #define UV__top_left     0
 #define UV__top_right    1
 #define UV__bottom_left  2
@@ -40,7 +43,7 @@ struct VertexInput {
   float rect_origin_y         : RECT_ORIGIN_Y; 
   float rect_width            : RECT_WIDTH;
   float rect_height           : RECT_HEIGHT;
-  
+
   // DD: These are in px
   float rect_corner_radius_top_left     : RECT_00_CORNER_RADIUS; // TODO: Change these names here
   float rect_corner_radius_top_right    : RECT_10_CORNER_RADIUS;
@@ -52,6 +55,11 @@ struct VertexInput {
   
   float softness_inner : SOFTNESS_INNER;
   float softness_outer : SOFTNESS_OUTER;
+
+  bool is_texture : IS_TEXTURE;
+  
+  float2 texture_rect_origin  : TEXTURE_RECT_ORIGIN;
+  float2 texture_rect_size    : TEXTURE_RECT_SIZE;
 
   uint vertex_id : SV_VertexID;
 };
@@ -70,7 +78,11 @@ struct PixelInput {
   
   nointerpolation float softness_inner : SOFTNESS_INNER;
   nointerpolation float softness_outer : SOFTNESS_OUTER;
-  
+
+  bool is_texture : IS_TEXTURE_BOOL;
+
+  float2 texture_to_sample_uv : TEXTURE_TO_SAMPLE_UV;
+
   float4 pos : SV_POSITION;
 };
 
@@ -92,20 +104,34 @@ bool is_point_inside_rect(float2 p, float2 origin, float2 dims)
 PixelInput vs_main(VertexInput vertex_input) 
 {
   float2 vp_dims     = float2(u_window_width, u_window_height);
+
   float2 rect_origin = float2(vertex_input.rect_origin_x, vertex_input.rect_origin_y);
   float2 rect_dims   = float2(vertex_input.rect_width, vertex_input.rect_height);
 
-  float2 rect_vertex_coords[4] = {
+  float2 texture_rect_origin = float2(vertex_input.texture_rect_origin.x, vertex_input.texture_rect_origin.y);
+  float2 texture_rect_dims   = float2(vertex_input.texture_rect_size.x, vertex_input.texture_rect_size.y);
+
+  float2 uv_vertex_coords[4] = {
     float2(0.0, 0.0), float2(1.0, 0.0),
     float2(0.0, 1.0), float2(1.0, 1.0),
   };
-  
-  float2 rect_vertex_in_px = rect_origin + (rect_vertex_coords[vertex_input.vertex_id] * rect_dims);
+
+  float2 rect_vertex_in_px    = rect_origin + (uv_vertex_coords[vertex_input.vertex_id] * rect_dims);
+  float2 texture_vertex_in_px = texture_rect_origin + (uv_vertex_coords[vertex_input.vertex_id] * texture_rect_dims);
 
   // note: I hate that this takes 3 lines
   float2 rect_vertex_in_ndc = (rect_vertex_in_px / vp_dims) * 2.0;
   rect_vertex_in_ndc.x      = rect_vertex_in_ndc.x - 1.0; 
   rect_vertex_in_ndc.y      = 1.0 - rect_vertex_in_ndc.y;
+
+  float2 texture_vertex_in_uv = float2(0, 0);
+  if (vertex_input.is_texture)
+  {
+    float texture_width;
+    float texture_height;
+    texture0.GetDimensions(texture_width, texture_height);
+    texture_vertex_in_uv = (texture_vertex_in_px / float2(texture_width, texture_height));
+  }
 
   float rect_vertex_corner_r[4];
   rect_vertex_corner_r[UV__top_left]     = vertex_input.rect_corner_radius_top_left; 
@@ -114,18 +140,22 @@ PixelInput vs_main(VertexInput vertex_input)
   rect_vertex_corner_r[UV__bottom_right] = vertex_input.rect_corner_radius_bottom_right;
 
   PixelInput pixel_input;
-  pixel_input.pos                            = float4(rect_vertex_in_ndc, 0, 1);
-  pixel_input.rect_origin                    = rect_origin;
-  pixel_input.rect_dims                      = rect_dims;
-  pixel_input.corner_radius                  = rect_vertex_corner_r[vertex_input.vertex_id];
-  pixel_input.softness_inner                 = vertex_input.softness_inner;
-  pixel_input.softness_outer                 = vertex_input.softness_outer;
-  pixel_input.border_thickness               = vertex_input.rect_border_thickness;
-  pixel_input.border_color                   = vertex_input.rect_border_color;
-  pixel_input.vertex_color[UV__top_left]     = vertex_input.rect_color_top_left;
-  pixel_input.vertex_color[UV__top_right]    = vertex_input.rect_color_top_right;
-  pixel_input.vertex_color[UV__bottom_left]  = vertex_input.rect_color_bottom_left;
-  pixel_input.vertex_color[UV__bottom_right] = vertex_input.rect_color_bottom_right;
+  pixel_input.pos                                  = float4(rect_vertex_in_ndc, 0, 1);
+  pixel_input.rect_origin                          = rect_origin;
+  pixel_input.rect_dims                            = rect_dims;
+  pixel_input.corner_radius                        = rect_vertex_corner_r[vertex_input.vertex_id];
+  pixel_input.softness_inner                       = vertex_input.softness_inner;
+  pixel_input.softness_outer                       = vertex_input.softness_outer;
+  pixel_input.border_thickness                     = vertex_input.rect_border_thickness;
+  pixel_input.border_color                         = vertex_input.rect_border_color;
+  pixel_input.vertex_color[UV__top_left]           = vertex_input.rect_color_top_left;
+  pixel_input.vertex_color[UV__top_right]          = vertex_input.rect_color_top_right;
+  pixel_input.vertex_color[UV__bottom_left]        = vertex_input.rect_color_bottom_left;
+  pixel_input.vertex_color[UV__bottom_right]       = vertex_input.rect_color_bottom_right;
+  pixel_input.is_texture                           = vertex_input.is_texture;
+  pixel_input.texture_to_sample_uv                 = texture_vertex_in_uv;
+  // pixel_input.texture_to_sample_uv.y                 = 1;
+
 
   return pixel_input;
 }
@@ -152,45 +182,51 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
   float outer_smoothing = 1.0;
   float inner_smoothing = 1.0;
 
-  if (pixel_input.border_thickness != 0.0)
+  if (pixel_input.is_texture)
   {
-    if (pixel_input.corner_radius == 0.0)
+    // pixel_input.texture_to_sample_uv.y = 0.7;
+    final_color = texture0.Sample(sampler0, pixel_input.texture_to_sample_uv);
+  }
+  else 
+  {
+    if (pixel_input.border_thickness != 0.0)
     {
-      if (-pixel_input.border_thickness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0f)
+      if (pixel_input.corner_radius == 0.0)
       {
-        final_color = pixel_input.border_color;
+        if (-pixel_input.border_thickness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0f)
+        {
+          final_color = pixel_input.border_color;
+        }
+      }
+      else 
+      {
+        float inner_sdf  = sdf_pixel_to_rect + pixel_input.border_thickness;
+        float smoothstep_res = smoothstep(-inner_softness, 0.0, inner_sdf);
+        if (background_color.a != 0.0f)
+        {
+          final_color = lerp(background_color, pixel_input.border_color, smoothstep_res);
+        }
+        else
+        {
+          final_color     = pixel_input.border_color;
+          inner_smoothing = smoothstep_res;
+        }
       }
     }
-    else 
+
+    if (pixel_input.corner_radius != 0.0)
     {
-      float inner_sdf  = sdf_pixel_to_rect + pixel_input.border_thickness;
-      float smoothstep_res = smoothstep(-inner_softness, 0.0, inner_sdf);
-      if (background_color.a != 0.0f)
+      if (0) {}
+      else if (sdf_pixel_to_rect > 0.0) { outer_smoothing = 0.0f; }
+      else if (-outer_softness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
       {
-        final_color = lerp(background_color, pixel_input.border_color, smoothstep_res);
+        outer_smoothing = smoothstep(0.0, -outer_softness, sdf_pixel_to_rect);
       }
-      else
-      {
-        final_color     = pixel_input.border_color;
-        inner_smoothing = smoothstep_res;
-      }
+
+      final_color.a *= outer_smoothing;
+      final_color.a *= inner_smoothing;
     }
   }
-
-  if (pixel_input.corner_radius != 0.0)
-  {
-    if (0) {}
-    else if (sdf_pixel_to_rect > 0.0) { outer_smoothing = 0.0f; }
-    else if (-outer_softness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
-    {
-      outer_smoothing = smoothstep(0.0, -outer_softness, sdf_pixel_to_rect);
-    }
-
-    final_color.a *= outer_smoothing;
-    final_color.a *= inner_smoothing;
-  }
-
-  // TODO: Use the color from a texture if it is here 
 
   return final_color;
 }

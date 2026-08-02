@@ -309,8 +309,8 @@ struct UI_State {
 };
 
 // - State variables
-extern UI_State* __ui_g_state;
-extern UI_Box __ui_g_null_box;
+extern global UI_State* __ui_g_state;
+extern global UI_Box __ui_g_null_box;
 
 // - State accessors
 UI_State* ui_get_state();

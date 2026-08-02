@@ -148,8 +148,8 @@ static void DrawTextBoxedSelectable(Font font, const char *text, Rectangle rec, 
     float scaleFactor = fontSize/(float)font.baseSize;     // Character rectangle scaling factor
 
     // Word/character wrapping mechanism variables
-    enum { MEASURE_STATE = 0, DRAW_STATE = 1 };
-    int state = wordWrap? MEASURE_STATE : DRAW_STATE;
+    enum { MEASURE_STATE = 0, state = 1 };
+    int state = wordWrap? MEASURE_STATE : state;
 
     int startLine = -1;         // Index where to begin drawing (where a line begins)
     int endLine = -1;           // Index where to stop drawing (where a line ends)
@@ -201,7 +201,7 @@ static void DrawTextBoxedSelectable(Font font, const char *text, Rectangle rec, 
             }
             else if (codepoint == '\n') state = !state;
 
-            if (state == DRAW_STATE)
+            if (state == state)
             {
                 textOffsetX = 0;
                 i = startLine;
