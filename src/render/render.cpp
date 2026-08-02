@@ -513,19 +513,6 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
     d3d->context->RSSetViewports(1, &vp);
   }
   
-  // TODO: Add more of these to the submit here, this buys a bit of time
-  // ID3D11RenderTargetView* last_set_rtv         = 0;
-  // ID3D11RasterizerState* last_set_raster_state = 0;
-  // ID3D11BlendState* last_set_blend_state = 0;
-  ID3D11RenderTargetView* last_rtv = 0;
-
-  // Rect last_scissor_rect                       = {};
-
-  // Working with batches
-
-  // TODO: Add this back
-  // ProfGroupF("Draw batch %lld, kind %s, n_nodes: %lld", batch_index, (batch->command_type == D_Command_type__Rect ? "Rect" : (batch->command_type == D_Command_type__Texture ? "Texture" : "Else")), batch->node_count)
-
   // DD: Pre-uploading ia data for ui drawings 
   U64 n_rect_draws_in_command_batch_list = 0;
   for (
@@ -593,11 +580,12 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
     }
   }
 
+  __D3D_Draw_context d3d_draw_context = {};
   U32 instances_drawn = 0;
   U64 batch_index     = 0;
   for (
-    D_Rect_command_batch_node* batch_node = command_batch_list->first; 
-    batch_node != 0; 
+    D_Rect_command_batch_node* batch_node = command_batch_list->first;
+    batch_node != 0;
     batch_node = batch_node->next, batch_index += 1
   ) {
     d3d->draw_generation += 1;
@@ -605,9 +593,9 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
 
     ProfGroupF("Setting d3d context state for batch %lld", batch_index)
     {
-      d3d->context->OMSetRenderTargets(1, &batch->render_target.texture_rtv, Null);
-      d3d->context->OMSetBlendState(d3d->blend_states[batch->blend_kind], Null, ~0U);
-      d3d->context->RSSetState(d3d->rasterizer_states[batch->fill_mode]);
+      __d3d_OMSetRenderTargets(&d3d_draw_context, batch->render_target.texture_rtv);
+      __d3d_OMSetBlendState(&d3d_draw_context, d3d->blend_states[batch->blend_kind]);
+      __d3d_RSSetState(&d3d_draw_context, d3d->rasterizer_states[batch->fill_mode]);
 
       D3D11_RECT scissor_rect = {};
       scissor_rect.left   = (S32)batch->scissor_rect.x;
@@ -616,8 +604,8 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
       scissor_rect.bottom = (S32)batch->scissor_rect.y + (S32)batch->scissor_rect.height;
       if (scissor_rect.left > scissor_rect.right) { scissor_rect.left = scissor_rect.right; /*BreakPoint();*/ }
       if (scissor_rect.top > scissor_rect.bottom) { scissor_rect.top = scissor_rect.bottom; /*BreakPoint();*/ }
-      d3d->context->RSSetScissorRects(1, &scissor_rect); 
-    
+      __d3d_RSSetScissorRect(&d3d_draw_context, scissor_rect);
+
       ID3D11Buffer* uniform_buffer = __r_get_rect_uniform_buffer();
       ProfGroupF("Filling up the uniform data buffer with data")
       {
@@ -629,26 +617,17 @@ void r_submit(R_Handle target, D_Rect_command_batch_list* command_batch_list)
         memcpy(mapped.pData, &uniform_data, sizeof(uniform_data));
         d3d->context->Unmap(uniform_buffer, 0);
       }
-      
-      d3d->context->IASetInputLayout(d3d->rect_program.input_layout);
 
-      d3d->context->PSSetSamplers(0, 1, &d3d->sampler);
+      __d3d_IASetInputLayout(&d3d_draw_context, d3d->rect_program.input_layout);
+      __d3d_PSSetSampler(&d3d_draw_context, d3d->sampler);
 
-      ID3D11ShaderResourceView* srv_to_bind = (!r_handle_is_zero(batch->opt_texture) ? batch->opt_texture.srv : d3d->magenta_black_texture.srv);  
+      ID3D11ShaderResourceView* srv_to_bind = (!r_handle_is_zero(batch->opt_texture) ? batch->opt_texture.srv : d3d->magenta_black_texture.srv);
 
-      // Vertex shader
-      d3d->context->VSSetShader(d3d->rect_program.v_shader, Null, Null);
-      d3d->context->VSSetConstantBuffers(0, 1, &uniform_buffer);  
-      d3d->context->VSSetShaderResources(0, 1, &srv_to_bind);
-      
-      // Pixel shader
-      d3d->context->PSSetShader(d3d->rect_program.p_shader, Null, Null);
-      d3d->context->PSSetConstantBuffers(0, 1, &uniform_buffer);
-      d3d->context->PSSetShaderResources(0, 1, &srv_to_bind);
-
-      UINT stride = sizeof(R_Rect_instance_data);
-      UINT offset = 0;
-      d3d->context->IASetVertexBuffers(0, 1, &ia_buffer, &stride, &offset);
+      __d3d_VSSetShader(&d3d_draw_context, d3d->rect_program.v_shader);
+      __d3d_PSSetShader(&d3d_draw_context, d3d->rect_program.p_shader);
+      __d3d_SetConstantBuffer(&d3d_draw_context, uniform_buffer);
+      __d3d_SetShaderResource(&d3d_draw_context, srv_to_bind);
+      __d3d_IASetVertexBuffer(&d3d_draw_context, ia_buffer, sizeof(R_Rect_instance_data), 0);
     }
 
     ProfGroupF("DrawInstanced")

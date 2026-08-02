@@ -2,6 +2,7 @@ App
 -----------
 [ ] - Try to preload all the commands when you have a single list of batches wit the same ia data, then only change the d3d context and draw instances with offset from the filled in ia buffer 
 [ ] - Add tint back to be able to have colored text
+[ ] - Remove texture program form renderer state
 [ ] - Remove the texture shader from the renderer rignt now and just have the batch for the ui
 [ ] - Fix the bug with the fps with tips from discord
 [ ] - Redo the draw layer, this shit is annoying as fuck

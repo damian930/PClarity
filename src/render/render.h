@@ -204,8 +204,9 @@ R_Program r_program_from_file(const WCHAR* shader_program_file,
 void r_clear_handle(R_Handle handle, V4F32 color);
 
 ///////////////////////////////////////////////////////////
-// - Private stuff that is not for that caller to use or care about
-//
+// Private helpers
+///////////////////////////////////////////////////////////
+
 // - Extra handle checks
 B32 __r_is_handle_valid_handle(R_Handle handle);
 B32 __r_is_handle_valid_handle_chain(R_Handle handle);
@@ -245,5 +246,139 @@ D3D11_INPUT_ELEMENT_DESC __r_g_texture_program_input_assembler_element_desc[] =
   { "SRC_RECT_SIZE",    0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Texture_instance_data, src_rect_size),    D3D11_INPUT_PER_INSTANCE_DATA, 1 },
   { "SRC_TEXTURE_DIMS", 0, DXGI_FORMAT_R32G32_FLOAT,       0, TypeFieldOffset(R_Texture_instance_data, src_texture_dims), D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 };
+
+struct __D3D_Draw_context {
+  ID3D11RenderTargetView*   last_rtv;
+  ID3D11BlendState*         last_blend_state;
+  ID3D11RasterizerState*    last_rasterizer_state;
+  D3D11_RECT                last_scissor_rect;
+  B32                       has_scissor_rect;
+  ID3D11ShaderResourceView* last_srv;
+  ID3D11Buffer*             last_vertex_buffer;
+  UINT                      last_vb_stride;
+  UINT                      last_vb_offset;
+  ID3D11InputLayout*        last_input_layout;
+  ID3D11VertexShader*       last_v_shader;
+  ID3D11PixelShader*        last_p_shader;
+  ID3D11Buffer*             last_constant_buffer;
+  ID3D11SamplerState*       last_sampler;
+};
+
+// TODO: Move these to the .cpp file
+
+void __d3d_OMSetRenderTargets(__D3D_Draw_context* ctx, ID3D11RenderTargetView* rtv)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_rtv != rtv)
+  {
+    ctx->last_rtv = rtv;
+    d3d->context->OMSetRenderTargets(1, &rtv, Null);
+  }
+}
+
+void __d3d_OMSetBlendState(__D3D_Draw_context* ctx, ID3D11BlendState* blend_state)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_blend_state != blend_state)
+  {
+    ctx->last_blend_state = blend_state;
+    d3d->context->OMSetBlendState(blend_state, Null, ~0U);
+  }
+}
+
+void __d3d_RSSetState(__D3D_Draw_context* ctx, ID3D11RasterizerState* rasterizer_state)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_rasterizer_state != rasterizer_state)
+  {
+    ctx->last_rasterizer_state = rasterizer_state;
+    d3d->context->RSSetState(rasterizer_state);
+  }
+}
+
+void __d3d_RSSetScissorRect(__D3D_Draw_context* ctx, D3D11_RECT scissor_rect)
+{
+  D3D_State* d3d = r_get_state();
+  if (!ctx->has_scissor_rect || memcmp(&ctx->last_scissor_rect, &scissor_rect, sizeof(D3D11_RECT)) != 0)
+  {
+    ctx->has_scissor_rect  = 1;
+    ctx->last_scissor_rect = scissor_rect;
+    d3d->context->RSSetScissorRects(1, &scissor_rect);
+  }
+}
+
+void __d3d_SetShaderResource(__D3D_Draw_context* ctx, ID3D11ShaderResourceView* srv)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_srv != srv)
+  {
+    ctx->last_srv = srv;
+    d3d->context->VSSetShaderResources(0, 1, &srv);
+    d3d->context->PSSetShaderResources(0, 1, &srv);
+  }
+}
+
+void __d3d_IASetVertexBuffer(__D3D_Draw_context* ctx, ID3D11Buffer* buffer, UINT stride, UINT offset)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_vertex_buffer != buffer || ctx->last_vb_stride != stride || ctx->last_vb_offset != offset)
+  {
+    ctx->last_vertex_buffer = buffer;
+    ctx->last_vb_stride     = stride;
+    ctx->last_vb_offset     = offset;
+    d3d->context->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
+  }
+}
+
+void __d3d_IASetInputLayout(__D3D_Draw_context* ctx, ID3D11InputLayout* input_layout)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_input_layout != input_layout)
+  {
+    ctx->last_input_layout = input_layout;
+    d3d->context->IASetInputLayout(input_layout);
+  }
+}
+
+void __d3d_VSSetShader(__D3D_Draw_context* ctx, ID3D11VertexShader* v_shader)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_v_shader != v_shader)
+  {
+    ctx->last_v_shader = v_shader;
+    d3d->context->VSSetShader(v_shader, Null, Null);
+  }
+}
+
+void __d3d_PSSetShader(__D3D_Draw_context* ctx, ID3D11PixelShader* p_shader)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_p_shader != p_shader)
+  {
+    ctx->last_p_shader = p_shader;
+    d3d->context->PSSetShader(p_shader, Null, Null);
+  }
+}
+
+void __d3d_SetConstantBuffer(__D3D_Draw_context* ctx, ID3D11Buffer* constant_buffer)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_constant_buffer != constant_buffer)
+  {
+    ctx->last_constant_buffer = constant_buffer;
+    d3d->context->VSSetConstantBuffers(0, 1, &constant_buffer);
+    d3d->context->PSSetConstantBuffers(0, 1, &constant_buffer);
+  }
+}
+
+void __d3d_PSSetSampler(__D3D_Draw_context* ctx, ID3D11SamplerState* sampler)
+{
+  D3D_State* d3d = r_get_state();
+  if (ctx->last_sampler != sampler)
+  {
+    ctx->last_sampler = sampler;
+    d3d->context->PSSetSamplers(0, 1, &sampler);
+  }
+}
 
 #endif
