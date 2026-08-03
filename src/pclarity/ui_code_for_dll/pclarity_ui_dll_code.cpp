@@ -329,11 +329,15 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
 
                   UI_ContextMenu(header_context_menu_id)
                   {
-                    ui_next_width(ui_fit());
-                    ui_next_height(ui_fit());
+                    ui_next_width(ui_px(100));
+                    ui_next_height(ui_px(100));
                     ui_next_b_color(black()); // TODO: Change this
-                    ui_next_corner_r(0.25f * ui_top_font_size());
-                    ui_next_border(ui_top_font_size() * 0.25f, red());
+                    // ui_next_inner_softness(2);
+                    // ui_next_outer_softness(2);
+                    ui_next_corner_r(7);
+                    ui_next_border(5, golden());
+                    // ui_next_corner_r(0.25f * ui_top_font_size());
+                    // ui_next_border(ui_top_font_size() * 0.25f, red());
                     ui_next_padding(ui_top_font_size() * 0.35f);
                     ui_next_child_gap(ui_top_font_size() * 0.1f);
                     UI_Box* button_list_box = ui_box_make(

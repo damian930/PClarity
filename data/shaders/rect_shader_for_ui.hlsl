@@ -201,24 +201,27 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
       }
       else 
       {
-        float2 rect_after_border_origin      = pixel_input.rect_origin + float2(pixel_input.border_thickness, pixel_input.border_thickness);
-        float2 rect_after_border_dims        = pixel_input.rect_dims - (2 * float2(pixel_input.border_thickness, pixel_input.border_thickness));
-        
-        float radius_in_px_for_rect_after_border = 0.0;
-        {
-          float radius_in_px_relative_to_rect_size = radius_in_px / min(pixel_input.rect_dims.x, pixel_input.rect_dims.y);
-          radius_in_px_for_rect_after_border = radius_in_px_relative_to_rect_size * min(rect_after_border_dims.x, rect_after_border_dims.y);
-        }
+        float2 rect_after_border_origin          = pixel_input.rect_origin + float2(pixel_input.border_thickness, pixel_input.border_thickness);
+        float2 rect_after_border_dims            = pixel_input.rect_dims - (2 * float2(pixel_input.border_thickness, pixel_input.border_thickness));
+        float radius_in_px_for_rect_after_border = max(radius_in_px - pixel_input.border_thickness, 0.0);
 
         float sdf_pixel_to_rect_after_border = sdf_rounded_rect(rect_after_border_origin, rect_after_border_dims, pos_px, radius_in_px_for_rect_after_border);
 
-        float smoothstep_res = smoothstep(0.0, inner_softness, sdf_pixel_to_rect_after_border);
-        if (smoothstep_res > 0.0 && background_color.a != 0.0f)
-        {
-          final_color = float4(1, 1, 1, 1);
-          // final_color     = pixel_input.border_color;
-          inner_smoothing = smoothstep_res;
+        if (sdf_pixel_to_rect_after_border < 0.0 && background_color.a != 0.0) { 
+          // final_color = background_color; 
+          final_color.r = 1.0;
         }
+        else 
+        {
+          float smoothstep_res = smoothstep(0.0, inner_softness, sdf_pixel_to_rect_after_border);
+          if (smoothstep_res > 0.0 && background_color.a != 0.0f)
+          {
+            final_color     = pixel_input.border_color;
+            inner_smoothing = smoothstep_res;
+          }
+
+        }
+
       }
     }
 
