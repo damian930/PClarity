@@ -85,4 +85,10 @@ void end_scratch(Scratch* scratch)
   temp_arena_end(scratch);
 }
 
+void reset_scratch(Scratch* scratch)
+{
+  temp_arena_reset(scratch);
+}
+
+
 #endif

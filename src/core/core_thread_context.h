@@ -25,6 +25,7 @@ tu_specific U64 get_thread_id();
 
 tu_specific Scratch get_scratch(Arena** conflic_arenas, U64 n_conflict_arenas);
 tu_specific void end_scratch(Scratch* scratch);
+tu_specific void reset_scratch(Scratch* scratch);
 #define ScratchLoop(name, conflic_arenas, n_conflict_arenas) DeferInitReleaseLoop(Scratch name = get_scratch(conflic_arenas, n_conflict_arenas), end_scratch(&name))
 
 #endif

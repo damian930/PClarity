@@ -111,15 +111,15 @@ void pcl_frame_update(PCL_State* pcl)
         pcl_add_header_into_table(pcl, kind, 1); 
       } break;
 
-      case PCL_Command__remove_header_from_table:
-      {
-        U64 index = pcl->data_for_commands.header_index_to_remove;
-        pcl->data_for_commands.header_index_to_remove = 0;
+      // case PCL_Command__remove_header_from_table:
+      // {
+      //   U64 index = pcl->data_for_commands.header_index_to_remove;
+      //   pcl->data_for_commands.header_index_to_remove = 0;
 
-        U64 new_count = ArrShiftLeftFromIndex(pcl->table_data.headers, pcl->table_data.header_count, index);
-        pcl->table_data.header_count = new_count;
-        pcl->table_data.headers[pcl->table_data.header_count] = {};
-      } break;
+      //   U64 new_count = ArrShiftLeftFromIndex(pcl->table_data.headers, pcl->table_data.header_count, index);
+      //   pcl->table_data.header_count = new_count;
+      //   pcl->table_data.headers[pcl->table_data.header_count] = {};
+      // } break;
 
       case PCL_Command__clear_table:
       {
@@ -291,11 +291,12 @@ void pcl_frame_update(PCL_State* pcl)
 void pcl_add_header_into_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value)
 {
   if (pcl->table_data.header_count >= PCL_TABLE_HEADER_MAX_COUNT) { return; }
-
+  
   PCL_Table_header* new_header = pcl->table_data.headers + (pcl->table_data.header_count++);
-  new_header->kind                    = header_kind;
-  new_header->flex_value              = flex_value;
+  new_header->kind                = header_kind;
+  new_header->flex_value          = flex_value;
   new_header->is_used_for_sorting = false;
+  new_header->generation          = pcl->table_header_generation_counter++;
 }
 
 

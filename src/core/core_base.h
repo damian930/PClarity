@@ -185,6 +185,9 @@ typedef double F64;
 #define EachIndex(it, count)                          (U64 it = 0; it < (count); it += 1)
 #define EachEnumRange(it, Type, min_value, max_value) (Type it = min_value; it < max_value; it = (Type)((U64)it + 1))	
 
+#define EachIndex_Ex(it, count, additional_update_code) (U64 it = 0; it < (count); it += 1, additional_update_code)
+
+
 B32 is_zero_pointer(void* p) { return (p == 0); }
 
 // DD: List macros terminology overview

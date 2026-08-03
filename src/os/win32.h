@@ -322,4 +322,7 @@ enum OS_Cursor : U32 {
 };
 void os_set_cursor(OS_Cursor cursor);
 
+// - Misc/TODO:New_stuff/Other
+void os_consume_wheel_event(B32* opt_found, V2F32* opt_scroll);
+
 #endif

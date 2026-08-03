@@ -484,6 +484,7 @@ void ui_next_floating_fixed_rect(Rect rect);
 #define UI_CornerRadiusTopRight(v)    DeferLoop(ui_push_corner_radius_top_right(v),    ui_pop_corner_radius_top_right())
 #define UI_CornerRadiusBottomRight(v) DeferLoop(ui_push_corner_radius_bottom_right(v), ui_pop_corner_radius_bottom_right())
 #define UI_CornerRadiusBottomLeft(v)  DeferLoop(ui_push_corner_radius_bottom_left(v),  ui_pop_corner_radius_bottom_left())
+#define UI_CornerR(v)                 UI_CornerRadiusTopLeft(v) UI_CornerRadiusTopRight(v) UI_CornerRadiusBottomRight(v) UI_CornerRadiusBottomLeft(v)
 #define UI_BorderColor(v)             DeferLoop(ui_push_border_color(v),               ui_pop_border_color())
 #define UI_BorderLeft(v)              DeferLoop(ui_push_border_left(v),                ui_pop_border_left())
 #define UI_BorderRight(v)             DeferLoop(ui_push_border_right(v),               ui_pop_border_right())

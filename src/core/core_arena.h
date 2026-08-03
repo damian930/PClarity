@@ -49,6 +49,7 @@ tu_specific U64 arena_get_bytes_left(Arena* arena);
 // - Temp arena stuff
 tu_specific Temp_arena temp_arena_begin(Arena* arena);
 tu_specific void temp_arena_end(Temp_arena* temp);
+tu_specific void temp_arena_reset(Temp_arena* temp);
 typedef Temp_arena Scratch;
 
 // - Helpers

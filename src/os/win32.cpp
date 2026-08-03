@@ -1035,6 +1035,29 @@ void os_set_cursor(OS_Cursor cursor)
 }
 
 ///////////////////////////////////////////////////////////
+// - Misc/TODO:New_stuff/Other
+//
+void os_consume_wheel_event(B32* opt_found, V2F32* opt_scroll)
+{
+  B32 found    = false;
+  V2F32 scroll = {};
+  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+  {
+    if (ev->kind == OS_Event_kind__wheel)
+    {
+      found = true;
+      Axis2 axis = (ev->wheel_event.modifiers & OS_Event_modifier__shift ? Axis2__x : Axis2__y);
+      scroll.v[axis] = ev->wheel_event.scroll_data;
+      os_consume_frame_event(ev);
+      break;
+    }
+  }
+
+  if (opt_found) { *opt_found = found; }
+  if (opt_scroll) { *opt_scroll = scroll; }
+}
+
+///////////////////////////////////////////////////////////
 // - Misc
 //
 LRESULT win32_proc(

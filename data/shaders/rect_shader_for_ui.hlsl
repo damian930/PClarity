@@ -185,7 +185,6 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
 
   if (pixel_input.is_texture)
   {
-    // pixel_input.texture_to_sample_uv.y = 0.7;
     final_color = texture0.Sample(sampler0, pixel_input.texture_to_sample_uv);
     final_color *= pixel_input.texture_tint;
   }
@@ -202,15 +201,22 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
       }
       else 
       {
-        float inner_sdf  = sdf_pixel_to_rect + pixel_input.border_thickness;
-        float smoothstep_res = smoothstep(-inner_softness, 0.0, inner_sdf);
-        if (background_color.a != 0.0f)
+        float2 rect_after_border_origin      = pixel_input.rect_origin + float2(pixel_input.border_thickness, pixel_input.border_thickness);
+        float2 rect_after_border_dims        = pixel_input.rect_dims - (2 * float2(pixel_input.border_thickness, pixel_input.border_thickness));
+        
+        float radius_in_px_for_rect_after_border = 0.0;
         {
-          final_color = lerp(background_color, pixel_input.border_color, smoothstep_res);
+          float radius_in_px_relative_to_rect_size = radius_in_px / min(pixel_input.rect_dims.x, pixel_input.rect_dims.y);
+          radius_in_px_for_rect_after_border = radius_in_px_relative_to_rect_size * min(rect_after_border_dims.x, rect_after_border_dims.y);
         }
-        else
+
+        float sdf_pixel_to_rect_after_border = sdf_rounded_rect(rect_after_border_origin, rect_after_border_dims, pos_px, radius_in_px_for_rect_after_border);
+
+        float smoothstep_res = smoothstep(0.0, inner_softness, sdf_pixel_to_rect_after_border);
+        if (smoothstep_res > 0.0 && background_color.a != 0.0f)
         {
-          final_color     = pixel_input.border_color;
+          final_color = float4(1, 1, 1, 1);
+          // final_color     = pixel_input.border_color;
           inner_smoothing = smoothstep_res;
         }
       }

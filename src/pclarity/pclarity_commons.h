@@ -40,8 +40,10 @@ enum PCL_Table_header_kind : U32 {
 struct PCL_Table_header {
   PCL_Table_header_kind kind;
   F32 flex_value;
-  B32 is_used_for_sorting;
-  B32 sort_small_to_big;
+  B32 is_used_for_sorting; // TODO: THis is not used right now
+  B32 sort_small_to_big; // TODO: THis is not used right now
+
+  U64 generation;
 };
 
 enum PCL_Command {
@@ -51,7 +53,10 @@ enum PCL_Command {
   PCL_Command__close_the_app, // TODO:
   PCL_Command__new_main_font_size,
   PCL_Command__add_header_to_table,
-  PCL_Command__remove_header_from_table,
+
+  PCL_Command__add_PID_header_after_the_current_selected_header, // TODO: Implement this
+  PCL_Command__remove_currenly_selected_header, // TODO: Implement this
+  
   PCL_Command__clear_table,
   PCL_Command__sort_by_header,
   PCL_Command__select_row,
@@ -143,6 +148,9 @@ struct PCL_State {
 
   // TODO: THe way this gets inited is not great
   Str8 command_names_for_user[PCL_Command__COUNT];
+
+  // TODO: Move this to a better spot
+  U64 table_header_generation_counter;
 };
 
 // - UI commands for logic update

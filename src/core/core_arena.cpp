@@ -161,6 +161,12 @@ void temp_arena_end(Temp_arena* temp)
   *temp = {};
 }
 
+void temp_arena_reset(Temp_arena* temp)
+{
+  if (temp->arena == 0) { InvalidCodePath("This shoud no happend, but it doesnt break the code, so dev time assert is fine"); return;  }
+  arena_pop_to_pos(temp->arena, temp->stored_index);
+}
+
 ///////////////////////////////////////////////////////////
 // - Helpers
 //

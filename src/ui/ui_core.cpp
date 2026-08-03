@@ -806,6 +806,8 @@ UI_Actions ui_actions_from_id(Str8 id)
 //
 V2F32 ui_box_clip_offset(UI_Box* box)
 {
+  // TODO: Add break here when you ask for a box that doenst have clip
+
   V2F32 offset = {};
   if (!ui_box_is_null(box))
   {
@@ -965,6 +967,13 @@ void ui_box_set_border(UI_Box* box, V4F32 border_width, V4F32 border_color)
 
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
 {
+  Assert(
+    (box->per_build_config.flags&UI_Box_flag__clip_x) 
+      || 
+    (box->per_build_config.flags&UI_Box_flag__clip_y), 
+    "Dude, you are trying to aply clip offset to a box that is not clippable"
+  );
+
   box->clip_offset.v[axis] = clip_offset;
 }
 
@@ -1989,9 +1998,9 @@ void ui_scroll_box_with_wheel(UI_Box* box, F32 multiplier)
         V2F32 current_offset = ui_box_clip_offset(box);
         V2F32 new_offset     = v2f32_add(current_offset, scroll);
         F32 max_offset       = clip_data.content_dims.v[axis] - clip_data.viewport_dims.v[axis];
-        if (max_offset > 0.0f) { max_offset = 0.0f; }
+        if (max_offset < 0.0f) { max_offset = 0.0f; }
         F32 min_offset       = 0.0f;
-        clamp_f32_inplace(&new_offset.v[axis], max_offset, -min_offset);
+        new_offset.v[axis] = -clamp_f32(-new_offset.v[axis], min_offset, max_offset);
         ui_box_set_clip_offset_for_axis(box, new_offset.v[axis], axis);
       }
     }
