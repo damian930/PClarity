@@ -360,9 +360,21 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
                     {
                       UI_Actions button_actions = ui_button(data_for_button_interaction[i].button_text);
                       if (button_actions.is_hovered) { ui_box_set_b_color(button_actions.box, nice_blue()); }
-                      if (button_actions.is_clicked) { pcl_defer_command_to_start_of_next_frame(pcl, data_for_button_interaction[i].command_to_defere_on_click); }
+                      if (button_actions.is_clicked) { 
+                        pcl_defer_command_to_start_of_next_frame(pcl, data_for_button_interaction[i].command_to_defere_on_click); 
+                        ui_reset_context_menu();
+                      }
                     }
                   }
+
+                  if (header_index != pcl->table_data.header_count - 1)
+                  {
+                    if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
+                    ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                    ui_next_height(ui_grow());
+                    UI_Box* visible_resizer_box = ui_box_make(UI_Box_flag__has_background, {});
+                  }
+
                 }
               }
     
