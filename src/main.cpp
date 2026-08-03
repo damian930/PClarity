@@ -76,7 +76,7 @@ void handle_ui_dll_hot_reload(U64* last_dll_write_time, OS_Handle* ui_dll_handle
 }
 */
 
-void pcl_build_ui__stub(FP_Font font, PCL_State* pcl, F64 prev_frame_fps, PCL_UI_Dll_context dll_context) { }
+PCL_BUILD_UI_FUNC_DEF(pcl_build_ui__stub) { }
 
 ///////////////////////////////////////////////////////////
 // DD: Stuff fror ui dll reload 
@@ -156,7 +156,6 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   B32 show_debug_stuff = false;
 
-
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
 
@@ -224,8 +223,12 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     dll_context.draw_state          = d_get_state();
     dll_context.ui_state            = ui_get_state();
 
+    PCL_Debug_data_for_ui pcl_debug_data = {};
+    pcl_debug_data.fps = prev_frame_fps;
+
     Assert(pcl_build_ui);
-    if (pcl_build_ui) { pcl_build_ui(font, &pcl, 0, dll_context);  }
+    if (pcl_build_ui) { pcl_build_ui(font, &pcl, dll_context, pcl_debug_data);  }
+
 
     ui_draw();
 

@@ -954,6 +954,7 @@ void ui_box_set_border_width(UI_Box* box, V4F32 border_width)
   box->per_build_config.border_width = border_width;
 }
 
+// TODO: These are not in the header file, add these there
 void ui_box_set_border_color(UI_Box* box, V4F32 border_color)
 {
   box->per_build_config.border_color = border_color;

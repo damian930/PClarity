@@ -14,27 +14,23 @@
 //
 #include "pclarity/win32_data_retrival/win32_data_retrival.cpp"
 
-// TODO: This might not be used thought
-U64 arr_shift_left_from_index(void* arr, U64 arr_count, U64 index_to_remove, U64 size_of_arr_entry)
+// TODO: Move thi to the bottom of this file
+// TODO: THis is not the best in terms of handling when the passed in data is invalide or we dont have a header that is selected
+U64 pcl_get_header_index_with_generation(PCL_State* pcl)
 {
-  U64 new_count = arr_count;
-  if (new_count > 0 && index_to_remove < new_count)
+  if (pcl->selected_header_generation == 0) { BreakPoint("Handle this better, have like a null value then like in ui for boxes"); return 0; }
+
+  U64 result_index = 0;
+  for EachIndex(i, pcl->table_data.header_count)
   {
-    if (new_count > 1)
+    if (pcl->table_data.headers[i].generation == pcl->selected_header_generation)
     {
-      for (U64 i = index_to_remove; i < new_count - 1; i += 1)
-      {
-        U8* arr_entry      = ((U8*)(arr)) + ((i + 0) * size_of_arr_entry);
-        U8* arr_next_entry = ((U8*)(arr)) + ((i + 1) * size_of_arr_entry);
-        memcpy(arr_entry, arr_next_entry, size_of_arr_entry);
-      }
+      result_index = i;
+      break;
     }
-    new_count -= 1;
   }
-  else { InvalidCodePath(); }
-  return new_count;
+  return result_index;
 }
-#define ArrShiftLeftFromIndex(arr_p, arr_count, index_to_remove) arr_shift_left_from_index(arr_p, arr_count, index_to_remove, sizeof(arr_p[0]))
 
 ///////////////////////////////////////////////////////////
 // - Main passes
@@ -71,7 +67,9 @@ PCL_State pcl_init()
 void pcl_frame_update(PCL_State* pcl)
 {
   ProfBeginFunc();
-  
+ 
+  // TODO: Make sure that there are no headers inside the table with the same generation, might be a good idea to call it id and not generation for better meaning 
+
   // DD: Handling the defered commands 
   for (
     PCL_Command_node* command_node = pcl->defered_commands_to_start_of_next_frame.first; 
@@ -105,10 +103,46 @@ void pcl_frame_update(PCL_State* pcl)
         pcl->main_font_size = pcl->data_for_commands.new_font_size;
       } break;
 
-      case PCL_Command__add_header_to_table:
+      // case PCL_Command__add_header_to_table:
+      // {
+      //   PCL_Table_header_kind kind = pcl->data_for_commands.table_header_kind_for_new_table_header;
+      //   pcl_add_header_into_table(pcl, kind, 1); 
+      // } break;
+
+      case PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header:
+      case PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header:
+      case PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header:
+      case PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header:
       {
-        PCL_Table_header_kind kind = pcl->data_for_commands.table_header_kind_for_new_table_header;
-        pcl_add_header_into_table(pcl, kind, 1); 
+        PCL_Table_header_kind header_kind_to_add = PCL_Table_header_kind__NONE;
+        if (0) {}
+        else if (command_node->command == PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__NONE; }
+        else if (command_node->command == PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__pid; }
+        else if (command_node->command == PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__ppid; }
+        else if (command_node->command == PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__name; }
+
+        // TODO: This might be a call to be honest
+        B32 is_header_selected = (pcl->selected_header_generation != 0);
+        if (is_header_selected) { 
+          U64 header_index_to_add_after = pcl_get_header_index_with_generation(pcl);
+          pcl_add_header_after_index_of_table(pcl, header_kind_to_add, 2, header_index_to_add_after); 
+        } else {
+          pcl_add_header_to_the_end_of_table(pcl, header_kind_to_add, 2);
+        }
+      } break;
+
+      case PCL_Command__select_header:
+      {
+        // TODO: Maybe there should be some warning for the case when we fuck up on our end which should not happend but then what if it does, maybe some logging here or some like that
+        U64 test_generation = pcl->data_for_commands.generation_of_header_to_select;
+        for EachIndex(i, pcl->table_data.header_count)
+        {
+          if (pcl->table_data.headers[i].generation == test_generation)
+          {
+            pcl->selected_header_generation = test_generation;
+            break;
+          }
+        }
       } break;
 
       // case PCL_Command__remove_header_from_table:
@@ -125,39 +159,6 @@ void pcl_frame_update(PCL_State* pcl)
       {
         pcl->table_data = {};
       } break;
-      
-      case PCL_Command__sort_by_header:
-      { 
-        U64 chosen_header_index = pcl->data_for_commands.sort_by_header__header_index;
-        pcl->data_for_commands.sort_by_header__header_index = 0;
-        
-        for EachIndex(header_index, pcl->table_data.header_count)
-        {
-          PCL_Table_header* header = pcl->table_data.headers + header_index;
-          if (header_index == chosen_header_index)
-          {
-            if (header->is_used_for_sorting) { 
-              header->sort_small_to_big = ToggleBool(header->sort_small_to_big);
-            }
-            else {
-              header->is_used_for_sorting = true;
-            }
-          }
-          else 
-          {
-            header->is_used_for_sorting = false;
-            header->sort_small_to_big = false;
-          }
-        }
-      } break;
-
-      case PCL_Command__select_row:
-      {
-        pcl->selected_row_data.is_selected = true;
-        pcl->selected_row_data.pid         = pcl->data_for_commands.process_at_row_to_select_pid;
-
-        pcl->data_for_commands.process_at_row_to_select_pid = 0;
-      } break;
 
     }
   }
@@ -166,23 +167,6 @@ void pcl_frame_update(PCL_State* pcl)
   pcl->defered_commands_to_start_of_next_frame = {};
   pcl->data_for_commands                       = {};
   arena_clear(pcl->frame_arena);
-
-  // DD: Checking the state invariant
-  B32 is_state_valid = true;
-  {
-    U64 number_of_sorting_header = 0;
-    for EachIndex(header_index, PCL_TABLE_HEADER_MAX_COUNT)
-    {
-      if (pcl->table_data.headers[header_index].is_used_for_sorting) {
-        number_of_sorting_header += 1;
-      }
-      if (number_of_sorting_header > 1) { 
-        is_state_valid = false;
-        break; 
-      }
-    }
-  }
-  Handle(is_state_valid);
 
   #if 0
   ProfGroup("Win32QueryProcessArray")
@@ -288,15 +272,38 @@ void pcl_frame_update(PCL_State* pcl)
   ProfEndGroup();
 }
  
-void pcl_add_header_into_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value)
+void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value)
 {
   if (pcl->table_data.header_count >= PCL_TABLE_HEADER_MAX_COUNT) { return; }
   
+  pcl->table_header_generation_counter += 1;
+
   PCL_Table_header* new_header = pcl->table_data.headers + (pcl->table_data.header_count++);
-  new_header->kind                = header_kind;
-  new_header->flex_value          = flex_value;
-  new_header->is_used_for_sorting = false;
-  new_header->generation          = pcl->table_header_generation_counter++;
+  new_header->kind       = header_kind;
+  new_header->flex_value = flex_value;
+  new_header->generation = pcl->table_header_generation_counter;
+}
+
+void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value, U64 index_to_add_after)
+{
+  // TODO: Test if the bound of the array for the table header dont overflow with this shitty ass code here
+
+  if (pcl->table_data.header_count >= PCL_TABLE_HEADER_MAX_COUNT) { return; }
+  index_to_add_after = clamp_u64(index_to_add_after, 0, pcl->table_data.header_count);
+
+  // TODO: DOnt use the byte memmove here, use some macro
+  U64 n_header_we_have_to_shift = pcl->table_data.header_count - 1 - index_to_add_after;
+  if (n_header_we_have_to_shift > 0) {
+    memmove(pcl->table_data.headers + index_to_add_after + 2, pcl->table_data.headers + index_to_add_after + 1, n_header_we_have_to_shift * sizeof(PCL_Table_header));
+  }
+  pcl->table_data.header_count += 1;
+
+  pcl->table_header_generation_counter += 1;
+
+  PCL_Table_header* new_header = &pcl->table_data.headers[index_to_add_after + 1];
+  new_header->kind       = header_kind;
+  new_header->flex_value = flex_value;
+  new_header->generation = pcl->table_header_generation_counter;
 }
 
 

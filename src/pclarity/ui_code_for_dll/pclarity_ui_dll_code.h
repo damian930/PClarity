@@ -16,9 +16,10 @@ struct PCL_UI_Dll_context {
   FP_State*  font_provider_state;
   D_State*   draw_state;
   UI_State*  ui_state;
+  // TODO: You cant profile the ui yet, since you dont have a way to set the priler across the dll boundary, fix that 
 };
 
-#define PCL_BUILD_UI_FUNC_DEF(name) void (name)(FP_Font font, PCL_State* pcl, F64 prev_frame_fps, PCL_UI_Dll_context dll_context);
+#define PCL_BUILD_UI_FUNC_DEF(name) void (name)(FP_Font font, PCL_State* pcl, PCL_UI_Dll_context dll_context, PCL_Debug_data_for_ui debug_data)
 typedef PCL_BUILD_UI_FUNC_DEF(PCL_Build_ui_func);
 #define PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME pcl_build_ui__func_for_export
 

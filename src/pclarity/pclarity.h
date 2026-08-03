@@ -27,8 +27,8 @@
 PCL_State pcl_init();
 void pcl_frame_update(PCL_State* PCL);
 
-void pcl_add_header_into_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value);
-
+void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value);
+void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value, U64 add_after_index);
 
 #endif
 

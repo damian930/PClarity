@@ -1,11 +1,18 @@
 App
 -----------
-[ ] - Fix the bug that the borders dont get rounded for rounded boxes on the inside
 [ ] - Make the main menu look like on the images in discord, have fake data be used to have the table ui be tested and made look nice
-      [ ] - When pressing on the table headers open a contexdt menu with button that would add headers and just add them to the end of the table header list
-      [ ] - Have a way to add headers with no buttons like you have now, have a context menu bu used for that or some like that
+      [ ] - Fix the bug with scroll bar making the table bigger
+      [ ] - Fix the scroll bar ui
+      [ ] - Fix the bug with resizers in the table being drawn when table is scroll down
+      [ ] - Fix ui for context menus in how you add stuff to the table via context menus
+      [ ] - Have a way to have headers be in X clip space inside the table with an X axis scroll bar under the table
       [ ] - Be able to drag headers to move them around, dont forget that now that they are moved the ids might have to be redone relative to how they are given to them right now.
 [ ] - Work on debug data passing to pcl to be able to have frame rate ui and such things
+      [ ] - Number of batches last frame
+      [ ] - Number of pushed of scissor rect last frame
+      [ ] - Number of successfull scissor rect changes last frame
+      [ ] - FPS from last frame
+      [ ] - 
 [ ] - Menu for specific app data
       [ ] - List of sesttions with a table like look 
 [ ] - 

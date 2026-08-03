@@ -208,8 +208,7 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
         float sdf_pixel_to_rect_after_border = sdf_rounded_rect(rect_after_border_origin, rect_after_border_dims, pos_px, radius_in_px_for_rect_after_border);
 
         if (sdf_pixel_to_rect_after_border < 0.0 && background_color.a != 0.0) { 
-          // final_color = background_color; 
-          final_color.r = 1.0;
+          final_color = background_color; 
         }
         else 
         {

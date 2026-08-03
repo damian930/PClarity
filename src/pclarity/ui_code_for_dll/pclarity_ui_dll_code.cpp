@@ -10,7 +10,7 @@
 // - Code to export outside the dll 
 //
 extern "C" __declspec( dllexport )
-void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_frame_fps, PCL_UI_Dll_context dll_context) 
+void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dll_context dll_context, PCL_Debug_data_for_ui debug_data) 
 {
   ProfBeginFunc();
 
@@ -102,7 +102,9 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
     ui_next_height(ui_grow());
     ui_next_b_color(pcl_color_from_name(PCL_Color_name__main_background, pcl));
     ui_next_extra_flags(UI_Box_flag__has_background|UI_Box_flag__has_padding);
-    ui_next_padding(ui_top_font_size()); // todo: Use a scale here
+    ui_next_padding_left(ui_top_font_size());
+    ui_next_padding_right(ui_top_font_size());
+    ui_next_padding_top(ui_top_font_size());
     UI_Col()
     {
       if (pcl->current_menu == PCL_Menu__settings)
@@ -119,99 +121,14 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
       }
       else if (pcl->current_menu == PCL_Menu__home)
       {
-        Str8 filter_str_for_names = {};
-
-        // TODO: Here you should add a text edit thing
-        // ui_next_width(ui_px(250));
-        // ui_next_height(ui_fit());
-        // ui_next_border(1, red());
-        // ui_next_padding(10);
-        // ui_next_b_color(white());
-        // UI_Parent(ui_box_make(UI_Box_flag__has_background|UI_Box_flag__has_padded_border, {}))
-        // {
-          // ScratchLoop(scratch, 0, 0)
-          // {
-            // static U8 text_buffer[255]   = {};
-            // static U64 text_buffer_count = 0;
-            // static U64 cursor_pos        = 0;
-            // static U64 section_pos       = 0;
-
-            // ui_next_font_color(black());
-            // UI_Text_op_list text_op_list = ui_text_edit_box(
-            //   scratch.arena, 
-            //   true, 
-            //   ui_grow(), 
-            //   text_buffer, 
-            //   text_buffer_count, ArrayCount(text_buffer), 
-            //   cursor_pos, section_pos,
-            //   Str8FromC("Edit box test id for test box")
-            // );
-
-            // ui_aply_text_ops(text_op_list, text_buffer, ArrayCount(text_buffer), &text_buffer_count, &cursor_pos, &section_pos, Null, Null);
-          
-            // filter_str_for_names = str8_manual_view(text_buffer, text_buffer_count);
-          // }
-        // }
-
-        // ui_spacer(ui_rem(0.25));
-
-        // ui_next_font_size(32);
-        // ui_next_font_color(magenta());
-        // ui_text_f("Application data");
-
-        // ui_spacer(ui_rem(0.25));
-
-        // DD: Button for adding headers to the table
-        ui_next_child_gap(15); ui_next_extra_flags(UI_Box_flag__has_child_gap);
-        UI_Row()
-        {
-          struct {
-            Str8 button_text;
-            PCL_Table_header_kind header_kind;
-          } button_data[] = {
-            { Str8FromC("Add name"), PCL_Table_header_kind__name },
-            { Str8FromC("Add pid"), PCL_Table_header_kind__pid },
-            { Str8FromC("Add ppi"), PCL_Table_header_kind__ppid },
-            { Str8FromC("Add startup"), PCL_Table_header_kind__startup_time },
-          };
-          
-          UI_Width(ui_px(50))
-          UI_Height(ui_px(50))
-          UI_BColor(nice_green())
-          UI_Border(1, white())
-          UI_Padding(10)
-          {
-            for EachIndex(i, ArrayCount(button_data))
-            {
-              if (ui_button(button_data[i].button_text).is_clicked)
-              {
-                pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__add_header_to_table);
-                pcl->data_for_commands.table_header_kind_for_new_table_header = button_data[i].header_kind;
-              }
-            }
-            
-            ui_next_b_color(red());
-            if (ui_button_f("Clear table").is_clicked)
-            {
-              pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__clear_table);
-            }
-          }
-        }
-
-        ui_spacer(ui_rem(0.25));
-
-        // TODO: There is a bug that the borders are not visible
-        // DD: The top table box
-        ui_next_width(ui_grow());
+        // DD: Top col stack for table
+        ui_next_width(ui_grow()); 
         ui_next_height(ui_grow());
-        ui_next_padding_ex(20, 20, 10, 10);
-        ui_next_padded_border(1, green());
-        ui_next_padding(5);
-        ui_next_extra_flags(UI_Box_flag__has_padding|UI_Box_flag__has_borders);
         UI_Col()
         {
           // Table + vertical slider on the right of the table
-          ui_next_width(ui_grow()); ui_next_height(ui_grow());
+          ui_next_width(ui_grow()); 
+          ui_next_height(ui_grow());
           UI_Row()
           {
             B32 is_resizing_headers  = false;
@@ -225,174 +142,233 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
             ui_next_width(ui_grow());
             ui_next_height(ui_grow());
             ui_next_layout_y();
-            ui_next_b_color(black());
-            UI_Box* table_box = ui_box_make_f(UI_Box_flag__has_background, "table_boxflkdfjlsdk"); 
+            UI_Box* table_box = ui_box_make_f(0, "table_box"); 
             UI_Box_data table_box_data = ui_box_data_from_box(table_box);
 
             // DD: These boxes we will need later, but they are created as children of the table_box
             UI_Box* table_scroll_box_for_rows = ui_box_null();
 
-            if (table_box_data.is_found && pcl->table_data.header_count > 0)
+            U64 n_resizers_per_row = pcl->table_data.header_count - 1;
+            F32 space_for_headers  = (F32)(table_box_data.inner_rect.width - (n_resizers_per_row * RESIZER_VISIBLE_WIDTH));
+      
+            F32 headers_total_flex_value = 0.0f;
+            for EachIndex(header_index, pcl->table_data.header_count) {
+              headers_total_flex_value += pcl->table_data.headers[header_index].flex_value;
+            }
+
+            if (table_box_data.is_found)
             UI_Parent(table_box)
             {
-              U64 n_resizers_per_row = pcl->table_data.header_count - 1;
-              F32 space_for_headers  = (F32)(table_box_data.inner_rect.width - (n_resizers_per_row * RESIZER_VISIBLE_WIDTH));
-    
-              F32 headers_total_flex_value = 0.0f;
-              for EachIndex(header_index, pcl->table_data.header_count) {
-                headers_total_flex_value += pcl->table_data.headers[header_index].flex_value;
-              }
-    
-              // Floating resizers
-              {
-                F32 pending_resizer_drag = 0.0;
-                
-                F32 offset_x = 0.0f;
-                for EachIndex(header_index, pcl->table_data.header_count)
-                {
-                  if (header_index == pcl->table_data.header_count - 1) { continue; }
-    
-                  PCL_Table_header header = pcl->table_data.headers[header_index];
-
-                  F32 flex_norm = header.flex_value / headers_total_flex_value;
-                  offset_x += space_for_headers * flex_norm;
-                  offset_x += RESIZER_VISIBLE_WIDTH; 
-    
-                  #define RESIZER_INVISIBLE_WIDTH 6
-                  ui_next_width(ui_px(RESIZER_INVISIBLE_WIDTH));
-                  ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
-                  ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-                  ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2));
-                  UI_Box* resizer = ui_box_make_f(UI_Box_flag__floating|UI_Box_flag__clickable, "Data table resizer %lld", header_index);
-
-                  UI_Actions resizer_actions = ui_actions_from_box(resizer);
-                  if (resizer_actions.is_down)
-                  {
-                    F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x;
-                    is_resizing_headers   = true;
-                    resizing_header_index = header_index;
-                    pending_resizer_drag  = drag;
-                  }
-                }
-    
-                // DD, TODO: This should probably happend in the end sice the rest of the ui depends on these flex values, not so sure about this right now
-                if (is_resizing_headers)
-                {
-                  // TODO: Do this at the end of the frame and see if it does anything
-
-                  F32 old_left_flex  = pcl->table_data.headers[resizing_header_index + 0].flex_value;
-                  F32 old_right_flex = pcl->table_data.headers[resizing_header_index + 1].flex_value;
-                  
-                  F32 old_left_px = (old_left_flex / headers_total_flex_value) * space_for_headers;
-    
-                  F32 flex_change_on_left = old_left_flex * (pending_resizer_drag / old_left_px);
-    
-                  F32 new_left_flex  = old_left_flex + flex_change_on_left;
-                  F32 new_right_flex = old_right_flex - flex_change_on_left;
-    
-                  if (new_left_flex > 0.0f && new_right_flex > 0.0f) 
-                  {
-                    pcl->table_data.headers[resizing_header_index + 0].flex_value = new_left_flex;
-                    pcl->table_data.headers[resizing_header_index + 1].flex_value = new_right_flex;
-                  }
-                }
-              }
-    
-              // TODO: Assert that the flex value from before is the same as now
-    
-              // DD: Building table headers
               ui_next_size_x(ui_grow());
               ui_next_size_y(ui_rem(ROW_HEIGHT_SCALER));
               ui_next_layout_x();
-              UI_Box* table_headers_row_box = ui_box_make_f(0, "Header row for table");
+              UI_Box* table_headers_row_box = ui_box_make_f(UI_Box_flag__right_clickable, "Header row for table");
 
-              UI_Parent(table_headers_row_box)
+              // DD: If we dont have headers, then just have a context menu open to be able to add them
+              if (pcl->table_data.header_count == 0)
               {
-                ScratchLoop(scratch, 0, 0) 
-                for (U64 header_index = 0; header_index < pcl->table_data.header_count; header_index += 1, reset_scratch(&scratch))
+                Str8 context_menu_id = Str8FromC("Context menu for header row when no headers");
+
+                UI_Actions header_row_actions = ui_actions_from_box(table_headers_row_box);
+                if (header_row_actions.is_right_clicked)
                 {
-                  PCL_Table_header header = pcl->table_data.headers[header_index];
-                  F32 flex_norm           = header.flex_value / headers_total_flex_value;
-                  
-                  ui_next_width(ui_px(flex_norm * space_for_headers));
-                  ui_next_height(ui_grow());
-                  
-                  // TODO: Sort the headers here by generation to then be able to have stable ids
-                  Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
-                  UI_Actions header_actions = pcl_ui_table_header(id, header, pcl);
+                  ui_set_context_menu_key(context_menu_id, ui_get_mouse_pos());
+                }
 
-                  Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id _ %lld", header.generation);
-                  if (header_actions.is_right_clicked)
+                UI_ContextMenu(context_menu_id)
+                {
+                  struct {
+                    Str8 button_text;
+                    PCL_Command command;
+                  } button_to_command_pairs[] = {
+                    { Str8FromC("Add PID Column"), PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header },
+                    { Str8FromC("Add PPID Column"), PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header },
+                    { Str8FromC("Add Name Column"), PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header },
+                    { Str8FromC("Add Empty Column"), PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header },
+                  };
+
+                  UI_Col()
                   {
-                    ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
-                  }
-
-                  UI_ContextMenu(header_context_menu_id)
-                  {
-                    ui_next_width(ui_px(100));
-                    ui_next_height(ui_px(100));
-                    ui_next_b_color(black()); // TODO: Change this
-                    // ui_next_inner_softness(2);
-                    // ui_next_outer_softness(2);
-                    ui_next_corner_r(7);
-                    ui_next_border(5, golden());
-                    // ui_next_corner_r(0.25f * ui_top_font_size());
-                    // ui_next_border(ui_top_font_size() * 0.25f, red());
-                    ui_next_padding(ui_top_font_size() * 0.35f);
-                    ui_next_child_gap(ui_top_font_size() * 0.1f);
-                    UI_Box* button_list_box = ui_box_make(
-                      UI_Box_flag__has_padded_border
-                      |UI_Box_flag__has_borders
-                      |UI_Box_flag__has_background
-                      |UI_Box_flag__has_child_gap
-                      |UI_Box_flag__has_rounded_corners, 
-                      {}
-                    );
-                    
-                    struct {
-                      Str8 button_text;
-                      PCL_Command command_to_defere_on_click;
-                    } data_for_button_interaction[] = {
-                      { Str8FromC("Remove header"), PCL_Command__remove_currenly_selected_header },
-                      { Str8FromC("Add PID Column"), PCL_Command__add_PID_header_after_the_current_selected_header },
-                    };
-
-                    UI_Parent(button_list_box)
-                      for EachIndex(i, ArrayCount(data_for_button_interaction))
-                        UI_CornerR(0.15f * ui_top_font_size())
-                        UI_Padding(ui_top_font_size() * 0.15f)
+                    for EachIndex(button_index, ArrayCount(button_to_command_pairs))
                     {
-                      UI_Actions button_actions = ui_button(data_for_button_interaction[i].button_text);
-                      if (button_actions.is_hovered) { ui_box_set_b_color(button_actions.box, nice_blue()); }
-                      if (button_actions.is_clicked) { 
-                        pcl_defer_command_to_start_of_next_frame(pcl, data_for_button_interaction[i].command_to_defere_on_click); 
+                      Str8 button_text    = button_to_command_pairs[button_index].button_text;
+                      PCL_Command command = button_to_command_pairs[button_index].command;
+
+                      ui_next_b_color(red());
+                      ui_next_padded_border(1, black());
+                      UI_Actions button = ui_button(button_text);
+                      if (button.is_clicked)
+                      {
+                        pcl_defer_command_to_start_of_next_frame(pcl, command);
                         ui_reset_context_menu();
                       }
                     }
                   }
 
-                  if (header_index != pcl->table_data.header_count - 1)
-                  {
-                    if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
-                    ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
-                    ui_next_height(ui_grow());
-                    UI_Box* visible_resizer_box = ui_box_make(UI_Box_flag__has_background, {});
-                  }
-
                 }
               }
-    
+              else 
+              {
+                // Resizing headers flex valules
+                {
+                  F32 pending_resizer_drag = 0.0;
+                  
+                  F32 offset_x = 0.0f;
+                  for EachIndex(header_index, pcl->table_data.header_count)
+                  {
+                    if (header_index == pcl->table_data.header_count - 1) { continue; }
+      
+                    PCL_Table_header header = pcl->table_data.headers[header_index];
+
+                    F32 flex_norm = header.flex_value / headers_total_flex_value;
+                    offset_x += space_for_headers * flex_norm;
+                    offset_x += RESIZER_VISIBLE_WIDTH; 
+      
+                    #define RESIZER_INVISIBLE_WIDTH 6
+                    ui_next_width(ui_px(RESIZER_INVISIBLE_WIDTH));
+                    ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
+                    ui_next_hover_cursor(OS_Cursor__horizontal_resize);
+                    ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2));
+                    UI_Box* resizer = ui_box_make_f(UI_Box_flag__floating|UI_Box_flag__clickable, "Data table resizer %lld", header_index);
+
+                    UI_Actions resizer_actions = ui_actions_from_box(resizer);
+                    if (resizer_actions.is_down)
+                    {
+                      F32 drag = ui_get_mouse_pos().x - ui_get_prev_mouse_pos().x;
+                      is_resizing_headers   = true;
+                      resizing_header_index = header_index;
+                      pending_resizer_drag  = drag;
+                    }
+                  }
+      
+                  // DD, TODO: This should probably happend in the end sice the rest of the ui depends on these flex values, not so sure about this right now
+                  if (is_resizing_headers)
+                  {
+                    // TODO: Do this at the end of the frame and see if it does anything
+
+                    F32 old_left_flex  = pcl->table_data.headers[resizing_header_index + 0].flex_value;
+                    F32 old_right_flex = pcl->table_data.headers[resizing_header_index + 1].flex_value;
+                    
+                    F32 old_left_px = (old_left_flex / headers_total_flex_value) * space_for_headers;
+      
+                    F32 flex_change_on_left = old_left_flex * (pending_resizer_drag / old_left_px);
+      
+                    F32 new_left_flex  = old_left_flex + flex_change_on_left;
+                    F32 new_right_flex = old_right_flex - flex_change_on_left;
+      
+                    if (new_left_flex > 0.0f && new_right_flex > 0.0f) 
+                    {
+                      pcl->table_data.headers[resizing_header_index + 0].flex_value = new_left_flex;
+                      pcl->table_data.headers[resizing_header_index + 1].flex_value = new_right_flex;
+                    }
+                  }
+                }
+                // TODO: Assert that the flex value from before is the same as now
+
+                UI_Parent(table_headers_row_box)
+                {
+                  ScratchLoop(scratch, 0, 0) 
+                  for (U64 header_index = 0; header_index < pcl->table_data.header_count; header_index += 1, reset_scratch(&scratch))
+                  {
+                    PCL_Table_header header = pcl->table_data.headers[header_index];
+                    F32 flex_norm           = header.flex_value / headers_total_flex_value;
+                    
+                    ui_next_width(ui_px(flex_norm * space_for_headers));
+                    ui_next_height(ui_grow());
+                    
+                    // TODO: Sort the headers here by generation to then be able to have stable ids
+                    Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+                    UI_Actions header_actions = pcl_ui_table_header(id, header, pcl);
+
+                    Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id _ %lld", header.generation);
+                    if (header_actions.is_right_clicked || header_actions.is_clicked)
+                    {
+                      pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__select_header);
+                      pcl->data_for_commands.generation_of_header_to_select = header.generation;
+
+                      if (header_actions.is_right_clicked)
+                      {
+                        ui_set_context_menu_key(header_context_menu_id, ui_get_mouse_pos());
+                      }
+                    }
+
+                    UI_ContextMenu(header_context_menu_id)
+                    {
+                      ui_next_width(ui_fit());
+                      ui_next_height(ui_fit());
+                      ui_next_b_color(black()); // TODO: Change this
+                      ui_next_inner_softness(2);
+                      ui_next_outer_softness(2);
+                      ui_next_corner_r(0.5f * ui_top_font_size());
+                      ui_next_border(ui_top_font_size() * 0.25f, red());
+                      ui_next_padding(ui_top_font_size() * 0.35f);
+                      ui_next_child_gap(ui_top_font_size() * 0.1f);
+                      UI_Box* button_list_box = ui_box_make(
+                        UI_Box_flag__has_padded_border
+                        |UI_Box_flag__has_borders
+                        |UI_Box_flag__has_background
+                        |UI_Box_flag__has_child_gap
+                        |UI_Box_flag__has_rounded_corners, 
+                        {}
+                      );
+                   
+                      UI_Parent(button_list_box)
+                      {
+                        struct {
+                          Str8 button_text;
+                          PCL_Command command;
+                        } button_to_command_pairs[] = {
+                          { Str8FromC("Add PID Column"), PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header },
+                          { Str8FromC("Add PPID Column"), PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header },
+                          { Str8FromC("Add Name Column"), PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header },
+                          { Str8FromC("Add Empty Column"), PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header },
+                        };
+  
+                        UI_Col()
+                        {
+                          for EachIndex(button_index, ArrayCount(button_to_command_pairs))
+                          {
+                            Str8 button_text    = button_to_command_pairs[button_index].button_text;
+                            PCL_Command command = button_to_command_pairs[button_index].command;
+  
+                            ui_next_b_color(red());
+                            ui_next_padded_border(1, black());
+                            UI_Actions button = ui_button(button_text);
+                            if (button.is_clicked)
+                            {
+                              pcl_defer_command_to_start_of_next_frame(pcl, command);
+                              ui_reset_context_menu();
+                            }
+                          }
+                        }
+
+                      }
+                    }
+
+                    if (header_index != pcl->table_data.header_count - 1)
+                    {
+                      if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
+                      ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                      ui_next_height(ui_grow());
+                      UI_Box* visible_resizer_box = ui_box_make(UI_Box_flag__has_background, {});
+                    }
+
+                  }
+                }
+              }
+
               // Horizontal separator between the headers and the table body or rows
               ui_next_width(ui_grow());
               ui_next_height(ui_px(1));
               ui_next_b_color(orange());
               UI_Box* separator_between_header_row_and_data_rows = ui_box_make(UI_Box_flag__has_background, {});
-
+              
               ui_next_width(ui_grow());
               ui_next_height(ui_grow());
               ui_next_layout_y();
               table_scroll_box_for_rows = ui_box_make_f(UI_Box_flag__clip, "Table scroll box for rows");
 
+              if (pcl->table_data.header_count != 0)
               UI_Parent(table_scroll_box_for_rows)
               {
                 // Getting data to make a virtual list for the table data
@@ -451,25 +427,10 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
                     ui_scroll_box_with_wheel(table_scroll_box_for_rows, 15);
                   }
 
-                  if (row_actions.went_down)
-                  {
-                    pcl_defer_command_to_start_of_next_frame(pcl, PCL_Command__select_row);
-                    pcl->data_for_commands.process_at_row_to_select_pid = process_data->pid;
-                  }
-                  
-                  B32 is_row_selected = (pcl->selected_row_data.is_selected && pcl->selected_row_data.pid == process_data->pid);
-                  
-                  V4F32 row_b_color = pcl_color_from_name(PCL_Color_name__main_background, pcl);
-                  {
-                    if (is_row_selected) { row_b_color = lerp_v4f32(row_b_color, red(), 0.25f); }
-                    else if (row_actions.is_hovered) { row_b_color = lerp_v4f32(row_b_color, red(), 0.15f); }
-                  }
-    
-                  ui_box_set_b_color(row_box, row_b_color);
-                  if (is_row_selected) { ui_box_set_border(row_box, v4f32_all(1), red()); }
-  
+
                   UI_Parent(row_box)
                   {
+                    F32 offset_x = 0.0f;
                     for EachIndex(header_index, pcl->table_data.header_count)
                     {
                       F32 flex_norm = pcl->table_data.headers[header_index].flex_value / headers_total_flex_value;
@@ -478,7 +439,8 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
   
                       ui_next_width(ui_px(flex_norm * space_for_headers));
                       ui_next_height(ui_grow()); 
-                      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow, {})) // 
+                      ui_next_alignment_y(UI_Alignment_y__center);
+                      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow, {})) 
                       {
                         switch(header.kind)
                         {
@@ -510,14 +472,27 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
                           } break;
                         }
                       }
+
+                      offset_x += space_for_headers * flex_norm;
+                      offset_x += RESIZER_VISIBLE_WIDTH; 
+
+                      if (header_index != pcl->table_data.header_count - 1)
+                      {
+                        ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                        ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
+                        ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_VISIBLE_WIDTH / 2));
+                        ui_next_b_color(golden());
+                        UI_Box* resizer_inside_rows = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
+                      }
                     }
                   }
                 
-                  // DD: Little spacer between the rows
-                  // if (process_data->next != 0)
                   if (process_data_index < pcl->gathered_process_data_this_frame.count - 1)
                   {
-                    ui_spacer(ui_px(space_between_rows));
+                    ui_next_width(ui_grow());
+                    ui_next_height(ui_px(1));
+                    ui_next_b_color(magenta());
+                    UI_Box* between_row_separator = ui_box_make(UI_Box_flag__has_background, {});
                   }
                 }
 
@@ -670,6 +645,20 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
       ui_next_font_color(nice_blue());
       ui_text_f("DEBUG floating box: ");
 
+      if (0) {}
+      else if (debug_data.fps < 30)   { ui_next_font_color(red());        }
+      else if (debug_data.fps < 60)   { ui_next_font_color(orange());     }
+      else if (debug_data.fps < 120)  { ui_next_font_color(yellow());     }
+      else if (debug_data.fps < 165)  { ui_next_font_color(green());      }
+      else if (debug_data.fps < 240)  { ui_next_font_color(nice_green()); }
+      else if (debug_data.fps < 360)  { ui_next_font_color(teal());       }
+      else if (debug_data.fps < 500)  { ui_next_font_color(blue());       }
+      else if (debug_data.fps < 700)  { ui_next_font_color(nice_blue());  }
+      else if (debug_data.fps < 850)  { ui_next_font_color(magenta());    }
+      else if (debug_data.fps < 1000) { ui_next_font_color(golden());     }
+      else                            { ui_next_font_color(pink());       }
+      ui_text_f("FPS: %lld", debug_data.fps);
+
       ui_spacer(ui_px(15));
 
       ui_text_f("Clay->layoutElementsHashMapInternal.length: %d", Clay_GetCurrentContext()->layoutElementsHashMapInternal.length);
@@ -700,19 +689,7 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, F64 prev_
 
       ui_spacer(ui_px(15));
 
-      if (0) {}
-      else if (prev_frame_fps < 30)   { ui_next_font_color(red());        }
-      else if (prev_frame_fps < 60)   { ui_next_font_color(orange());     }
-      else if (prev_frame_fps < 120)  { ui_next_font_color(yellow());     }
-      else if (prev_frame_fps < 165)  { ui_next_font_color(green());      }
-      else if (prev_frame_fps < 240)  { ui_next_font_color(nice_green()); }
-      else if (prev_frame_fps < 360)  { ui_next_font_color(teal());       }
-      else if (prev_frame_fps < 500)  { ui_next_font_color(blue());       }
-      else if (prev_frame_fps < 700)  { ui_next_font_color(nice_blue());  }
-      else if (prev_frame_fps < 850)  { ui_next_font_color(magenta());    }
-      else if (prev_frame_fps < 1000) { ui_next_font_color(golden());     }
-      else                            { ui_next_font_color(pink());       }
-      ui_text_f("FPS: %lld", prev_frame_fps);
+      
 
     }
   }
@@ -950,19 +927,46 @@ void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scro
 UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header, PCL_State* pcl)
 {
   ui_next_layout_x();
+  ui_next_alignment_y(UI_Alignment_y__center);
+  ui_next_border(ui_top_font_size() * 0.25f, nice_blue());
+  ui_next_padding(ui_top_font_size() * 0.5f);
+  ui_next_corner_r(ui_top_font_size() * 0.2f);
   UI_Box* box = ui_box_make(
     UI_Box_flag__dont_draw_overflow|
     UI_Box_flag__has_background|
+    UI_Box_flag__has_padding|
+    UI_Box_flag__has_borders|
+    UI_Box_flag__has_rounded_corners|
     UI_Box_flag__clickable, 
     id
   );
-  V4F32 b_color = pcl_color_from_name(PCL_Color_name__main_background, pcl);
-  if (header.is_used_for_sorting) { b_color = brown(); }
-  
   UI_Actions actions = ui_actions_from_box(box); 
-  if (actions.is_hovered) { b_color = lerp_v4f32(b_color, white(), 0.15f); }
+
+  V4F32 hover_bg          = v4f32(0.88f, 0.94f, 1.00f, 1.0f);
+  V4F32 selected_bg       = v4f32(0.80f, 0.89f, 0.98f, 1.0f);
+  V4F32 selected_hover_bg = v4f32(0.76f, 0.87f, 0.98f, 1.0f);
+  V4F32 selected_border   = v4f32(0.48f, 0.72f, 0.97f, 1.0f);
+  V4F32 hover_border      = transparent();
+  
+  V4F32 b_color      = transparent();
+  V4F32 border_color = transparent();
+
+  B32 is_selected = (pcl->selected_header_generation == header.generation);
+  if (is_selected)
+  {
+    b_color = selected_bg;
+    border_color = selected_border;
+
+    if (actions.is_hovered) { b_color = selected_hover_bg; }
+  }
+  else if (actions.is_hovered)
+  {
+    b_color = hover_bg;
+    border_color = hover_border;
+  }
 
   ui_box_set_b_color(box, b_color);
+  ui_box_set_border_color(box, border_color);
 
   UI_Parent(box)
   {
@@ -974,16 +978,7 @@ UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header, PCL_State* pcl)
     else if (header.kind == PCL_Table_header_kind__ppid)         { text_for_header_kind = Str8FromC("PPID"); }
     else if (header.kind == PCL_Table_header_kind__startup_time) { text_for_header_kind = Str8FromC("Startup"); }
 
-    ui_next_width(ui_grow());
-    ui_next_height(ui_grow());
     ui_text_ellipsed(text_for_header_kind);
-    
-    if (header.is_used_for_sorting)
-    {
-      R_Handle arrow_icon = (header.sort_small_to_big ? pcl->icons.arrow_up : pcl->icons.arrow_down);
-      ui_image(arrow_icon, ui_top_font_size(), ui_top_font_size());
-    }
-
   }
 
   return actions;

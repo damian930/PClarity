@@ -40,8 +40,6 @@ enum PCL_Table_header_kind : U32 {
 struct PCL_Table_header {
   PCL_Table_header_kind kind;
   F32 flex_value;
-  B32 is_used_for_sorting; // TODO: THis is not used right now
-  B32 sort_small_to_big; // TODO: THis is not used right now
 
   U64 generation;
 };
@@ -52,11 +50,14 @@ enum PCL_Command {
   PCL_Command__go_to_home,
   PCL_Command__close_the_app, // TODO:
   PCL_Command__new_main_font_size,
-  PCL_Command__add_header_to_table,
 
-  PCL_Command__add_PID_header_after_the_current_selected_header, // TODO: Implement this
-  PCL_Command__remove_currenly_selected_header, // TODO: Implement this
-  
+  // DD: These are new
+  PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header, 
+  PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header, 
+  PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header, 
+  PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header, 
+  PCL_Command__select_header,
+
   PCL_Command__clear_table,
   PCL_Command__sort_by_header,
   PCL_Command__select_row,
@@ -98,17 +99,6 @@ struct PCL_State {
   PCL_Command_list defered_commands_to_start_of_next_frame;
   WindowInfoArray gathered_process_data_this_frame;
   
-  // TODO: This maybe should not be here, not sure, but here cause i just needed it somewhere
-  // Table data
-  // TODO: This is old code
-  // F32 table_header_flex_values[64];
-  // U64 table_header_flex_value_count;
-
-  struct {
-    B32 is_selected;
-    S32 pid; // DD: Right now this is used as a key
-  } selected_row_data;
-
   // Config like data
   F32 main_font_size;
 
@@ -116,9 +106,7 @@ struct PCL_State {
   struct {
     F32 new_font_size;
     PCL_Table_header_kind table_header_kind_for_new_table_header;
-    U64 header_index_to_remove;
-    U64 sort_by_header__header_index;
-    S32 process_at_row_to_select_pid;
+    U64 generation_of_header_to_select;
   } data_for_commands;
 
   struct {
@@ -141,6 +129,8 @@ struct PCL_State {
     R_Handle arrow_down;
   } icons;
 
+  U64 selected_header_generation; // If this is 0 then there is no selected hereader
+
   F32 font_size_for_ui;
 
   // TODO: THe way this gets inited is not great
@@ -155,5 +145,13 @@ struct PCL_State {
 
 // - UI commands for logic update
 void pcl_defer_command_to_start_of_next_frame(PCL_State* PCL, PCL_Command command);
+
+///////////////////////////////////////////////////////////
+// Stuff for debugging
+///////////////////////////////////////////////////////////
+
+struct PCL_Debug_data_for_ui {
+  U64 fps;
+};
 
 #endif

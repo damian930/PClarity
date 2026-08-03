@@ -146,7 +146,12 @@ void __ui_label_ellipsed_draw_func(UI_Box* box )
 void ui_label_ellipsed(Str8 str)
 {
   // Damian: Ellipsed label is not sized to fit the text, size commes from the outside
+  V2F32 text_dims = fp_measure_text(str, ui_top_font(), ui_top_font_size());
+  
+  ui_next_width(ui_grow());
+  ui_next_height(ui_px(text_dims.y));
   UI_Box* box = ui_box_make(UI_Box_flag__NONE, {});
+  
   ui_extend_box_with_text(box, str);
   ui_extend_box_with_custom_draw_function(box, __ui_label_ellipsed_draw_func, Null);
 }
