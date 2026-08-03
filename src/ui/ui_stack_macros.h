@@ -33,7 +33,7 @@
   EXPANSION(__UI_Border_top_stack,    F32, stack_border_top,    0.0f, ui_push_border_top,    ui_next_border_top,    ui_pop_border_top,    ui_auto_pop_border_top,    ui_top_border_top, 64) \
   EXPANSION(__UI_Border_bottom_stack, F32, stack_border_bottom, 0.0f, ui_push_border_bottom, ui_next_border_bottom, ui_pop_border_bottom, ui_auto_pop_border_bottom, ui_top_border_bottom, 64) \
   \
-  EXPANSION(__UI_Parent_stack, UI_Box*, stack_parent, &__ui_g_null_box, ui_push_parent, ui_next_parent, ui_pop_parent, ui_auto_pop_parent, ui_top_parent, (64*3)) \
+  EXPANSION(__UI_Parent_stack, UI_Box*, stack_parent, ui_box_null(), ui_push_parent, ui_next_parent, ui_pop_parent, ui_auto_pop_parent, ui_top_parent, (64*3)) \
   \
   EXPANSION(__UI_Font_stack,      FP_Font, stack_font,      FP_Font{}, ui_push_font,      ui_next_font,      ui_pop_font,      ui_auto_pop_font,      ui_top_font,      64) \
   EXPANSION(__UI_Font_size_stack, F32,     stack_font_size, 16.0f,     ui_push_font_size, ui_next_font_size, ui_pop_font_size, ui_auto_pop_font_size, ui_top_font_size, 64) \

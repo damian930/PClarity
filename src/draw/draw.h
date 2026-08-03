@@ -1,6 +1,8 @@
 #ifndef DRAW_API_H
 #define DRAW_API_H
 
+#include "os/win32.h"
+
 #include "core/core_include.h"
 #include "render/render.h"
 #include "font_provider/font_provider.h"
@@ -71,7 +73,7 @@ struct D_State {
 };
 
 // - State variables
-extern global D_State* __d_g_state;
+// extern D_State* __d_g_state;
 
 // - State accessor
 D_State* d_get_state();

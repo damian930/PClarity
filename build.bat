@@ -91,7 +91,9 @@ pushd build
 
 if "%test_main%"=="1" set build_succ=1 && %compile% ../src/__samples/test_main.cpp %linker% /OUT:"test_main.exe"
 if "%test2%"=="1"	    set build_succ=1 && %compile% ../src/__samples/test2.cpp %linker% /OUT:"test2.exe"
-if "%main%"=="1"      set build_succ=1 && %compile% ../src/main.cpp %linker% /OUT:"main.exe"
+
+if "%main%"=="1"        set build_succ=1 && %compile% ../src/main.cpp %linker% /OUT:"main.exe"
+if "%main_ui_dll%"=="1" set build_succ=1 && %compile% ../src/pclarity/ui_code_for_dll/pclarity_ui_dll_code.cpp %linker% /DLL /PDB:"pclarity_ui__%RANDOM%.pdb" /MAP /OUT:"__main_ui.dll"
 
 popd
 

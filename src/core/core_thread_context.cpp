@@ -10,10 +10,20 @@ Thread_context* get_thread_context()
 
 void set_thread_context(Thread_context* other)
 {
-  __per_thread_context.is_initialised = other->is_initialised;
-  for EachIndex(i, ArrayCount(__per_thread_context.scrach_arenas_buffer))
+  if (other == 0) 
   {
-    __per_thread_context.scrach_arenas_buffer[i] = other->scrach_arenas_buffer[i];
+    __per_thread_context.is_initialised = false;
+    for EachIndex(i, ArrayCount(__per_thread_context.scrach_arenas_buffer)) { 
+      __per_thread_context.scrach_arenas_buffer[i] = 0;
+    }
+  }
+  else 
+  {
+    __per_thread_context.is_initialised = other->is_initialised;
+    for EachIndex(i, ArrayCount(__per_thread_context.scrach_arenas_buffer))
+    {
+      __per_thread_context.scrach_arenas_buffer[i] = other->scrach_arenas_buffer[i];
+    }
   }
 }
 

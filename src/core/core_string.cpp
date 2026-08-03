@@ -58,6 +58,11 @@ Str8 str8_from_cstr(Arena* arena, U8* str)
   return result;
 }
 
+Str8 str8_from_cstr_view(U8* cstr)
+{
+  return str8_manual_view(cstr, strlen((char*)cstr));
+}
+
 Str8 str8_copy(Arena* arena, Str8 str)
 {
   Str8 copy = str8_manual_alloc(arena, str.data, str.count);

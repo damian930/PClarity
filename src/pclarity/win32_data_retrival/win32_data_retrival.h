@@ -118,5 +118,4 @@ int main()
 }
 #endif
 
-
 #endif WIN32_DATA_RETRIVAL_H

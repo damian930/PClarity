@@ -1,14 +1,20 @@
 App
 -----------
-[ ] - Fix the bug when you scroll to the bottom of the table you have 30 fps, what the fuck
-[ ] - Fix the render layer handle thing, it is annoying in the way it is right now for reals
+[ ] - Have ui be reloading so you can test you ui there
+[ ] - Make the main menu look like on the images in discord, have fake data be used to have the table ui be tested and made look nice
+      [ ] - Add headers to be visible when the table gets scrolled
+      [ ] - Have a way to add headers with no buttons like you have now, have a context menu bu used for that or some like that
+[ ] - Menu for specific app data
+      [ ] - List of sesttions with a table like look 
 [ ] - 
-[ ] - Look into drawing texture with the same shader as the rects
-[ ] - The longer we scroll the table the more time the ui build takes, why, fix it
 [ ] - Make sure you dont have gsync enabled
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
-[ ] - Make the debug window be draggable around like in dear imgui 
 [ ] - Keep the header above the scroll list to be able to see which column is which
+
+
+Debug
+-----------
+[ ] - Make the debug window be draggable around like in dear imgui 
 
 
 Performance
@@ -76,4 +82,4 @@ Testing (coverage)
 
 Other/Misc
 -----------
-[] - Redo the code for the draw layer, it is old and is not great at all, make it more like ui layer code for stacks and all that
+[ ] - Fix the render layer handle thing, it is annoying in the way it is right now for reals

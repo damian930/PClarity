@@ -1,6 +1,9 @@
 #ifndef DRAW_CPP
 #define DRAW_CPP
 
+#include "os/win32.h"
+#include "os/win32.cpp"
+
 #include "render/render.h"
 #include "render/render.cpp"
 
@@ -12,7 +15,7 @@
 ///////////////////////////////////////////////////////////
 // - State accessor 
 //
-global D_State* __d_g_state = 0;
+tu_specific D_State* __d_g_state = 0;
 
 ///////////////////////////////////////////////////////////
 // - State accessor 
@@ -63,6 +66,7 @@ void d_begin_batching(R_Handle handle)
 
   // TODO: I am not a 100% fan o fthis here, but fine
   d_push_render_target(handle);
+  d_push_scissor_rect(rect_make_v(v2f32(0, 0), r_get_handle_dims(handle)));
 
   ProfEndGroup();
 }

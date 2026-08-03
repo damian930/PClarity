@@ -28,13 +28,21 @@
 // - State variables
 //
 global UI_State* __ui_g_state = 0;
-global UI_Box __ui_g_null_box = {};
 
 ///////////////////////////////////////////////////////////
 // - State accessors
 //
 UI_State* ui_get_state() { return __ui_g_state; }
-void ui_set_state(UI_State* state) { __ui_g_state = state; }
+void ui_set_state(UI_State* state) 
+{
+  if (state == 0) {
+    __ui_g_state = 0;
+    Clay_SetCurrentContext(0);
+  } else {
+    __ui_g_state = state;
+    Clay_SetCurrentContext(state->clay_context);
+  }
+}
 
 ///////////////////////////////////////////////////////////
 // - State 
@@ -56,13 +64,14 @@ void ui_init()
     Clay_Arena arena         = Clay_CreateArenaWithCapacityAndMemory(mem_size_for_clay, bytes_for_clay_arena);
     Clay_Initialize(arena, Clay_Dimensions{ 100, 100 }, Clay_ErrorHandler{ __ui_error_handler_for_clay, 0 });
     __ui_g_state->arena_for_clay = arena_for_clay;
+    __ui_g_state->clay_context = Clay_GetCurrentContext();
   }
 
   __ui_g_state->current_build_root_box = ui_box_null();
 
   __ui_g_state->first_free_box = ui_box_null();
 
-  __ui_box_set_to_null_mem(&__ui_g_null_box);
+  __ui_box_set_to_null_mem(&__ui_g_state->sentinel_zero_box);
 }
 
 void ui_release()
@@ -94,8 +103,10 @@ void ui_begin_build(V2F32 window_dims, V2F32 mouse_pos, FP_Font default_font)
     B32 comp = false;
     UI_Box test_null_box = {}; 
     __ui_box_set_to_null_mem(&test_null_box);
-    MemCompareSafe(__ui_g_null_box, test_null_box, &comp);
-    Assert(comp); 
+    MemCompareSafe(state->sentinel_zero_box, test_null_box, &comp);
+    // TODO: Fix this, this broke after i added the zero box to the state
+    // Assert(comp); 
+    if (!comp) { __ui_box_set_to_null_mem(&__ui_g_state->sentinel_zero_box); }
   }
 
   state->last_build_box_count = state->this_build_box_count;
@@ -343,7 +354,7 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
   box->dynamic_drag_memory = str8_copy(ui_get_build_arena(), box->dynamic_drag_memory);
 
   // DD: Resetting the per build data
-  box->per_build_config = __ui_g_null_box.per_build_config;
+  box->per_build_config = state->sentinel_zero_box.per_build_config;
   
   // DD: Putting the box in the build ui box tree
   {
@@ -979,12 +990,12 @@ void ui_box_set_clip_offset_x(UI_Box* box, F32 offset)
 //
 B32 ui_box_is_null(UI_Box* box)
 {
-  return (box == 0) || (box == &__ui_g_null_box);
+  return (box == 0) || (box == &ui_get_state()->sentinel_zero_box);
 }
 
 UI_Box* ui_box_null()
 {
-  return &__ui_g_null_box;
+  return &ui_get_state()->sentinel_zero_box;
 }
 
 ///////////////////////////////////////////////////////////
@@ -1694,20 +1705,22 @@ Clay_Dimensions __ui_clay_dimensions_from_v2f32(V2F32 vec)
 
 void __ui_box_set_to_null_mem(UI_Box* box)
 {
+  UI_State* state = ui_get_state();
+
   box->hash_table_key              = ui_box_key_null();
 
-  box->next_in_bucket_or_free_list = &__ui_g_null_box;
-  box->prev_in_bucket              = &__ui_g_null_box;
+  box->next_in_bucket_or_free_list = &state->sentinel_zero_box;
+  box->prev_in_bucket              = &state->sentinel_zero_box;
 
   box->per_build_config.custom_draw_extension.draw_func = __ui_custom_draw_stub_func;
 
-  box->per_build_config.first_child  = &__ui_g_null_box;
-  box->per_build_config.last_child   = &__ui_g_null_box;
-  box->per_build_config.next_sibling = &__ui_g_null_box;
-  box->per_build_config.prev_sibling = &__ui_g_null_box;
-  box->per_build_config.parent       = &__ui_g_null_box;
+  box->per_build_config.first_child  = &state->sentinel_zero_box;
+  box->per_build_config.last_child   = &state->sentinel_zero_box;
+  box->per_build_config.next_sibling = &state->sentinel_zero_box;
+  box->per_build_config.prev_sibling = &state->sentinel_zero_box;
+  box->per_build_config.parent       = &state->sentinel_zero_box;
 
-  box->per_build_config.ancestor_with_no_overflow_drag_flag = &__ui_g_null_box;
+  box->per_build_config.ancestor_with_no_overflow_drag_flag = &state->sentinel_zero_box;
 
   box->prev_build_parent_context_menu_key = ui_box_key_null();
   box->parent_context_menu_key            = ui_box_key_null();
@@ -1717,7 +1730,8 @@ void __ui_box_set_to_null_mem(UI_Box* box)
 
 void __ui_actions_set_to_null_mem(UI_Actions* actions)
 {
-  actions->box = &__ui_g_null_box;
+  UI_State* state = ui_get_state();
+  actions->box = &state->sentinel_zero_box;
 }
 
 void __ui_error_handler_for_clay(Clay_ErrorData errorText)

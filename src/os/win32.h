@@ -33,8 +33,9 @@ enum OS_File_access : U32 {
 typedef U32 OS_File_access_flags; 
 
 struct OS_File_props {
-  B32 succ; // todo: I would like a better name for this
+  B32 is_found; 
   U64 size;
+  U64 last_write_time;
 };
 
 struct OS_File { U64 u64; };
@@ -254,7 +255,8 @@ OS_File os_file_open(Str8 file_name, OS_File_access_flags acess_flags);
 void os_file_close(OS_File* file);
 B32 os_file_read(OS_File file, Data_buffer* out_buffer);
 B32 os_file_write_end(OS_File file, Data_buffer buffer);
-Str8 os_get_current_dir_path(Arena* arena);
+void os_file_copy(Str8 original_file_path, Str8 new_file_path);
+
 #define OS_FileOpenClose(file_var_name, file_path, access_flags) DeferInitReleaseLoop(OS_File file_var_name = os_file_open(file_path, access_flags), os_file_close(&file_var_name))
 
 // - Memory

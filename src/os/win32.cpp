@@ -188,16 +188,19 @@ B32 os_file_is_valid(OS_File file)
 
 OS_File_props os_file_get_props(OS_File file)
 {
+  // TODO: use zero handle for file here and not juse OS_File{}
   if (os_file_handle_match(file, OS_File{})) { return {}; }
-
-  OS_File_props result_properties = {};
-  BY_HANDLE_FILE_INFORMATION file_info = {};
-  result_properties.succ = GetFileInformationByHandle((HANDLE)file.u64, &file_info);
-  if (result_properties.succ)
+  OS_File_props result_props = {};
   {
-    result_properties.size = U64From2U32(file_info.nFileSizeHigh, file_info.nFileSizeLow);
+    BY_HANDLE_FILE_INFORMATION file_info = {};
+    result_props.is_found = GetFileInformationByHandle((HANDLE)file.u64, &file_info);
+    if (result_props.is_found)
+    {
+      result_props.size            = U64From2U32(file_info.nFileSizeHigh, file_info.nFileSizeLow);
+      result_props.last_write_time = U64From2U32(file_info.ftLastWriteTime.dwHighDateTime, file_info.ftLastWriteTime.dwLowDateTime);
+    }
   }
-  return result_properties;
+  return result_props;
 }
 
 OS_File os_file_open_ex(Str8 file_name, OS_File_access_flags acess_flags, OS_Error* out_error)
@@ -337,6 +340,26 @@ B32 os_file_write_end(OS_File file, Data_buffer buffer)
   } else { succ = false; }
 
   return succ;
+}
+
+// TODO: THis should at least return a bool
+void os_file_copy(Str8 original_file_path, Str8 new_file_path)
+{
+  Scratch scratch = get_scratch(0, 0);
+
+  OS_File file = os_file_open(original_file_path, OS_File_access__visible_read);
+  U64 size = os_file_get_props(file).size;
+  Data_buffer buffer = data_buffer_make(scratch.arena, size);
+  B32 read_succ = os_file_read(file, &buffer);
+  HandleLater(read_succ);
+  os_file_close(&file);
+
+  OS_File new_file = os_file_open(new_file_path, OS_File_access__visible_write);
+  B32 write_succ = os_file_write_end(new_file, buffer);
+  HandleLater(write_succ);
+  os_file_close(&new_file);
+
+  end_scratch(&scratch);
 }
 
 ///////////////////////////////////////////////////////////

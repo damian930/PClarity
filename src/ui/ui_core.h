@@ -260,6 +260,8 @@ struct UI_State {
   Arena* state_arena;
   Arena* arena_for_clay; 
 
+  Clay_Context* clay_context;
+
   U64    build_generation;
   Arena* build_arenas[2]; // Todo: do we need 2 of these
 
@@ -298,6 +300,8 @@ struct UI_State {
     #undef EXPANSTION
   } stacks;
 
+  UI_Box sentinel_zero_box;
+
   ///////////////////////////////////////////////////////////
   // Other/Misc
   //
@@ -310,7 +314,6 @@ struct UI_State {
 
 // - State variables
 extern global UI_State* __ui_g_state;
-extern global UI_Box __ui_g_null_box;
 
 // - State accessors
 UI_State* ui_get_state();

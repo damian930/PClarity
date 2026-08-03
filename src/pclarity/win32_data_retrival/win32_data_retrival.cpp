@@ -12,14 +12,12 @@ Win32EnumWindowsCallback(HWND hwnd, LPARAM lparam)
   EnumWindowsCtx* ctx = (EnumWindowsCtx* )lparam;
 
   // NOTE(S): Filter windows that don't have WS_VISIBLE
-  // TODO, DD: COmment this back out 
-  // if (!IsWindowVisible(hwnd))
-    // return TRUE;
+  if (!IsWindowVisible(hwnd))
+    return TRUE;
 
   // NOTE(S): Filter windows that are owned by another window.
-  // TODO, DD: COmment this back out 
-  // if (GetWindow(hwnd, GW_OWNER) != NULL)
-    // return TRUE;
+  if (GetWindow(hwnd, GW_OWNER) != NULL)
+    return TRUE;
 
   // NOTE(S): Filter windows that don't have the force on taskbar and show up in Alt+Tab.
   // WS_EX_APPWINDOW forces on to task bar and Alt+Tab 

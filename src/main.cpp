@@ -9,11 +9,11 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "render/render.h"
 #include "render/render.cpp"
 
-#include "draw/draw.h"
-#include "draw/draw.cpp"
-
 #include "font_provider/font_provider.h"
 #include "font_provider/font_provider.cpp"
+
+#include "draw/draw.h"
+#include "draw/draw.cpp"
 
 #include "ui/ui_core.h"
 #include "ui/ui_core.cpp"
@@ -43,15 +43,56 @@ void OutputDebugStringF(const char* fmt, ...);
 //       index_for_new_data = index_for_new_data % ArrayCount(ring->data_arr); 
 //     }
 //     if (ring->data_arr_count == ArrayCount(ring->data_arr)) { Assert(index_for_new_data == ring->start_index); }
-
-
-
 //   }
-
-
-
-
 // }
+
+/*
+void handle_ui_dll_hot_reload(U64* last_dll_write_time, OS_Handle* ui_dll_handle, App_ui_construct_ft** app_ui_construct_fp)
+{
+  OS_FileOpenClose(dll_file, UI_DLL_PATH, OS_File_access__visible_read)
+  {
+    if (os_file_is_valid(dll_file))
+    {
+      OS_File_properties props = os_file_get_properties(dll_file);
+      U64 new_write_time = props.last_write_time;
+      if (new_write_time != *last_dll_write_time)
+      {
+        os_unload_dll(ui_dll_handle);
+        os_file_copy(UI_DLL_PATH, UI_DLL_FOR_HOT_RELOAD_PATH);
+        *ui_dll_handle = os_load_dll(UI_DLL_FOR_HOT_RELOAD_PATH);
+        if (os_handle_is_valid(*ui_dll_handle))
+        {
+          Str8 proc_name = Str8FromC(Stringify(AppUIConstruct_FuncName));
+          App_ui_construct_ft* new_ui_proc = (App_ui_construct_ft*)os_load_proc_from_dll(*ui_dll_handle, proc_name);
+          if (new_ui_proc) {
+            *app_ui_construct_fp = new_ui_proc;
+            str8_printf("Reloaded the ui dll \n");
+          }
+        }
+        *last_dll_write_time = new_write_time;
+      }
+    }
+  }
+}
+*/
+
+void pcl_build_ui__stub(FP_Font font, PCL_State* pcl, F64 prev_frame_fps, PCL_UI_Dll_context dll_context) { }
+
+///////////////////////////////////////////////////////////
+// DD: Stuff fror ui dll reload 
+#define UI_DLL_PATH__CSTR                "__main_ui.dll"
+#define UI_DLL_FOR_HOT_RELOAD_PATH__CSTR "__main_ui_copy_for_hot_reload.dll"
+
+#define UI_DLL_PATH                Str8FromC(UI_DLL_PATH__CSTR)
+#define UI_DLL_FOR_HOT_RELOAD_PATH Str8FromC(UI_DLL_FOR_HOT_RELOAD_PATH__CSTR)
+
+HMODULE dll_handle               = 0;
+U64 last_recorded_dll_write_time = 0;
+PCL_Build_ui_func* pcl_build_ui  = pcl_build_ui__stub;
+
+///////////////////////////////////////////////////////////
+// Main 
+///////////////////////////////////////////////////////////
 
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
@@ -115,16 +156,39 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 
   B32 show_debug_stuff = false;
 
-  // os_window_set_full_screen(true);
-
-  // Framerate_ring_buffer framerate_ring_buffer = {};
 
   U64 frame_counter  = 0;
   U64 prev_frame_fps = 0;
 
   for (;!os_window_should_close(); frame_counter += 1) 
   {
-    profiler_begin_frame();
+    // Reload for the ui dll
+    OS_FileOpenClose(dll_file, UI_DLL_PATH, OS_File_access__visible_read)
+    {
+      if (os_file_is_valid(dll_file))
+      {
+        OS_File_props props = os_file_get_props(dll_file);
+        U64 new_write_time = props.last_write_time;
+        if (new_write_time != last_recorded_dll_write_time)
+        {
+          // DD: Unloading 
+          pcl_build_ui = pcl_build_ui__stub;
+          FreeModule(dll_handle);
+          os_file_copy(UI_DLL_PATH, UI_DLL_FOR_HOT_RELOAD_PATH);
+
+          dll_handle = LoadLibraryA(UI_DLL_FOR_HOT_RELOAD_PATH__CSTR); 
+          if (dll_handle)
+          {
+            PCL_Build_ui_func* new_pcl_build_ui = (PCL_Build_ui_func*)GetProcAddress(dll_handle, Stringify(PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME));
+            if (new_pcl_build_ui)
+            {
+              pcl_build_ui = new_pcl_build_ui;
+            }
+          }
+          last_recorded_dll_write_time = new_write_time;
+        }
+      }
+    }
 
     ProfBeginGroupF("App frame %lld", frame_counter);
 
@@ -149,28 +213,20 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     if (close_the_app) { break; }
 
     pcl_frame_update(&pcl);
-    pcl_build_ui(font, &pcl, prev_frame_fps);
-
-    /*
-    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
-    {
-      UI_Col()
-      {
-        for EachIndex(i, 200)
-        {
-          ui_next_font_color(red());
-          ui_text_f("SOme text here allla: %lld", i);
-          
-          ui_next_width(ui_px(5));
-          ui_next_height(ui_px(5));
-          ui_next_b_color(golden());
-          UI_Box* golden_box = ui_box_make(UI_Box_flag__has_background, {});
-        }
-      }
-    }
-    */
 
     r_clear_handle(window_frame_buffer_target, black());
+
+    PCL_UI_Dll_context dll_context = {};
+    dll_context.os_state            = os_get_state();
+    dll_context.thread_context      = get_thread_context();
+    dll_context.r_state             = r_get_state();
+    dll_context.font_provider_state = fp_get_state();
+    dll_context.draw_state          = d_get_state();
+    dll_context.ui_state            = ui_get_state();
+
+    Assert(pcl_build_ui);
+    if (pcl_build_ui) { pcl_build_ui(font, &pcl, 0, dll_context);  }
+
     ui_draw();
 
     if (show_debug_stuff)
@@ -193,8 +249,6 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     prev_frame_fps = (U64)(1.0f/(frame_end_time_sec - frame_start_time_sec));
 
     ProfEndGroup();
-
-    profiler_end_frame();
   }
 
   // Damian: Not releasing anything since who cares, the system will release all the stuff

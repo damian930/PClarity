@@ -138,7 +138,7 @@ tu_specific Comparison str8_compare(Str8 str, Str8 other, Str8_match_flags flags
 tu_specific Str8 str8_manual_view(U8* buffer, U64 count);
 tu_specific Str8 str8_manual_alloc(Arena* arena, U8* str, U64 len);
 tu_specific Str8 str8_from_cstr(Arena* arena, U8* str);
-tu_specific Str8 str8_from_cstr_copy(U8* str);
+tu_specific Str8 str8_from_cstr_view(U8* cstr);
 tu_specific Str8 str8_copy(Arena* arena, Str8 str);
 tu_specific Str8 str8_from_list(Arena* arena, Str8_list* list); // todo: There is not point in the list beeing passed by a pointer here. It shoud either be by value. Or a const pointer
 tu_specific Str8 str8_from_list_ex(Arena* arena, const Str8_list list, Str8 str_to_put_before, Str8 str_to_put_between, Str8 str_to_put_after); 
