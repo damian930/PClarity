@@ -125,11 +125,14 @@ void pcl_frame_update(PCL_State* pcl)
 
         // TODO: This might be a call to be honest
         B32 is_header_selected = (pcl->selected_header_generation != 0);
+        F32 arr_of_width[] = { 100, 200, 300, 400 }; 
+        F32 width = arr_of_width[(U64)os_get_time_for_timing_sec() % ArrayCount(arr_of_width)];
+        
         if (is_header_selected) { 
           U64 header_index_to_add_after = pcl_get_header_index_with_generation(pcl);
-          pcl_add_header_after_index_of_table(pcl, header_kind_to_add, 2, header_index_to_add_after); 
+          pcl_add_header_after_index_of_table(pcl, header_kind_to_add, width, header_index_to_add_after); 
         } else {
-          pcl_add_header_to_the_end_of_table(pcl, header_kind_to_add, 2);
+          pcl_add_header_to_the_end_of_table(pcl, header_kind_to_add, width);
         }
       } break;
 
@@ -147,21 +150,26 @@ void pcl_frame_update(PCL_State* pcl)
         }
       } break;
 
-      // case PCL_Command__remove_header_from_table:
-      // {
-      //   U64 index = pcl->data_for_commands.header_index_to_remove;
-      //   pcl->data_for_commands.header_index_to_remove = 0;
-
-      //   U64 new_count = ArrShiftLeftFromIndex(pcl->table_data.headers, pcl->table_data.header_count, index);
-      //   pcl->table_data.header_count = new_count;
-      //   pcl->table_data.headers[pcl->table_data.header_count] = {};
-      // } break;
+      case PCL_Command__set_new_size_to_header:
+      {
+        PCL_Table_header* header = pcl_get_header_with_generation(pcl, pcl->data_for_commands.header_to_set_new_size_to_generation);
+        if (header != 0) // TODO: Here yous should ahve a zero/null header like in ui where the generation is 0 for the null header 
+        { 
+          header->width_in_px = pcl->data_for_commands.new_header_size;
+        }
+        else { InvalidCodePath(); }
+      } break;
 
       case PCL_Command__clear_table:
       {
         pcl->table_data = {};
       } break;
 
+      case PCL_Command__remove_selected_header:
+      {
+        pcl_remove_header_from_table_by_generation(pcl, pcl->selected_header_generation);
+        pcl->selected_header_generation = 0;
+      } break;
     }
   }
 
@@ -269,24 +277,37 @@ void pcl_frame_update(PCL_State* pcl)
     }
   }
 
+  // TODO: Remove this
+  if (pcl->table_data.header_count == 0)
+  {
+    pcl_add_header_to_the_end_of_table(pcl, PCL_Table_header_kind__name, 200);
+  }
+
   // Todo: Here you should order the thing about the process data once you start using arrays for Win32QueryProcessList
-  
+
   ProfEndGroup();
 }
  
-void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value)
+PCL_Table_header pcl_header_make(PCL_Table_header_kind kind, F32 width_in_px, U64 generation)
+{
+  PCL_Table_header header = {};
+  header.kind        = kind;
+  header.width_in_px = Max(width_in_px, PCL_C_min_header_width_in_px);
+  header.generation  = generation;
+  return header;
+}
+
+void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 width_in_px)
 {
   if (pcl->table_data.header_count >= PCL_TABLE_HEADER_MAX_COUNT) { return; }
   
   pcl->table_header_generation_counter += 1;
-
+  
   PCL_Table_header* new_header = pcl->table_data.headers + (pcl->table_data.header_count++);
-  new_header->kind       = header_kind;
-  new_header->flex_value = flex_value;
-  new_header->generation = pcl->table_header_generation_counter;
+  *new_header = pcl_header_make(header_kind, width_in_px, pcl->table_header_generation_counter);
 }
 
-void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value, U64 index_to_add_after)
+void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 width_in_px, U64 index_to_add_after)
 {
   // TODO: Test if the bound of the array for the table header dont overflow with this shitty ass code here
 
@@ -303,11 +324,54 @@ void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind h
   pcl->table_header_generation_counter += 1;
 
   PCL_Table_header* new_header = &pcl->table_data.headers[index_to_add_after + 1];
-  new_header->kind       = header_kind;
-  new_header->flex_value = flex_value;
-  new_header->generation = pcl->table_header_generation_counter;
+  *new_header = pcl_header_make(header_kind, width_in_px, pcl->table_header_generation_counter);;
 }
 
+void pcl_remove_header_from_table_by_generation(PCL_State* pcl, U64 gen)
+{
+  if (pcl->table_data.header_count == 0) { return; }
+  if (gen == 0) { return; } // TODO: Now this for sure has to be a zero/null sentinel value me match, this is getting to used to just be like that, super error prone
+
+  U64 index_for_header_to_remove = 0;
+  B32 found = 0;
+  for EachIndex(i, pcl->table_data.header_count)
+  {
+    PCL_Table_header* test_header = &pcl->table_data.headers[i];
+    if (test_header->generation == gen)
+    {
+      index_for_header_to_remove = i;
+      found = 1;
+      break;
+    }
+  }
+  if (!found) { return; }
+
+  U64 number_of_header_we_have_to_shift_1_left = pcl->table_data.header_count - index_for_header_to_remove - 1;
+
+  if (number_of_header_we_have_to_shift_1_left > 0)
+  {
+    memmove(&pcl->table_data.headers[index_for_header_to_remove],
+            &pcl->table_data.headers[index_for_header_to_remove + 1],
+            number_of_header_we_have_to_shift_1_left * sizeof(PCL_Table_header));
+  }
+
+  pcl->table_data.header_count -= 1;
+}
+
+PCL_Table_header* pcl_get_header_with_generation(PCL_State* pcl, U64 gen)
+{
+  PCL_Table_header* header = 0;
+  for EachIndex(i, pcl->table_data.header_count)
+  {
+    PCL_Table_header* test_header = &pcl->table_data.headers[i];
+    if (test_header->generation == gen)
+    {
+      header = test_header;
+      break;
+    }
+  }
+  return header;
+}
 
 
 

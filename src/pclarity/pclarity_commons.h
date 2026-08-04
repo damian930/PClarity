@@ -40,7 +40,7 @@ enum PCL_Table_header_kind : U32 {
 
 struct PCL_Table_header {
   PCL_Table_header_kind kind;
-  F32 flex_value;
+  F32 width_in_px;
 
   U64 generation;
 };
@@ -60,7 +60,11 @@ enum PCL_Command {
   PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header, 
   PCL_Command__select_header,
 
+  PCL_Command__set_new_size_to_header,
+
   PCL_Command__clear_table,
+  PCL_Command__remove_selected_header,
+  
   PCL_Command__sort_by_header,
   PCL_Command__select_row,
   PCL_Command__COUNT,
@@ -109,6 +113,9 @@ struct PCL_State {
     F32 new_font_size;
     PCL_Table_header_kind table_header_kind_for_new_table_header;
     U64 generation_of_header_to_select;
+  
+    U64 header_to_set_new_size_to_generation;
+    F32 new_header_size;
   } data_for_commands;
 
   struct {
@@ -147,6 +154,13 @@ struct PCL_State {
 
 // - UI commands for logic update
 void pcl_defer_command_to_start_of_next_frame(PCL_State* PCL, PCL_Command command);
+
+// DD: Some constants that the app uses, some of these should not be constants, but they are for now
+#define PCL_C_min_header_width_in_px 50.0f
+#define PCL_C_max_header_width_in_px 1000.0f
+#define PCL_C_width_in_px_for_table_header_resizer 5.0f
+
+
 
 ///////////////////////////////////////////////////////////
 // Stuff for debugging

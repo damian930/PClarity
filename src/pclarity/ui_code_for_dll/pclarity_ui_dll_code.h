@@ -28,6 +28,6 @@ PCL_BUILD_UI_FUNC_DEF(PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME);
 V4F32 pcl_color_from_name(PCL_Color_name color_name, PCL_State* pcl);
 F32 pcl_ui_slider(F32 value, RangeF32 range_for_value, Str8 id);
 void pcl_scroll_bar(UI_Size size_x, UI_Size size_y, Axis2 scroll_axis, Str8 scroll_bar_id, F32 outer_vp_size, F32 outer_content_size, F32 outer_vp_offset, F32* out_new_scroll, B32* is_new_offset);
-UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header, PCL_State* pcl);
+UI_Actions pcl_ui_table_header(Str8 id, UI_Size size_in_x, UI_Size size_in_y, PCL_Table_header header, U64 generation_for_currently_selected_header);
 
 #endif

@@ -469,6 +469,10 @@ UI_Box* ui_box_make(UI_Box_flags flags, Str8 id)
   box->actions_present = false;
   __ui_actions_set_to_null_mem(&box->actions);
 
+  // DD, TODO: This is new stuff, added this, not sure abou this thought for now
+  box->clip_offset.v[Axis2__x] = __ui_clamp_offset_for_box(box, box->clip_offset.v[Axis2__x], Axis2__x);
+  box->clip_offset.v[Axis2__y] = __ui_clamp_offset_for_box(box, box->clip_offset.v[Axis2__y], Axis2__y);
+
   // DD: Auto popping all the stacks
   #define __UI_AUTO_POP_ALL_THE_STACKS(Stack_type_name, inner_data_type, var_name_inside_state, default_expr, push_func_name, set_next_func_name, pop_func_name, auto_pop_func_name, get_top_func_name, stack_arr_capacity) \
     auto_pop_func_name();
@@ -623,6 +627,8 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   B32 went_down               [UI_Mouse_button__COUNT] = {}; 
   B32 went_up                 [UI_Mouse_button__COUNT] = {}; 
   V2F32 mouse_pos_when_went_down                       = {};
+  B32 got_scrolled                                     = {};
+  V2F32 scroll                                         = {};
 
   B32 match = false;
   if (str8_match(box->per_build_config.str_for_key, Str8FromC("Add name"), 0))
@@ -644,7 +650,33 @@ UI_Actions ui_actions_from_box(UI_Box* box)
     // TODO: I would rather use a custom rect here from teh box than be dependant on clay to be honest
     is_hovered = Clay_PointerOver(__ui_clay_element_id_from_str8(box->per_build_config.str_for_key)); // TODO: See if this gets the most nested box or just checked if the mouse is inside the box's rect
 
-    // if (match && is_hovered) { BP; }
+    // DD: Getting x wheel scroll
+    if (is_hovered && (box->per_build_config.flags & UI_Box_flag__wheel_scrollable_x))
+    {
+      for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+      {
+        if (ev->kind == OS_Event_kind__wheel && (ev->wheel_event.modifiers & OS_Event_modifier__shift))
+        {
+          got_scrolled = true;
+          scroll.x += ev->wheel_event.scroll_data;
+          os_consume_frame_event(ev);
+        }
+      }
+    }
+
+    // DD: Getting y wheel scroll
+    if (is_hovered && (box->per_build_config.flags & UI_Box_flag__wheel_scrollable_y))
+    {
+      for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
+      {
+        if (ev->kind == OS_Event_kind__wheel && !(ev->wheel_event.modifiers & OS_Event_modifier__shift))
+        {
+          got_scrolled = true;
+          scroll.y += ev->wheel_event.scroll_data;
+          os_consume_frame_event(ev);
+        }
+      }
+    }
 
     for EachEnumRange(button, UI_Mouse_button, UI_Mouse_button__left, UI_Mouse_button__COUNT)
     {
@@ -776,6 +808,9 @@ UI_Actions ui_actions_from_box(UI_Box* box)
   result_actions.right_went_down               = !was_down[UI_Mouse_button__right] && is_down[UI_Mouse_button__right];
   result_actions.right_went_up                 = was_down[UI_Mouse_button__right] && !is_down[UI_Mouse_button__right];
   
+  result_actions.got_scrolled = got_scrolled;
+  result_actions.scroll       = scroll;
+
   result_actions.is_down                 = result_actions.is_left_down;
   result_actions.was_down                = result_actions.was_left_down;
   result_actions.left_box_while_was_down = result_actions.left_left_box_while_was_down;
@@ -902,6 +937,7 @@ UI_Box* ui_box_from_key(UI_Box_key key)
 ///////////////////////////////////////////////////////////
 // - Box drag memory
 //
+// TODO: Might make sense to just return a Data_buffer and not a * and then jsut check the count of it for when there is nothing inside of it
 Data_buffer* ui_box_drag_buffer(UI_Box* box)
 {
   return &box->dynamic_drag_memory;
@@ -968,13 +1004,16 @@ void ui_box_set_border(UI_Box* box, V4F32 border_width, V4F32 border_color)
 
 void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis)
 {
-  Assert(
-    (box->per_build_config.flags&UI_Box_flag__clip_x) 
-      || 
-    (box->per_build_config.flags&UI_Box_flag__clip_y), 
-    "Dude, you are trying to aply clip offset to a box that is not clippable"
-  );
+  // TODO: This should be done for all the calls btw
+  if (ui_box_is_null(box)) { return; }
+  // Assert(
+  //   (box->per_build_config.flags&UI_Box_flag__clip_x) 
+  //     || 
+  //   (box->per_build_config.flags&UI_Box_flag__clip_y), 
+  //   "Dude, you are trying to aply clip offset to a box that is not clippable"
+  // );
 
+  if (f32_is_nan(clip_offset)) { BP; }
   box->clip_offset.v[axis] = clip_offset;
 }
 
@@ -994,6 +1033,38 @@ void ui_box_set_clip_offset_x(UI_Box* box, F32 offset)
 {
   ui_box_set_clip_offset_for_axis(box, offset, Axis2__x);
 }
+
+///////////////////////////////////////////////////////////
+// - Quick use api for clip offset setting boxex
+//
+// TODO: There is a bit of weird logic here, this clamps the offset but the calls we use inside doesnt
+// that is a bit misleading or just bad, i am not gonna fix it now, but its not the best for sure
+void ui_box_add_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis) 
+{
+  UI_Box_flag flag = (axis == Axis2__y ? UI_Box_flag__clip_y : UI_Box_flag__clip_x);
+  if (!(box->per_build_config.flags & flag)) { return; }
+
+  F32 new_offset = box->clip_offset.v[axis] + clip_offset;
+  new_offset = __ui_clamp_offset_for_box(box, new_offset, axis);
+  ui_box_set_clip_offset_for_axis(box, new_offset, axis);
+}
+
+void ui_box_add_clip_offset_x(UI_Box* box, F32 clip_offset) 
+{
+  ui_box_add_clip_offset_for_axis(box, clip_offset, Axis2__x);
+}
+
+void ui_box_add_clip_offset_y(UI_Box* box, F32 clip_offset) 
+{
+  ui_box_add_clip_offset_for_axis(box, clip_offset, Axis2__y);
+}
+
+void ui_box_add_clip_offset(UI_Box* box, V2F32 clip_offset) 
+{
+  ui_box_add_clip_offset_for_axis(box, clip_offset.v[Axis2__x], Axis2__x);
+  ui_box_add_clip_offset_for_axis(box, clip_offset.v[Axis2__y], Axis2__y);
+}
+
 
 ///////////////////////////////////////////////////////////
 // - Null box
@@ -1970,43 +2041,21 @@ void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(
 // NEW STUFF
 ///////////////////////////////////////////////////////////
 
-void ui_scroll_box_with_wheel(UI_Box* box, F32 multiplier)
+F32 __ui_clamp_offset_for_box(UI_Box* box, F32 offset, Axis2 axis)
 {
-  V2F32 scroll = {};
-  B32 scroll_happend = false;
-  for (OS_Event* ev = os_get_frame_event_list()->first; ev; ev = ev->next)
-  {
-    if (ev->kind == OS_Event_kind__wheel)
-    {
-      scroll_happend = true;
-      Axis2 axis = Axis2__y;
-      if (ev->wheel_event.modifiers & OS_Event_modifier__shift) { axis = Axis2__x; }
-      scroll.v[axis] += ev->wheel_event.scroll_data * multiplier;
-      os_consume_frame_event(ev);
-    }
-  }
-
   UI_Box_clip_data clip_data = ui_box_clip_data_from_box(box);
-  if (scroll_happend && clip_data.is_found)
+
+  F32 new_offset = 0.0f;
+  if (clip_data.is_found)
   {
-    for EachEnumRange(axis, Axis2, Axis2__x, Axis2__COUNT)
-    {
-      UI_Box_flag clip_flag = UI_Box_flag__clip_x;
-      if (axis == Axis2__y) { clip_flag = UI_Box_flag__clip_y; }
-      
-      if (box->per_build_config.flags & clip_flag)
-      {
-        V2F32 current_offset = ui_box_clip_offset(box);
-        V2F32 new_offset     = v2f32_add(current_offset, scroll);
-        F32 max_offset       = clip_data.content_dims.v[axis] - clip_data.viewport_dims.v[axis];
-        if (max_offset < 0.0f) { max_offset = 0.0f; }
-        F32 min_offset       = 0.0f;
-        new_offset.v[axis] = -clamp_f32(-new_offset.v[axis], min_offset, max_offset);
-        ui_box_set_clip_offset_for_axis(box, new_offset.v[axis], axis);
-      }
-    }
+    F32 max_offset = clip_data.content_dims.v[axis] - clip_data.viewport_dims.v[axis];
+    F32 min_offset = 0.0f;
+    if (max_offset < 0.0f) { max_offset = 0.0f; }
+  
+    new_offset = -clamp_f32(-offset, min_offset, max_offset);
   }
 
+  return new_offset;
 }
 
 #endif

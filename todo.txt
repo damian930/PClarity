@@ -2,26 +2,14 @@ App
 -----------
 [ ] - Make the main menu look like on the images in discord, have fake data be used to have the table ui be tested and made look nice
       [ ] - Table headers 
-            [ ] - Fix the bug when the resizers move off when you have a lot of headers
+            [ ] - Make header resizing be from initial point like for scroll bars
+            [ ] - Make resizers be floating and a bit bigger so they are easy to catch and then might as well make the visible space between header smaller
             [ ] - Add dragging of the headers around to be able to reposition
-            [ ] - Add x scrolling for the headers to not have 
-                  them be clamped up all the time, then might just use pixel sizes for flex values directly
-            [ ] - Limit the min size for a header to be like font size * 3 or some like that
-
-      [ ] - Fix the bug with scroll bar making the table bigger (THis might be a clay limitation)
       [ ] - Fix the scroll bar ui
-      [ ] - Fix the bug with resizers in the table being drawn when table is scroll down
-      [ ] - Fix ui for context menus in how you add stuff to the table via context menus
-      [ ] - Have a way to have headers be in X clip space inside the table with an X axis scroll bar under the table
-      [ ] - Be able to drag headers to move them around, dont forget that now that they are moved the ids might have to be redone relative to how they are given to them right now.
 [ ] - Work on debug data passing to pcl to be able to have frame rate ui and such things
       [ ] - Number of batches last frame
       [ ] - Number of pushed of scissor rect last frame
       [ ] - Number of successfull scissor rect changes last frame
-      [ ] - FPS from last frame
-      [ ] - 
-[ ] - Menu for specific app data
-      [ ] - List of sesttions with a table like look 
 [ ] - 
 [ ] - Make sure you dont have gsync enabled
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
@@ -30,11 +18,8 @@ App
 [ ] - Defere the resize till next frame for the table to not have different data be used in different PCL_Command__new_main_font_size 
 
 
-
-
 Debug
 -----------
-[ ] - Make the debug window be draggable around like in dear imgui 
 
 
 Performance
@@ -46,21 +31,10 @@ Rendering
 [ ] - Have a way for window to redraw when resizing
 [ ] - Have the app be rendered when the window gets resized
 
-[ ] - Test right, left, top, bottom for corner_radius
-
 
 Tables
 ------
-[ ] - Be able to select a row of a table and if a row is selected keep the row at the top at all times
 [ ] - Add a way to sort the UI when we press a header
-
-[ ] - The resizers are not offset by the offset in the table. This allows resizing
-      when headers are not visible.
-      This is a bug. Either don't spawn the resizers, or have them be clip-offset as well.
-
-[ ] - Fix the bug with the scroll bar where holding the mouse at 0.0 delta per frame
-      still moves the offset a bit
-[ ] - Add a minimum size in pixels to the table in the main menu
 
 
 UI lib 
@@ -70,17 +44,13 @@ UI lib
 App UI 
 --
 [ ] - Is there a way to have border + pading be its own separate thing. Maybe have non padded border be a flag since the default case is when the border is padded or some like that, not sure. But i also like to aply padding after the border as well. Think about it later. This is kind of minor, so dont worry about this too much.
-[ ] - Fix the bug with the scroll bar and the table where when the scroll bar is ui_grow() or ui_p_of_p() the table keeps getting bigger forever. This makes no sense.
+
 
 Layers / Architecture
 ---------------------
-[ ] - Add proper release code for the layers that use it, some of them need that
-[ ] - Set up DLL reloading for UI stuff once the app has more data and a proper
-      shared header
 [ ] - Add things to layers to provide quick messages when they are used before
       initialization or in the wrong order.
       Since a lot of the layers are stateful, this could help catch misuse.
-[ ] - Rename DllPop DllRemove  
 
 
 Platform
@@ -88,7 +58,6 @@ Platform
 [ ] - Better OS event list API
 [ ] - DPI support
 [ ] - .rc for the app with a custom icon
-[ ] - Add support for ASAN
 
 
 Commands

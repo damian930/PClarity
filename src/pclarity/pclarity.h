@@ -27,8 +27,13 @@
 PCL_State pcl_init();
 void pcl_frame_update(PCL_State* PCL);
 
-void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value);
-void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 flex_value, U64 add_after_index);
+PCL_Table_header pcl_header_make(PCL_Table_header_kind kind, F32 width_in_px, U64 generation);
+void pcl_add_header_to_the_end_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 width_in_px);
+void pcl_add_header_after_index_of_table(PCL_State* pcl, PCL_Table_header_kind header_kind, F32 width_in_px, U64 add_after_index);
+
+void pcl_remove_header_from_table_by_generation(PCL_State* pcl, U64 gen);
+
+PCL_Table_header* pcl_get_header_with_generation(PCL_State* pcl, U64 gen);
 
 #endif
 

@@ -47,8 +47,10 @@ enum UI_Box_flag : U32 {
 
   UI_Box_flag__floating = (1 << 10),  
   
-  UI_Box_flag__left_clickable  = (1 << 11),  
-  UI_Box_flag__right_clickable = (1 << 12),  
+  UI_Box_flag__left_clickable   = (1 << 11),  
+  UI_Box_flag__right_clickable  = (1 << 12),  
+  UI_Box_flag__wheel_scrollable_y = (1 << 13),  
+  UI_Box_flag__wheel_scrollable_x = (1 << 14),  
 
   // DD, Todo: These are new flags, 
   // UI_Box_flag__use_automatic_wheel_scroll = (1 << 13), 
@@ -56,6 +58,7 @@ enum UI_Box_flag : U32 {
   // ============================================
 
   UI_Box_flag__clickable = UI_Box_flag__left_clickable|UI_Box_flag__right_clickable,
+  UI_Box_flag__wheel_scrollable = UI_Box_flag__wheel_scrollable_y|UI_Box_flag__wheel_scrollable_x,
 
   UI_Box_flag__has_padded_border = UI_Box_flag__has_padding|UI_Box_flag__has_borders,
   UI_Box_flag__clip          = UI_Box_flag__clip_x|UI_Box_flag__clip_y, 
@@ -105,6 +108,10 @@ struct UI_Actions {
   B32 is_right_down;
   B32 was_right_down;
   B32 right_left_box_while_was_down;
+
+  // Wheel 
+  B32 got_scrolled;
+  V2F32 scroll;
 
   // Composed for quick use
   B32 is_left_clicked;
@@ -360,6 +367,7 @@ UI_Box_key ui_box_key_from_str8(Str8 str);
 UI_Box*    ui_box_from_key(UI_Box_key key);
 
 // - Box drag memory
+// TODO: What about relesing the drag buffer if it has not been used for a frame or so, then the api doesnt have to care about it
 Data_buffer* ui_box_drag_buffer(UI_Box* box);   
 Data_buffer* ui_box_drag_buffer_by_id(Str8 id); 
 Data_buffer* ui_box_drag_buffer_alloc(UI_Box* box, U64 size_to_alloc);
@@ -372,6 +380,12 @@ void ui_box_set_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_for_axis_by_id(Str8 id, F32 clip_offset, Axis2 axis);
 void ui_box_set_clip_offset_y(UI_Box* box, F32 offset);
 void ui_box_set_clip_offset_x(UI_Box* box, F32 offset);
+
+// - Quick use api for clip offset setting boxex
+void ui_box_add_clip_offset_for_axis(UI_Box* box, F32 clip_offset, Axis2 axis);
+void ui_box_add_clip_offset_x(UI_Box* box, F32 clip_offset);
+void ui_box_add_clip_offset_y(UI_Box* box, F32 clip_offset);
+void ui_box_add_clip_offset(UI_Box* box, V2F32 clip_offset);
 
 // - Null box
 B32     ui_box_is_null(UI_Box* box);
@@ -536,6 +550,14 @@ UI_Box* __ui_next_box_in_box_tree_depth_first(UI_Box* box);
 
 void __ui_build_clay_element_tree_from_box_tree(UI_Box* box);
 void __ui_store_persistant_data_for_persistant_boxes_after_clay_done_laying_out(UI_Box* root);
+
+///////////////////////////////////////////////////////////
+// NEW STUFF
+///////////////////////////////////////////////////////////
+
+F32 __ui_clamp_offset_for_box(UI_Box* box, F32 offset, Axis2 axis);
+
+
 
 #endif
 
