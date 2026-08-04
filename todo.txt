@@ -1,7 +1,14 @@
 App
 -----------
 [ ] - Make the main menu look like on the images in discord, have fake data be used to have the table ui be tested and made look nice
-      [ ] - Fix the bug with scroll bar making the table bigger
+      [ ] - Table headers 
+            [ ] - Fix the bug when the resizers move off when you have a lot of headers
+            [ ] - Add dragging of the headers around to be able to reposition
+            [ ] - Add x scrolling for the headers to not have 
+                  them be clamped up all the time, then might just use pixel sizes for flex values directly
+            [ ] - Limit the min size for a header to be like font size * 3 or some like that
+
+      [ ] - Fix the bug with scroll bar making the table bigger (THis might be a clay limitation)
       [ ] - Fix the scroll bar ui
       [ ] - Fix the bug with resizers in the table being drawn when table is scroll down
       [ ] - Fix ui for context menus in how you add stuff to the table via context menus
@@ -19,6 +26,10 @@ App
 [ ] - Make sure you dont have gsync enabled
 [ ] - There is bug with the scroll bar, it keeps its scroll when we filter out the table then when you try to use it it is broken.
 [ ] - Keep the header above the scroll list to be able to see which column is which
+[ ] - /* These are for later */
+[ ] - Defere the resize till next frame for the table to not have different data be used in different PCL_Command__new_main_font_size 
+
+
 
 
 Debug

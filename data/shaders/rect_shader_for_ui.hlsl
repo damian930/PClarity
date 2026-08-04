@@ -177,11 +177,10 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
 
   float4 final_color = background_color;
   
-  float outer_softness = pixel_input.softness_outer;
-  float inner_softness = pixel_input.softness_inner;
+  float outer_softness = max(0.0, pixel_input.softness_outer);
+  float inner_softness = clamp(pixel_input.softness_inner, 0.0, pixel_input.border_thickness);
 
-  float outer_smoothing = 1.0;
-  float inner_smoothing = 1.0;
+  float result_outer_smoothing = 1.0;
 
   if (pixel_input.is_texture)
   {
@@ -207,18 +206,29 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
 
         float sdf_pixel_to_rect_after_border = sdf_rounded_rect(rect_after_border_origin, rect_after_border_dims, pos_px, radius_in_px_for_rect_after_border);
 
-        if (sdf_pixel_to_rect_after_border < 0.0 && background_color.a != 0.0) { 
-          final_color = background_color; 
-        }
-        else 
+        if (0.0 < sdf_pixel_to_rect_after_border && sdf_pixel_to_rect_after_border <= pixel_input.border_thickness)
         {
-          float smoothstep_res = smoothstep(0.0, inner_softness, sdf_pixel_to_rect_after_border);
-          if (smoothstep_res > 0.0 && background_color.a != 0.0f)
+          if (sdf_pixel_to_rect_after_border < inner_softness)
           {
-            final_color     = pixel_input.border_color;
-            inner_smoothing = smoothstep_res;
-          }
+            float inner_smoothing_for_border = smoothstep(0.0, inner_softness, sdf_pixel_to_rect_after_border);
 
+            if (background_color.a != 0.0)
+            {
+              // blend background -> border across the soft inner edge
+              final_color = lerp(background_color, pixel_input.border_color, inner_smoothing_for_border);
+            }
+            else
+            {
+              // no background to blend with: use border color, fade its alpha in
+              final_color = pixel_input.border_color;
+              final_color.a *= inner_smoothing_for_border;
+            }
+          }
+          else
+          {
+            // rest of the border band: solid border color, no smoothing needed here
+            final_color = pixel_input.border_color;
+          }
         }
 
       }
@@ -227,14 +237,14 @@ float4 ps_main(PixelInput pixel_input) : SV_TARGET
     if (pixel_input.corner_radius != 0.0)
     {
       if (0) {}
-      else if (sdf_pixel_to_rect > 0.0) { outer_smoothing = 0.0f; }
+      else if (sdf_pixel_to_rect > 0.0) { result_outer_smoothing = 0.0f; }
       else if (-outer_softness < sdf_pixel_to_rect && sdf_pixel_to_rect < 0.0)
       {
-        outer_smoothing = smoothstep(0.0, -outer_softness, sdf_pixel_to_rect);
+        result_outer_smoothing = smoothstep(0.0, -outer_softness, sdf_pixel_to_rect);
       }
 
-      final_color.a *= outer_smoothing;
-      final_color.a *= inner_smoothing;
+      final_color.a *= result_outer_smoothing;
+      // final_color.a *= inner_smoothing;
     }
   }
 

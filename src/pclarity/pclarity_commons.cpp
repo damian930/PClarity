@@ -3,6 +3,7 @@
 
 #include "core/core_include.cpp"
 #include "os/win32.cpp"
+#include "profiler/profiler.cpp"
 #include "font_provider/font_provider.cpp"
 #include "render/render.cpp"
 #include "draw/draw.cpp"

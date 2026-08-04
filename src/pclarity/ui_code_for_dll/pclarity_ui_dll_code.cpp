@@ -12,15 +12,16 @@
 extern "C" __declspec( dllexport )
 void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dll_context dll_context, PCL_Debug_data_for_ui debug_data) 
 {
-  ProfBeginFunc();
-
   // DD: Setting states for all the layers since we are in a dll
   os_set_state(dll_context.os_state);
   set_thread_context(dll_context.thread_context);
+  prof_set_state(dll_context.prof_state);
   r_set_state(dll_context.r_state);
   fp_set_state(dll_context.font_provider_state);
   d_set_state(dll_context.draw_state);
   ui_set_state(dll_context.ui_state);
+
+  ProfBeginFunc();
 
   Assert(IsZeroStruct(pcl->defered_commands_to_start_of_next_frame)); 
 
@@ -48,11 +49,11 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
       ui_next_width(ui_fit()); 
       ui_next_height(ui_fit()); 
       ui_next_padding(ui_top_font_size());
-      ui_next_border(2, pcl_color_from_name(PCL_Color_name__item_selected, pcl));
+      ui_next_border(5, pcl_color_from_name(PCL_Color_name__item_selected, pcl));
       ui_next_hover_cursor(OS_Cursor__hand);
       ui_next_corner_r(25);
-      ui_next_inner_softness(2);
-      ui_next_outer_softness(3);
+      ui_next_inner_softness(1);
+      ui_next_outer_softness(1);
       UI_Box* home_button = ui_box_make(UI_Box_flag__clickable|UI_Box_flag__has_background|UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, Str8FromC("Navigation rail home button"));
       UI_Actions home_button_acts = ui_actions_from_box(home_button);
       
@@ -101,10 +102,7 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
     ui_next_width(ui_grow());
     ui_next_height(ui_grow());
     ui_next_b_color(pcl_color_from_name(PCL_Color_name__main_background, pcl));
-    ui_next_extra_flags(UI_Box_flag__has_background|UI_Box_flag__has_padding);
-    ui_next_padding_left(ui_top_font_size());
-    ui_next_padding_right(ui_top_font_size());
-    ui_next_padding_top(ui_top_font_size());
+    ui_next_extra_flags(UI_Box_flag__has_background);
     UI_Col()
     {
       if (pcl->current_menu == PCL_Menu__settings)
@@ -124,8 +122,19 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
         // DD: Top col stack for table
         ui_next_width(ui_grow()); 
         ui_next_height(ui_grow());
+        ui_next_padding_left(ui_top_font_size());
+        ui_next_padding_right(ui_top_font_size());
+        ui_next_padding_top(ui_top_font_size());
+        ui_next_padding_bottom(ui_top_font_size() * 0.5);
+        ui_next_extra_flags(UI_Box_flag__has_padding);
         UI_Col()
         {
+          ui_next_font_color(green());
+          ui_next_font_size(ui_top_font_size() * 1.5);
+          ui_text_ellipsed_f("Active Programs");
+       
+          ui_spacer(ui_rem(0.35));
+
           // Table + vertical slider on the right of the table
           ui_next_width(ui_grow()); 
           ui_next_height(ui_grow());
@@ -139,18 +148,29 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
             #define RESIZER_VISIBLE_WIDTH 1
             
             // DD: Table box itslef
+            F32 border_width_for_table = ui_top_font_size() * 0.1f;
+            border_width_for_table = Max(3.0f, border_width_for_table);
+            F32 padding_after_border_for_table = ui_top_font_size() * 0.25f;
+            F32 padding_for_table = padding_after_border_for_table + border_width_for_table;
+
             ui_next_width(ui_grow());
             ui_next_height(ui_grow());
             ui_next_layout_y();
-            UI_Box* table_box = ui_box_make_f(0, "table_box"); 
+            ui_next_border(border_width_for_table, magenta()); // TODO: Clamp the size here to min of 1 pixel or some like that
+            ui_next_padding(padding_for_table);
+            ui_next_outer_softness(2);
+            ui_next_inner_softness(1);
+            ui_next_corner_r(5);
+            UI_Box* table_box = ui_box_make_f(UI_Box_flag__has_borders|UI_Box_flag__has_padding|UI_Box_flag__has_rounded_corners, "table_box"); 
             UI_Box_data table_box_data = ui_box_data_from_box(table_box);
 
             // DD: These boxes we will need later, but they are created as children of the table_box
             UI_Box* table_scroll_box_for_rows = ui_box_null();
 
             U64 n_resizers_per_row = pcl->table_data.header_count - 1;
-            F32 space_for_headers  = (F32)(table_box_data.inner_rect.width - (n_resizers_per_row * RESIZER_VISIBLE_WIDTH));
-      
+            F32 space_for_resizers = (n_resizers_per_row * RESIZER_VISIBLE_WIDTH);
+            F32 space_for_headers  = (F32)(table_box_data.inner_rect.width - space_for_resizers);
+
             F32 headers_total_flex_value = 0.0f;
             for EachIndex(header_index, pcl->table_data.header_count) {
               headers_total_flex_value += pcl->table_data.headers[header_index].flex_value;
@@ -185,6 +205,7 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                     { Str8FromC("Add PPID Column"), PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header },
                     { Str8FromC("Add Name Column"), PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header },
                     { Str8FromC("Add Empty Column"), PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header },
+                    { Str8FromC("Add Icon Column"), PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header },
                   };
 
                   UI_Col()
@@ -224,11 +245,14 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                     offset_x += space_for_headers * flex_norm;
                     offset_x += RESIZER_VISIBLE_WIDTH; 
       
+                    // TODO: THis is annoying here like this
+                    F32 extra_space_x = v2f32_sub(table_box_data.rect.origin, table_box_data.inner_rect.origin).x;
+
                     #define RESIZER_INVISIBLE_WIDTH 6
                     ui_next_width(ui_px(RESIZER_INVISIBLE_WIDTH));
                     ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
                     ui_next_hover_cursor(OS_Cursor__horizontal_resize);
-                    ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2));
+                    ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_INVISIBLE_WIDTH / 2) - extra_space_x);
                     UI_Box* resizer = ui_box_make_f(UI_Box_flag__floating|UI_Box_flag__clickable, "Data table resizer %lld", header_index);
 
                     UI_Actions resizer_actions = ui_actions_from_box(resizer);
@@ -273,11 +297,9 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                     PCL_Table_header header = pcl->table_data.headers[header_index];
                     F32 flex_norm           = header.flex_value / headers_total_flex_value;
                     
-                    ui_next_width(ui_px(flex_norm * space_for_headers));
-                    ui_next_height(ui_grow());
-                    
-                    // TODO: Sort the headers here by generation to then be able to have stable ids
                     Str8 id = str8_fmt(scratch.arena, "Table header %lld", header_index);
+                    ui_next_width(ui_p_of_p(flex_norm));
+                    ui_next_height(ui_grow());
                     UI_Actions header_actions = pcl_ui_table_header(id, header, pcl);
 
                     Str8 header_context_menu_id = str8_fmt(scratch.arena, "Table header context menu id _ %lld", header.generation);
@@ -322,6 +344,7 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                           { Str8FromC("Add PPID Column"), PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header },
                           { Str8FromC("Add Name Column"), PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header },
                           { Str8FromC("Add Empty Column"), PCL_Command__add_EMPTY_header_as_last_header_or_right_after_selected_header },
+                          { Str8FromC("Add Icon Column"), PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header },
                         };
   
                         UI_Col()
@@ -348,7 +371,11 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                     if (header_index != pcl->table_data.header_count - 1)
                     {
                       if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
-                      ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
+                      
+                      F32 space_per_resizer = space_for_resizers / space_for_resizers;
+                      F32 resizer_p_of_p = space_per_resizer / (space_for_resizers + space_for_headers);
+    
+                      ui_next_width(ui_p_of_p(resizer_p_of_p));
                       ui_next_height(ui_grow());
                       UI_Box* visible_resizer_box = ui_box_make(UI_Box_flag__has_background, {});
                     }
@@ -430,7 +457,6 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
 
                   UI_Parent(row_box)
                   {
-                    F32 offset_x = 0.0f;
                     for EachIndex(header_index, pcl->table_data.header_count)
                     {
                       F32 flex_norm = pcl->table_data.headers[header_index].flex_value / headers_total_flex_value;
@@ -440,7 +466,8 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                       ui_next_width(ui_px(flex_norm * space_for_headers));
                       ui_next_height(ui_grow()); 
                       ui_next_alignment_y(UI_Alignment_y__center);
-                      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow, {})) 
+                      ui_next_padding(ui_top_font_size() * 0.5f); 
+                      UI_Parent(ui_box_make(UI_Box_flag__dont_draw_overflow|UI_Box_flag__has_padding, {})) 
                       {
                         switch(header.kind)
                         {
@@ -453,19 +480,24 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
   
                           case PCL_Table_header_kind__name:
                           {
-                            ui_text_f("--Name--");
+                            ui_text_ellipsed_f("--Name--");
                           } break;
 
                           case PCL_Table_header_kind__pid:
                           {
-                            ui_text_f("%d", process_data->pid);
+                            ui_text_ellipsed_f("%d", process_data->pid);
                           } break;
   
                           case PCL_Table_header_kind__ppid:
                           {
-                            ui_text_f("%d", process_data->ppid);
+                            ui_text_ellipsed_f("%d", process_data->ppid);
                           } break;
   
+                          case PCL_Table_header_kind__icon:
+                          {
+                            ui_image(pcl->icons.settings, 50, 50); 
+                          } break;
+
                           case PCL_Table_header_kind__startup_time:
                           {
                             // ui_text(process_data->create_time);
@@ -473,26 +505,22 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
                         }
                       }
 
-                      offset_x += space_for_headers * flex_norm;
-                      offset_x += RESIZER_VISIBLE_WIDTH; 
-
                       if (header_index != pcl->table_data.header_count - 1)
                       {
+                        if (is_resizing_headers && header_index == resizing_header_index) { ui_next_b_color(red()); } else { ui_next_b_color(nice_blue()); }
                         ui_next_width(ui_px(RESIZER_VISIBLE_WIDTH));
-                        ui_next_height(ui_rem(ROW_HEIGHT_SCALER));
-                        ui_next_floating_fixed_pos_x(offset_x - ((F32)RESIZER_VISIBLE_WIDTH / 2) - ((F32)RESIZER_VISIBLE_WIDTH / 2));
-                        ui_next_b_color(golden());
-                        UI_Box* resizer_inside_rows = ui_box_make(UI_Box_flag__floating|UI_Box_flag__has_background, {});
+                        ui_next_height(ui_grow());
+                        UI_Box* resizer_inside_rows = ui_box_make(UI_Box_flag__has_background, {});
                       }
                     }
                   }
                 
                   if (process_data_index < pcl->gathered_process_data_this_frame.count - 1)
                   {
-                    ui_next_width(ui_grow());
-                    ui_next_height(ui_px(1));
-                    ui_next_b_color(magenta());
-                    UI_Box* between_row_separator = ui_box_make(UI_Box_flag__has_background, {});
+                    // ui_next_width(ui_grow());
+                    // ui_next_height(ui_px(1));
+                    // ui_next_b_color(magenta());
+                    // UI_Box* between_row_separator = ui_box_make(UI_Box_flag__has_background, {});
                   }
                 }
 
@@ -509,7 +537,7 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
               F32 out_new_scroll = 0.0f;
               B32 is_new_offset  = false;
               pcl_scroll_bar(
-                ui_px(50), /*ui_grow()*/ ui_px(250), Axis2__y, Str8FromC("Scroll bar for table"),
+                ui_px(50), ui_p_of_p(1), Axis2__y, Str8FromC("Scroll bar for table"),
                 table_clip_data.viewport_dims.y, table_clip_data.content_dims.y, -ui_box_clip_offset(table_scroll_box_for_rows).y,
                 &out_new_scroll, &is_new_offset
               );
@@ -521,10 +549,6 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
               }
             }
 
-            ui_spacer(ui_px(10));
-
-            ui_next_font_size(15);
-            ui_text_f("%lld", pcl->gathered_process_data_this_frame.count);
           }
 
           // TODO: Horizontal sider at the bottom
@@ -658,6 +682,10 @@ void PCL_BUILD_UI__FUNC_FOR_EXPORT__NAME(FP_Font font, PCL_State* pcl, PCL_UI_Dl
       else if (debug_data.fps < 1000) { ui_next_font_color(golden());     }
       else                            { ui_next_font_color(pink());       }
       ui_text_f("FPS: %lld", debug_data.fps);
+
+      ui_spacer(ui_px(15));
+
+      ui_text_f("Window dims: {%lld, %lld}", (U64)debug_data.widnow_dims.x, (U64)debug_data.widnow_dims.y);
 
       ui_spacer(ui_px(15));
 
@@ -928,47 +956,35 @@ UI_Actions pcl_ui_table_header(Str8 id, PCL_Table_header header, PCL_State* pcl)
 {
   ui_next_layout_x();
   ui_next_alignment_y(UI_Alignment_y__center);
-  ui_next_border(ui_top_font_size() * 0.25f, nice_blue());
   ui_next_padding(ui_top_font_size() * 0.5f);
-  ui_next_corner_r(ui_top_font_size() * 0.2f);
-  UI_Box* box = ui_box_make(
+  ui_next_corner_r(ui_top_font_size() * 0.3f);
+  UI_Box* header_box = ui_box_make(
     UI_Box_flag__dont_draw_overflow|
     UI_Box_flag__has_background|
     UI_Box_flag__has_padding|
-    UI_Box_flag__has_borders|
     UI_Box_flag__has_rounded_corners|
     UI_Box_flag__clickable, 
     id
   );
-  UI_Actions actions = ui_actions_from_box(box); 
+  UI_Actions actions = ui_actions_from_box(header_box); 
 
-  V4F32 hover_bg          = v4f32(0.88f, 0.94f, 1.00f, 1.0f);
-  V4F32 selected_bg       = v4f32(0.80f, 0.89f, 0.98f, 1.0f);
-  V4F32 selected_hover_bg = v4f32(0.76f, 0.87f, 0.98f, 1.0f);
-  V4F32 selected_border   = v4f32(0.48f, 0.72f, 0.97f, 1.0f);
-  V4F32 hover_border      = transparent();
-  
-  V4F32 b_color      = transparent();
-  V4F32 border_color = transparent();
+  UI_Parent(header_box)
+  {
+    ui_spacer(ui_grow());
+
+    ui_next_width(ui_px(10));
+    ui_next_height(ui_px(10));
+    ui_next_b_color(golden());
+    ui_next_hover_cursor(OS_Cursor__hand);
+    UI_Box* filter_button = ui_box_make_f(UI_Box_flag__has_background|UI_Box_flag__clickable, "Filter button for header with id %.*s", Str8FmtArg(id));
+  }
 
   B32 is_selected = (pcl->selected_header_generation == header.generation);
-  if (is_selected)
-  {
-    b_color = selected_bg;
-    border_color = selected_border;
+  if (actions.is_hovered) { ui_box_set_b_color(header_box, color_change_alpha(green(), 0.1)); }
+  if (is_selected) { ui_box_set_b_color(header_box, color_change_alpha(green(), 0.2)); }
 
-    if (actions.is_hovered) { b_color = selected_hover_bg; }
-  }
-  else if (actions.is_hovered)
-  {
-    b_color = hover_bg;
-    border_color = hover_border;
-  }
 
-  ui_box_set_b_color(box, b_color);
-  ui_box_set_border_color(box, border_color);
-
-  UI_Parent(box)
+  UI_Parent(header_box)
   {
     Str8 text_for_header_kind = {};
     if (0) {}

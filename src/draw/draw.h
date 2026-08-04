@@ -4,6 +4,7 @@
 #include "os/win32.h"
 
 #include "core/core_include.h"
+#include "profiler/profiler.h"
 #include "render/render.h"
 #include "font_provider/font_provider.h"
 

@@ -3,6 +3,9 @@
 #include "core/core_include.h"
 #include "core/core_include.cpp"
 
+#include "profiler/profiler.h"
+#include "profiler/profiler.cpp"
+
 #include "os/win32.h"
 #include "os/win32.cpp"
 
@@ -27,75 +30,16 @@ int main()
   os_init();
   allocate_thread_context();
 
-  U64 arr[64] = { 0, 1, 2, 3, 4, 5 };
-  U64 count = 0;
-  for EachIndex(i, 5)
-  {
-    Assert(i < ArrayCount(arr));
-    arr[count++] = i;
-  }
-  
-  for EachIndex(i, count)
-  {
-    printf("%lld->", arr[i]);
-  } 
-  printf("\n");
+  prof_init();
 
-  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 1, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
-  count = arr_shift_left_from_index(arr, count, 0, sizeof(arr[0]));
+  ProfBeginGroupF("Start");
+  os_sleep(1000);
+  ProfEndGroup();
 
-
-  for EachIndex(i, count)
-  {
-    printf("%lld->", arr[i]);
-  } 
-  printf("\n");
+  prof_release();
 
   return 0;
 }
-
-// struct Node {
-//   Node* next;
-//   Node* prev;
-//   U64 value;
-// };
-
-// struct Node_list {
-//   Node* first;
-//   Node* last;
-//   U64 count;
-// };
-
-// struct State {
-//   Arena* state_arena;
-//   Node_list list;
-
-//   B32 is_delete_event;
-//   U64 delete_event_node_index_to_delete;
-// };
-
-// int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
-// {
-//   // Layers we allocate for the runtime 
-//   profiler_init();
-//   allocate_thread_context();
-//   B32 os_init_succ = os_init();
-//   r_init(); 
-//   d_init();
-//   ui_init();
-//   fp_init();
-
-//   if (!os_init_succ) { return -1; }
-
-//   // TODO: Clear up the window from the os state, the os state should be the shared part and should not have this in there 
-//   //       The win proc from the os file should then also be removed since it is not general but os specific
-//   OS_State* win32_state = os_get_state();
 
 //   ///////////////////////////////////////////////////////////
 //   // - Window  

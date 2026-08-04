@@ -1,17 +1,14 @@
 #ifndef PCLARITY_UI_DLL_CODE_H
 #define PCLARITY_UI_DLL_CODE_H
 
-#include "draw/draw.h"
-#include "draw/draw.cpp"
-
-#include "pclarity/pclarity_commons.h"
-#include "pclarity/pclarity.h"
+#include "profiler/profiler.h"
 
 #include "pclarity/pclarity_commons.h"
 
 struct PCL_UI_Dll_context {
   OS_State*  os_state;
   Thread_context* thread_context;
+  Prof_State* prof_state;
   D3D_State* r_state;
   FP_State*  font_provider_state;
   D_State*   draw_state;

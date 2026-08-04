@@ -6,6 +6,9 @@ void OutputDebugStringF(const char* fmt, ...);
 #include "os/win32.h"
 #include "os/win32.cpp"
 
+#include "profiler/profiler.h"
+#include "profiler/profiler.cpp"
+
 #include "render/render.h"
 #include "render/render.cpp"
 
@@ -97,7 +100,7 @@ PCL_Build_ui_func* pcl_build_ui  = pcl_build_ui__stub;
 int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
 {
   // Layers we allocate for the runtime 
-  profiler_init();
+  prof_init();
   allocate_thread_context();
   B32 os_init_succ = os_init();
   r_init(); 
@@ -218,17 +221,32 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
     PCL_UI_Dll_context dll_context = {};
     dll_context.os_state            = os_get_state();
     dll_context.thread_context      = get_thread_context();
+    dll_context.prof_state          = prof_get_state();
     dll_context.r_state             = r_get_state();
     dll_context.font_provider_state = fp_get_state();
     dll_context.draw_state          = d_get_state();
     dll_context.ui_state            = ui_get_state();
 
     PCL_Debug_data_for_ui pcl_debug_data = {};
-    pcl_debug_data.fps = prev_frame_fps;
+    pcl_debug_data.fps         = prev_frame_fps;
+    pcl_debug_data.widnow_dims = os_get_client_area_dims();
 
     Assert(pcl_build_ui);
     if (pcl_build_ui) { pcl_build_ui(font, &pcl, dll_context, pcl_debug_data);  }
 
+    /*
+    UI_Build(os_get_client_area_dims(), os_get_mouse_pos(), font)
+    {
+      ui_next_width(ui_px(250));
+      ui_next_height(ui_px(250));
+      ui_next_corner_r(25);
+      ui_next_border(5, green());
+      ui_next_inner_softness(1);
+      ui_next_outer_softness(1);
+      ui_next_b_color(red());
+      UI_Box* box = ui_box_make(UI_Box_flag__has_borders|UI_Box_flag__has_rounded_corners, {});
+    }
+    */
 
     ui_draw();
 
@@ -255,7 +273,7 @@ int WinMain(HINSTANCE app_instance, HINSTANCE __not_used__, LPSTR cmd, int show)
   }
 
   // Damian: Not releasing anything since who cares, the system will release all the stuff
-  profiler_release();
+  prof_release();
 
   return 0;
 }

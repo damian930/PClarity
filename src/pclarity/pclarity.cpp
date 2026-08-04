@@ -113,6 +113,7 @@ void pcl_frame_update(PCL_State* pcl)
       case PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header:
       case PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header:
       case PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header:
+      case PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header:
       {
         PCL_Table_header_kind header_kind_to_add = PCL_Table_header_kind__NONE;
         if (0) {}
@@ -120,6 +121,7 @@ void pcl_frame_update(PCL_State* pcl)
         else if (command_node->command == PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__pid; }
         else if (command_node->command == PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__ppid; }
         else if (command_node->command == PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__name; }
+        else if (command_node->command == PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header) { header_kind_to_add = PCL_Table_header_kind__icon; }
 
         // TODO: This might be a call to be honest
         B32 is_header_selected = (pcl->selected_header_generation != 0);

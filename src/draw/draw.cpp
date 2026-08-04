@@ -4,6 +4,9 @@
 #include "os/win32.h"
 #include "os/win32.cpp"
 
+#include "profiler/profiler.h"
+#include "profiler/profiler.cpp"
+
 #include "render/render.h"
 #include "render/render.cpp"
 

@@ -50,8 +50,9 @@ void arena_release(Arena** arena)
 {
   __arena_unpoison_all_commited_memory(*arena);
 
-  B32 succ = os_release_mem_chunk(&(*arena)->mem_chunck);
-  *arena = 0; 
+  Mem_chunk* chunk = &(*arena)->mem_chunck;
+  *arena = 0;
+  B32 succ = os_release_mem_chunk(chunk);
   if (!succ) { BP; }
 }
 

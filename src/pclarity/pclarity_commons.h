@@ -34,7 +34,8 @@ enum PCL_Table_header_kind : U32 {
   PCL_Table_header_kind__name, 
   PCL_Table_header_kind__pid, 
   PCL_Table_header_kind__ppid,
-  PCL_Table_header_kind__startup_time,
+  PCL_Table_header_kind__icon,
+  PCL_Table_header_kind__startup_time, // TODO: THis is not used right now, look into this
 };
 
 struct PCL_Table_header {
@@ -56,6 +57,7 @@ enum PCL_Command {
   PCL_Command__add_PID_header_as_last_header_or_right_after_selected_header, 
   PCL_Command__add_PPID_header_as_last_header_or_right_after_selected_header, 
   PCL_Command__add_Name_header_as_last_header_or_right_after_selected_header, 
+  PCL_Command__add_Icon_header_as_last_header_or_right_after_selected_header, 
   PCL_Command__select_header,
 
   PCL_Command__clear_table,
@@ -152,6 +154,7 @@ void pcl_defer_command_to_start_of_next_frame(PCL_State* PCL, PCL_Command comman
 
 struct PCL_Debug_data_for_ui {
   U64 fps;
+  V2F32 widnow_dims;
 };
 
 #endif
